@@ -95,57 +95,46 @@ Check if auth file exists for this session
 
 ## Saving Authentication State
 
-### Using the Script
+### How to Use
 
-The `scripts/save-auth-state.js` script opens a browser for manual login and saves the authentication state.
+**Important**: This script must be run in a **separate terminal window** by the user.
 
-**For AI Assistants**: You can run this script automatically using the `--wait-time` parameter:
+When an AI assistant helps you set up authentication, it will provide you with a command to run. You should:
+
+1. **Open a new terminal window**
+2. **Copy and paste the command** the AI provides
+3. **Run the command**
+4. **Log in** in the browser window that opens
+5. **Press Enter** in the terminal after logging in
+6. The script will save your authentication state
+
+### Example Command
 
 ```bash
-node <path-to-skill>/scripts/save-auth-state.js \
-  --url https://app.example.com/login \
-  --user myproject \
-  --wait-time 300
-```
-
-**Workflow when AI runs the script**:
-1. AI runs the script with `--wait-time 300` (5 minutes)
-2. Script opens browser and shows login page
-3. AI tells user: "Please log in to the browser window that just opened"
-4. Script automatically saves after 5 minutes
-5. AI verifies the auth file was created and reads its content to confirm success
-
-**Manual usage (interactive mode):**
-```bash
-node <path-to-skill>/scripts/save-auth-state.js \
+node /path/to/skills/playwright-auth-manager/scripts/save-auth-state.js \
   --url https://app.example.com/login \
   --user myproject
-# You will need to press Enter after logging in
 ```
 
-**Options:**
+This creates: `myproject-auth.json`
+
+### Available Options
+
 - `--url <url>`: Starting URL (login page)
 - `--output <file>`: Output filename (default: `./auth.json`)
 - `--user <name>`: Session name for the auth file (creates `<name>-auth.json`)
-- `--wait-time <seconds>`: Auto-save after N seconds (recommended: 180-300 for AI automation)
 
-### How It Works
+**You control the file name**: Use `--user` or `--output` to choose what the authentication file is called.
 
-**Interactive mode** (default):
+### What the Script Does
+
 1. Opens a browser window
 2. Navigates to the specified URL
 3. Waits for you to complete login manually
-4. Prompts you to press Enter
+4. Prompts you to press Enter when ready
 5. Saves cookies and localStorage to JSON file
 6. Displays saved data summary
-
-**Auto-save mode** (with `--wait-time`):
-1. Opens a browser window
-2. Navigates to the specified URL
-3. Waits for you to complete login manually
-4. Automatically saves after the specified time
-5. Displays saved data summary
-6. Closes browser
+7. Closes browser
 
 ### Recommended Directory Structure
 
@@ -331,7 +320,7 @@ Some websites use short-lived sessions. Solutions:
 ### scripts/
 
 - **setup.js**: Initial setup script that checks and installs Playwright if needed. Run this first before using other scripts. Safe to run multiple times.
-- **save-auth-state.js**: Script to capture browser authentication state. Opens a browser, waits for manual login, and saves cookies/localStorage to JSON. Supports both interactive mode (press Enter) and auto-save mode (with `--wait-time`).
+- **save-auth-state.js**: Interactive script to capture browser authentication state. Opens a browser, waits for manual login (you press Enter when ready), and saves cookies/localStorage to JSON. **Must be run by the user in a separate terminal window.**
 
 ### references/
 
