@@ -1,336 +1,336 @@
-# Agile Dev Plugin
+# Agile Dev 插件
 
-> Agile development toolkit for Claude Code with automated workflows, quality assurance, and code review
+> 敏捷开发工具套件，包含自动化工作流、质量保证和代码审查
 
-## Overview
+## 概述
 
-The **agile-dev** plugin provides a comprehensive suite of tools to streamline your development workflow:
+**agile-dev** 插件提供了一套完整的工具来优化你的开发工作流：
 
-- **Automated Dev-Eval Loop**: Continuous iteration until acceptance criteria are met
-- **Code Review**: AI-powered code review with actionable feedback
-- **Quality Assurance**: Systematic testing and validation
-- **Playwright Tools**: Browser automation and authentication management
+- **自动化开发-评估循环**：持续迭代直到满足所有验收标准
+- **代码审查**：AI 驱动的代码审查，提供可执行的反馈
+- **质量保证**：系统化测试和验证
+- **Playwright 工具**：浏览器自动化和认证管理
 
-## Components
+## 核心组件
 
-### 1. Dev-Eval Loop (`/task-init` + `/task-run`)
+### 1. 开发-评估循环（`/task-init` + `/task-run`）
 
-Automated feedback loop where developer and evaluator agents iterate until all requirements are satisfied.
+开发者和评估者智能体自动迭代直到满足所有需求的反馈循环。
 
-**Workflow:**
+**工作流：**
 ```
-/task-init my-feature  →  Define requirements & acceptance criteria
+/task-init my-feature  →  定义需求和验收标准
           ↓
-/task-run my-feature   →  Start automated iteration
+/task-run my-feature   →  启动自动迭代
           ↓
-    [Developer Agent]  →  Implement features
+    [开发者智能体]      →  实现功能
           ↓
-    [Evaluator Agent]  →  Test & verify
+    [评估者智能体]      →  测试验证
           ↓
-    Pass? ✅ Done      →  Fail? ❌ Next iteration (max 20 cycles)
+    通过? ✅ 完成       →  失败? ❌ 下一轮迭代（最多 20 次）
 ```
 
-**When to use:**
-- New features with clear acceptance criteria
-- Bug fixes requiring verification
-- Tasks needing iteration to perfect
+**适用场景：**
+- 具有明确验收标准的新功能
+- 需要验证的 Bug 修复
+- 需要多次迭代完善的任务
 
-### 2. Code Review (`reviewer` agent)
+### 2. 代码审查（`reviewer` 智能体）
 
-AI code reviewer that analyzes changes and provides constructive feedback.
+AI 代码审查员，分析代码变更并提供建设性反馈。
 
-**Usage:**
+**使用方法：**
 ```bash
-# Review current changes
-claude "Use the reviewer agent to review my latest changes"
+# 审查当前更改
+claude "使用 reviewer 智能体审查我最新的代码变更"
 
-# Review specific files
-claude "Use the reviewer agent to review src/auth.ts"
+# 审查特定文件
+claude "使用 reviewer 智能体审查 src/auth.ts"
 ```
 
-**Review categories:**
-- 🔴 Critical: Bugs, security issues, breaking changes
-- 🟡 Important: Design flaws, performance issues, missing tests
-- 🔵 Minor: Improvements, suggestions, style
+**审查分类：**
+- 🔴 严重问题：Bug、安全漏洞、破坏性变更
+- 🟡 重要问题：设计缺陷、性能问题、缺失测试
+- 🔵 次要问题：改进建议、风格问题
 
-### 3. Playwright Auth Manager (Skill)
+### 3. Playwright 认证管理器（技能）
 
-Manage authentication states for Playwright browser tests across multiple user roles.
+为 Playwright 浏览器测试管理不同用户角色的认证状态。
 
-**Features:**
-- Create/manage auth states for different user types
-- Reuse authenticated sessions across tests
-- Multi-user test scenarios
+**功能特性：**
+- 为不同用户类型创建/管理认证状态
+- 跨测试复用已认证会话
+- 多用户测试场景
 
-## Quick Start
+## 快速开始
 
-### Installation
+### 安装
 
 ```bash
-# Clone to Claude plugins directory
+# 克隆到 Claude 插件目录
 cd ~/.claude/plugins
 git clone <repo-url> agile-dev
 
-# Or create symlink for development
+# 或创建开发用符号链接
 ln -s /path/to/agile-dev ~/.claude/plugins/agile-dev
 ```
 
-### Basic Usage
+### 基础用法
 
-#### Create and Run a Task
+#### 创建并运行任务
 
 ```bash
-# 1. Initialize task with requirements
+# 1. 初始化任务和需求
 /task-init user-login
 
-# Claude asks:
-# - What's the goal?
-# - Tech stack?
-# - Acceptance criteria?
+# Claude 会询问：
+# - 目标是什么？
+# - 技术栈？
+# - 验收标准？
 
-# 2. Run automated dev-eval loop
+# 2. 运行自动化开发-评估循环
 /task-run user-login
 
-# Agents iterate automatically until:
-# ✅ All criteria pass → Success
-# ⚠️ 20 iterations → Manual review needed
+# 智能体自动迭代直到：
+# ✅ 所有标准通过 → 成功
+# ⚠️ 达到 20 次迭代 → 需要人工审查
 ```
 
-#### Review Code Changes
+#### 审查代码变更
 
 ```bash
-# Review uncommitted changes
-claude "Use reviewer agent to review my changes"
+# 审查未提交的更改
+claude "使用 reviewer 智能体审查我的代码变更"
 
-# Review specific branch
-claude "Use reviewer agent to review feature-branch compared to main"
+# 审查特定分支
+claude "使用 reviewer 智能体审查 feature-branch 相对于 main 的变更"
 ```
 
-## File Structure
+## 文件结构
 
-In your working directory, the plugin creates a `docs/` folder to store task-related documents:
+在你的工作目录下，插件会创建 `docs/` 文件夹来存储任务相关的文档：
 
 ```
 docs/
 └── {task-name}/
-    ├── requirement.md           # Requirements & acceptance criteria
-    ├── *-work-report-*.md       # Developer iteration reports
-    └── *-eval-report-*.md       # Evaluator test reports
+    ├── requirement.md           # 需求和验收标准
+    ├── *-work-report-*.md       # 开发者迭代报告
+    └── *-eval-report-*.md       # 评估者测试报告
 ```
 
-## Detailed Guide
+## 详细指南
 
-### Writing Effective Requirements
+### 编写有效的需求
 
-#### Good Acceptance Criteria (Specific & Testable)
+#### 良好的验收标准（具体且可测试）
 ```markdown
-- [ ] User can login with email/password
-- [ ] JWT token returned on successful auth
-- [ ] All tests pass: `npm test auth`
-- [ ] Protected routes redirect when unauthenticated
-- [ ] No console errors during auth flow
+- [ ] 用户可以用邮箱/密码登录
+- [ ] 成功认证后返回 JWT token
+- [ ] 所有测试通过：`npm test auth`
+- [ ] 未认证时保护路由会重定向
+- [ ] 认证流程中无控制台错误
 ```
 
-#### Bad Acceptance Criteria (Vague)
+#### 不良的验收标准（模糊）
 ```markdown
-- [ ] Authentication works
-- [ ] Should be secure
-- [ ] Tests pass
+- [ ] 认证功能正常
+- [ ] 应该是安全的
+- [ ] 测试通过
 ```
 
-### Dev-Eval Loop Best Practices
+### 开发-评估循环最佳实践
 
-**1. Start with clear requirements**
-- Define measurable acceptance criteria
-- Include test commands that can be run
-- Specify expected behavior for edge cases
+**1. 从明确的需求开始**
+- 定义可测量的验收标准
+- 包含可运行的测试命令
+- 指定边界情况的预期行为
 
-**2. Let agents iterate**
-- Don't interrupt the loop prematurely
-- Review reports to understand progress
-- Trust the process for 3-5 iterations
+**2. 让智能体迭代**
+- 不要过早中断循环
+- 查看报告了解进度
+- 信任 3-5 次迭代的过程
 
-**3. Intervene when needed**
-- Review evaluation reports if stuck
-- Manually fix architectural blockers
-- Adjust unrealistic acceptance criteria
+**3. 必要时介入**
+- 卡住时审查评估报告
+- 手动修复架构性阻塞
+- 调整不切实际的验收标准
 
-**4. Resume after changes**
+**4. 修改后恢复**
 ```bash
-# Edit code or requirements manually
+# 手动编辑代码或需求
 vim docs/my-task/requirement.md
 
-# Resume iteration
+# 恢复迭代
 /task-run my-task
 ```
 
-### Code Review Best Practices
+### 代码审查最佳实践
 
-**Request specific reviews:**
+**请求具体审查：**
 ```bash
-# Review security
-claude "Use reviewer to check for security vulnerabilities in auth module"
+# 审查安全性
+claude "使用 reviewer 检查认证模块的安全漏洞"
 
-# Review performance
-claude "Use reviewer to analyze performance of data processing code"
+# 审查性能
+claude "使用 reviewer 分析数据处理代码的性能"
 
-# Review tests
-claude "Use reviewer to verify test coverage is sufficient"
+# 审查测试
+claude "使用 reviewer 验证测试覆盖率是否充足"
 ```
 
-**Act on feedback:**
-- Address 🔴 Critical issues immediately
-- Plan fixes for 🟡 Important issues
-- Consider 🔵 Minor suggestions
+**基于反馈行动：**
+- 立即处理 🔴 严重问题
+- 计划修复 🟡 重要问题
+- 考虑 🔵 次要建议
 
-## Configuration
+## 配置
 
-### Maximum Iterations
+### 最大迭代次数
 
-Edit `commands/task-run.md`:
+编辑 `commands/task-run.md`：
 ```javascript
-const MAX_ITERATIONS = 30;  // Default: 20
+const MAX_ITERATIONS = 30;  // 默认：20
 ```
 
-### Task Directory
+### 任务目录
 
-Edit `commands/task-run.md`:
+编辑 `commands/task-run.md`：
 ```javascript
-const TASK_BASE_DIR = 'tasks';  // Default: 'docs'
+const TASK_BASE_DIR = 'tasks';  // 默认：'docs'
 ```
 
-### Agent Models
+### 智能体模型
 
-Edit agent frontmatter in `agents/*.md`:
+编辑 `agents/*.md` 中的 frontmatter：
 ```yaml
 ---
 name: developer
-model: opus  # Options: sonnet, opus, haiku
+model: opus  # 选项：sonnet, opus, haiku
 ---
 ```
 
-## Troubleshooting
+## 故障排除
 
-### Task Issues
+### 任务问题
 
-**Error: Task directory not found**
+**错误：找不到任务目录**
 ```bash
-# Solution: Initialize the task first
+# 解决方案：先初始化任务
 /task-init {task-name}
 ```
 
-**Error: Infinite loop - keeps failing**
-- Review latest evaluation report
-- Check if acceptance criteria are achievable
-- Verify test commands work
-- Manually fix blocking issues
-- Update requirements if needed
+**错误：无限循环 - 一直失败**
+- 查看最新评估报告
+- 检查验收标准是否可达成
+- 验证测试命令是否有效
+- 手动修复阻塞问题
+- 必要时更新需求
 
-**Error: Evaluation passes too easily**
-- Make acceptance criteria more specific
-- Add explicit test commands
-- Include negative test cases
-- Specify quality thresholds
+**错误：评估太容易通过**
+- 使验收标准更具体
+- 添加明确的测试命令
+- 包含负面测试用例
+- 指定质量阈值
 
-### Review Issues
+### 审查问题
 
-**Review too shallow**
-- Provide more context about what to focus on
-- Specify areas of concern (security, performance, etc.)
-- Point to specific files or functions
+**审查太浅**
+- 提供更多关注重点的上下文
+- 指定关注领域（安全、性能等）
+- 指向特定文件或函数
 
-**Review too nitpicky**
-- Reviewers are trained to avoid style nitpicks
-- Focus on logic, security, and maintainability
-- Use linters for formatting issues
+**审查太吹毛求疵**
+- 审查者经过训练会避免风格细节
+- 专注于逻辑、安全和可维护性
+- 使用 linters 处理格式问题
 
-## Advanced Usage
+## 高级用法
 
-### Custom Testing Strategies
+### 自定义测试策略
 
-**Playwright E2E Testing:**
+**Playwright E2E 测试：**
 ```markdown
-## Acceptance Criteria
-- [ ] Playwright tests pass: `npx playwright test`
-- [ ] User flow works: login → dashboard → logout
-- [ ] No browser console errors
+## 验收标准
+- [ ] Playwright 测试通过：`npx playwright test`
+- [ ] 用户流程正常：登录 → 仪表板 → 登出
+- [ ] 无浏览器控制台错误
 ```
 
-**API Testing:**
+**API 测试：**
 ```markdown
-## Acceptance Criteria
-- [ ] GET /api/users returns 200
-- [ ] POST /api/users creates user (201)
-- [ ] Invalid input returns 400
-- [ ] API tests pass: `npm run test:api`
+## 验收标准
+- [ ] GET /api/users 返回 200
+- [ ] POST /api/users 创建用户（201）
+- [ ] 无效输入返回 400
+- [ ] API 测试通过：`npm run test:api`
 ```
 
-**Performance Testing:**
+**性能测试：**
 ```markdown
-## Acceptance Criteria
-- [ ] Page load < 2 seconds
-- [ ] API response < 200ms
-- [ ] Lighthouse score > 90
+## 验收标准
+- [ ] 页面加载 < 2 秒
+- [ ] API 响应 < 200ms
+- [ ] Lighthouse 分数 > 90
 ```
 
-### Multi-Task Workflows
+### 多任务工作流
 
-Run tasks in parallel (separate terminals):
+并行运行任务（不同终端）：
 ```bash
-# Terminal 1
+# 终端 1
 /task-run feature-a
 
-# Terminal 2
+# 终端 2
 /task-run feature-b
 ```
 
-Each task maintains independent state.
+每个任务维护独立状态。
 
-### Extending the Plugin
+### 扩展插件
 
-**Add new agents:**
-1. Create `agents/your-agent.md`
-2. Define role, responsibilities, and tools
-3. Use in workflows
+**添加新智能体：**
+1. 创建 `agents/your-agent.md`
+2. 定义角色、职责和工具
+3. 在工作流中使用
 
-**Add new commands:**
-1. Create `commands/your-command.md`
-2. Define workflow and logic
-3. Invoke with `/your-command`
+**添加新命令：**
+1. 创建 `commands/your-command.md`
+2. 定义工作流和逻辑
+3. 用 `/your-command` 调用
 
-**Add new skills:**
-1. Create `skills/your-skill/`
-2. Add SKILL.md and references
-3. Use in agent prompts
+**添加新技能：**
+1. 创建 `skills/your-skill/`
+2. 添加 SKILL.md 和参考文档
+3. 在智能体提示中使用
 
-## FAQ
+## 常见问题
 
-**Q: How many iterations typically needed?**
-A: 2-5 for most tasks. Simple tasks: 1. Complex tasks: 10-15.
+**Q: 通常需要多少次迭代？**
+A: 大多数任务 2-5 次。简单任务：1 次。复杂任务：10-15 次。
 
-**Q: Can I stop mid-iteration?**
-A: Yes, Ctrl+C to interrupt. Reports saved. Resume with `/task-run {task}`.
+**Q: 可以中途停止吗？**
+A: 可以，Ctrl+C 中断。报告已保存。用 `/task-run {task}` 恢复。
 
-**Q: Can I modify requirements after starting?**
-A: Yes, edit `requirement.md` and re-run `/task-run {task}`.
+**Q: 开始后可以修改需求吗？**
+A: 可以，编辑 `requirement.md` 并重新运行 `/task-run {task}`。
 
-**Q: What models should I use?**
-A: Sonnet (balanced), Opus (highest quality), Haiku (fast/cheap).
+**Q: 应该使用什么模型？**
+A: Sonnet（平衡），Opus（最高质量），Haiku（快速/便宜）。
 
-**Q: Does reviewer actually write code?**
-A: No, reviewer only analyzes and suggests. Never modifies code.
+**Q: reviewer 会实际编写代码吗？**
+A: 不会，reviewer 只分析和建议，不会修改代码。
 
-**Q: Can I use this with any language?**
-A: Yes, plugin is language-agnostic.
+**Q: 可以用于任何语言吗？**
+A: 是的，插件与语言无关。
 
-## License
+## 许可证
 
 MIT
 
-## Version
+## 版本
 
 1.0.0
 
 ---
 
-**Build better, iterate faster. Let the agents handle the loop. 🔄**
+**构建更好，迭代更快。让智能体处理循环。🔄**
