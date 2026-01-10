@@ -7,6 +7,22 @@ description: Manage browser authentication state for Playwright MCP Server. Use 
 
 Manage browser authentication state for Playwright MCP, enabling automated browser sessions with preserved login credentials.
 
+## Setup
+
+Before using this skill, run the setup script to ensure Playwright is installed:
+
+```bash
+node <path-to-skill>/scripts/setup.js
+```
+
+The setup script will:
+- Check if Playwright is installed on your system
+- Install Playwright if it's not present
+- Install Chromium browser if needed
+- Do nothing if everything is already installed (safe to run multiple times)
+
+**Note**: You don't need to read the script content - just run it and it will handle everything automatically.
+
 ## Quick Start
 
 ### First-Time Setup
@@ -317,6 +333,7 @@ Some websites use short-lived sessions. Solutions:
 
 ### scripts/
 
+- **setup.js**: Initial setup script that checks and installs Playwright if needed. Run this first before using other scripts. Safe to run multiple times.
 - **save-auth-state.js**: Interactive script to capture browser authentication state. Opens a browser, waits for manual login, and saves cookies/localStorage to JSON.
 
 ### references/
