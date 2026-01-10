@@ -12,14 +12,16 @@
  *   node save-auth-state.js [options]
  *
  * Options:
- *   --url <url>       Starting URL (default: https://example.com)
- *   --output <file>   Output filename (default: ./auth.json)
- *   --user <name>     Session name for the auth file (creates <name>-auth.json)
+ *   --url <url>         Starting URL (default: https://example.com)
+ *   --output <file>     Output filename (default: ./auth.json)
+ *   --user <name>       Session name for the auth file (creates <name>-auth.json)
+ *   --wait-time <sec>   Auto-save after N seconds (default: wait for Enter)
  *
  * Examples:
  *   node save-auth-state.js --url https://app.example.com/login
  *   node save-auth-state.js --user myproject --url https://app.example.com
  *   node save-auth-state.js --output ./auth/session1.json
+ *   node save-auth-state.js --url https://app.example.com --wait-time 300
  */
 
 const fs = require('fs');
@@ -32,7 +34,8 @@ function parseArgs() {
   const options = {
     url: 'https://example.com',
     output: './auth.json',
-    user: null
+    user: null,
+    waitTime: null  // null means wait for Enter, number means auto-save after N seconds
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -46,6 +49,9 @@ function parseArgs() {
       case '--user':
         options.user = args[++i];
         break;
+      case '--wait-time':
+        options.waitTime = parseInt(args[++i], 10);
+        break;
       case '--help':
       case '-h':
         console.log(`
@@ -58,14 +64,16 @@ Usage:
   node save-auth-state.js [options]
 
 Options:
-  --url <url>       Starting URL (default: https://example.com)
-  --output <file>   Output filename (default: ./auth.json)
-  --user <name>     Session name for the auth file (creates <name>-auth.json)
+  --url <url>         Starting URL (default: https://example.com)
+  --output <file>     Output filename (default: ./auth.json)
+  --user <name>       Session name for the auth file (creates <name>-auth.json)
+  --wait-time <sec>   Auto-save after N seconds (default: wait for Enter)
 
 Examples:
   node save-auth-state.js --url https://app.example.com/login
   node save-auth-state.js --user myproject --url https://app.example.com
   node save-auth-state.js --output ./auth/session1.json
+  node save-auth-state.js --url https://app.example.com --wait-time 300
         `);
         process.exit(0);
     }
@@ -152,19 +160,26 @@ async function saveAuthState() {
     await page.goto(options.url);
 
     console.log('\n📝 Please complete login in the browser window...');
-    console.log('⏳ After logging in, return here and press Enter to save auth state');
 
-    // Wait for user to press Enter
-    await new Promise(resolve => {
-      const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout
+    // Wait for user input or auto-save after timeout
+    if (options.waitTime !== null) {
+      console.log(`⏳ Will auto-save after ${options.waitTime} seconds...`);
+      console.log(`   (You can close this window after logging in)`);
+      await new Promise(resolve => setTimeout(resolve, options.waitTime * 1000));
+    } else {
+      console.log('⏳ After logging in, return here and press Enter to save auth state');
+      // Wait for user to press Enter
+      await new Promise(resolve => {
+        const rl = readline.createInterface({
+          input: process.stdin,
+          output: process.stdout
+        });
+        rl.question('\nPress Enter when ready to save...', () => {
+          rl.close();
+          resolve();
+        });
       });
-      rl.question('\nPress Enter when ready to save...', () => {
-        rl.close();
-        resolve();
-      });
-    });
+    }
 
     // Ensure output directory exists
     const outputDir = path.dirname(options.output);

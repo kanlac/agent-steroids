@@ -99,35 +99,53 @@ Check if auth file exists for this session
 
 The `scripts/save-auth-state.js` script opens a browser for manual login and saves the authentication state.
 
-**Basic usage:**
+**For AI Assistants**: You can run this script automatically using the `--wait-time` parameter:
+
 ```bash
 node <path-to-skill>/scripts/save-auth-state.js \
   --url https://app.example.com/login \
-  --output ./auth.json
+  --user myproject \
+  --wait-time 300
 ```
 
-**With session name (recommended for multiple sessions):**
+**Workflow when AI runs the script**:
+1. AI runs the script with `--wait-time 300` (5 minutes)
+2. Script opens browser and shows login page
+3. AI tells user: "Please log in to the browser window that just opened"
+4. Script automatically saves after 5 minutes
+5. AI verifies the auth file was created and reads its content to confirm success
+
+**Manual usage (interactive mode):**
 ```bash
 node <path-to-skill>/scripts/save-auth-state.js \
   --url https://app.example.com/login \
   --user myproject
-# Creates: myproject-auth.json
+# You will need to press Enter after logging in
 ```
 
 **Options:**
 - `--url <url>`: Starting URL (login page)
 - `--output <file>`: Output filename (default: `./auth.json`)
 - `--user <name>`: Session name for the auth file (creates `<name>-auth.json`)
+- `--wait-time <seconds>`: Auto-save after N seconds (recommended: 180-300 for AI automation)
 
-### Manual Process
+### How It Works
 
-The script will:
-1. Open a browser window
-2. Navigate to the specified URL
-3. Wait for you to complete login manually
-4. Prompt you to press Enter
-5. Save cookies and localStorage to JSON file
-6. Display saved data summary
+**Interactive mode** (default):
+1. Opens a browser window
+2. Navigates to the specified URL
+3. Waits for you to complete login manually
+4. Prompts you to press Enter
+5. Saves cookies and localStorage to JSON file
+6. Displays saved data summary
+
+**Auto-save mode** (with `--wait-time`):
+1. Opens a browser window
+2. Navigates to the specified URL
+3. Waits for you to complete login manually
+4. Automatically saves after the specified time
+5. Displays saved data summary
+6. Closes browser
 
 ### Recommended Directory Structure
 
@@ -313,7 +331,7 @@ Some websites use short-lived sessions. Solutions:
 ### scripts/
 
 - **setup.js**: Initial setup script that checks and installs Playwright if needed. Run this first before using other scripts. Safe to run multiple times.
-- **save-auth-state.js**: Interactive script to capture browser authentication state. Opens a browser, waits for manual login, and saves cookies/localStorage to JSON.
+- **save-auth-state.js**: Script to capture browser authentication state. Opens a browser, waits for manual login, and saves cookies/localStorage to JSON. Supports both interactive mode (press Enter) and auto-save mode (with `--wait-time`).
 
 ### references/
 
