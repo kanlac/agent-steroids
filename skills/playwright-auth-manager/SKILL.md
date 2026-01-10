@@ -7,69 +7,71 @@ description: Manage browser authentication state for Playwright MCP Server. Use 
 
 Manage browser authentication state for Playwright MCP, enabling automated browser sessions with preserved login credentials.
 
-**Use Case**: This skill is designed for **local development and testing**. It helps you automate browser interactions that require login during development, debugging, and local testing workflows.
+**Use Case**: This skill is designed for **local development and testing**. Use it to help users automate browser interactions that require login during development, debugging, and local testing workflows.
 
-**Not for Production**: This tool saves real authentication credentials and is meant for local use only. It should not be used in production environments.
+**Not for Production**: This tool saves real authentication credentials and is meant for local use only. Never use it in production environments.
 
 ## Setup
 
-Before using this skill, run the setup script to ensure Playwright is installed:
+### Initial Setup for Coding Agent
+
+Before using this skill, ensure Playwright is installed by running the setup script:
 
 ```bash
 node <path-to-skill>/scripts/setup.js
 ```
 
 The setup script will:
-- Check if Playwright is installed on your system
+- Check if Playwright is installed on the system
 - Install Playwright if it's not present
 - Install Chromium browser if needed
 - Do nothing if everything is already installed (safe to run multiple times)
 
-**Note**: You don't need to read the script content - just run it and it will handle everything automatically.
+**Note**: The script handles everything automatically. No need to read its content.
 
 ## Quick Start
 
-### First-Time Setup
+### Typical Workflow for Coding Agent
 
-1. **Save authentication state** for a website:
-   ```bash
-   cd <project-directory>
-   node <path-to-skill>/scripts/save-auth-state.js \
-     --url https://app.example.com/login \
-     --user myaccount
-   ```
+When helping a user set up authentication for the first time:
 
-2. **Configure MCP Server** with authentication:
+1. **Guide user to save authentication state**:
+   - Provide the command with appropriate URL and session name
+   - Instruct user to run it in a new terminal window
+   - See [Saving Authentication State](#saving-authentication-state) for details
+
+2. **Configure MCP Server** in the user's MCP configuration file:
    ```json
    {
      "mcpServers": {
-       "playwright-myaccount": {
+       "playwright-jack": {
          "command": "npx",
          "args": [
            "@playwright/mcp@latest",
            "--isolated",
-           "--storage-state=./myaccount-auth.json"
+           "--storage-state=./jack-auth.json"
          ]
        }
      }
    }
    ```
 
-3. **Verify .gitignore** includes auth files (see [Ensuring Git Ignore](#ensuring-git-ignore))
+3. **Verify .gitignore** includes auth file patterns (see [Ensuring Git Ignore](#ensuring-git-ignore))
 
-4. **Restart MCP client** to load the authenticated session
+4. **Instruct user to restart** their MCP client to load the authenticated session
 
 ### Checking Authentication Status
 
-When accessing a protected page, verify authentication by checking the page content:
+To verify if authentication is working:
 
 ```javascript
-// Navigate to protected page
+// Navigate to a protected page
 await browser_navigate({ url: "https://app.example.com/dashboard" });
 await browser_snapshot();
 
-// If snapshot shows "Sign In" or "Log In" → authentication needed
-// If snapshot shows user-specific content → authenticated successfully
+// Check the snapshot:
+// - If it shows "Sign In" or "Log In" → authentication needed
+// - If it shows user-specific content → authenticated successfully
 ```
 
 ## Workflow Decision Tree
@@ -95,46 +97,61 @@ Check if auth file exists for this session
 
 ## Saving Authentication State
 
-### How to Use
+### Instructions for Coding Agent
 
-**Important**: This script must be run in a **separate terminal window** by the user.
+**Critical**: The authentication script must be run **manually by the user in a separate terminal window**. Do not attempt to run this script yourself as it requires interactive user input.
 
-When an AI assistant helps you set up authentication, it will provide you with a command to run. You should:
+### How to Guide the User
 
-1. **Open a new terminal window**
-2. **Copy and paste the command** the AI provides
-3. **Run the command**
-4. **Log in** in the browser window that opens
-5. **Press Enter** in the terminal after logging in
-6. The script will save your authentication state
+When the user needs to save authentication state, provide them with a complete command to run:
 
-### Example Command
+1. **Generate the command** with these parameters:
+   - Full absolute path to `save-auth-state.js`
+   - `--url` with the login page URL
+   - `--user` with a descriptive session name (recommended) OR `--output` for custom path
 
-```bash
-node /path/to/skills/playwright-auth-manager/scripts/save-auth-state.js \
-  --url https://app.example.com/login \
-  --user myproject
-```
+2. **Instruct the user** with clear steps:
+   ```
+   Please run the following command in a new terminal window:
 
-This creates: `myproject-auth.json`
+   [paste the command here]
 
-### Available Options
+   Steps:
+   1. Open a new terminal window
+   2. Copy and paste the command above
+   3. Press Enter to run it
+   4. Log in when the browser opens
+   5. Press Enter in the terminal after logging in
 
-- `--url <url>`: Starting URL (login page)
+   This will create: [filename].auth.json
+   ```
+
+3. **Example command format**:
+   ```bash
+   node /path/to/skills/playwright-auth-manager/scripts/save-auth-state.js \
+     --url https://app.example.com/login \
+     --user jack
+   ```
+   This creates: `jack-auth.json`
+
+### Script Parameters
+
+- `--url <url>`: Starting URL (login page) - **required**
 - `--output <file>`: Output filename (default: `./auth.json`)
-- `--user <name>`: Session name for the auth file (creates `<name>-auth.json`)
+- `--user <name>`: Session name for the auth file (creates `<name>-auth.json`) - **recommended**
 
-**You control the file name**: Use `--user` or `--output` to choose what the authentication file is called.
+**Note**: Recommend using `--user` as it creates clearly-named files. The user controls the file name through this parameter.
 
-### What the Script Does
+### Script Behavior (for Reference)
 
-1. Opens a browser window
-2. Navigates to the specified URL
-3. Waits for you to complete login manually
-4. Prompts you to press Enter when ready
-5. Saves cookies and localStorage to JSON file
-6. Displays saved data summary
-7. Closes browser
+The script will:
+1. Open a browser window
+2. Navigate to the specified URL
+3. Wait for the user to complete login manually
+4. Prompt the user to press Enter when ready
+5. Save cookies and localStorage to JSON file
+6. Display saved data summary
+7. Close the browser
 
 ### Recommended Directory Structure
 
@@ -248,14 +265,14 @@ git status
 
 ## Refreshing Authentication
 
-When authentication expires or needs updating:
+When authentication expires or needs updating, guide the user to:
 
-1. **Re-run the save script** with the same parameters:
+1. **Re-run the save script** with the same parameters used originally:
    ```bash
-   node scripts/save-auth-state.js --user mysession --url https://app.example.com/login
+   node scripts/save-auth-state.js --user jack --url https://app.example.com/login
    ```
 
-2. **Restart MCP server** (unless using `--save-session` option)
+2. **Restart MCP server** (unless the configuration uses `--save-session` option)
 
 3. **Verify new authentication** by accessing a protected page
 
@@ -288,20 +305,22 @@ For runtime session switching within a single MCP instance, see the `browser_run
 
 ### "Authentication not working"
 
-1. Verify auth file exists at configured path
+When authentication fails, check:
+1. Verify auth file exists at the configured path
 2. Check auth file is not empty (should contain cookies array)
-3. Ensure cookie domains match target website
-4. Regenerate auth file if cookies expired
+3. Ensure cookie domains match the target website
+4. Regenerate auth file if cookies have expired
 
 ### "Script fails: Executable doesn't exist"
 
-Install Playwright browsers:
+Guide user to install Playwright browsers:
 ```bash
 npx playwright install chromium
 ```
 
 ### "Auth file appears in git status"
 
+Help user fix this:
 1. Add patterns to .gitignore (see [Ensuring Git Ignore](#ensuring-git-ignore))
 2. Remove from git cache if already tracked:
    ```bash
@@ -310,17 +329,17 @@ npx playwright install chromium
 
 ### "Session expires too quickly"
 
-Some websites use short-lived sessions. Solutions:
+Some websites use short-lived sessions. Suggest:
 - Regenerate auth file before each use
-- Use `--save-session` to auto-update
-- Implement periodic auth refresh in workflow
+- Use `--save-session` option to auto-update
+- Implement periodic auth refresh in the workflow
 
 ## Resources
 
 ### scripts/
 
 - **setup.js**: Initial setup script that checks and installs Playwright if needed. Run this first before using other scripts. Safe to run multiple times.
-- **save-auth-state.js**: Interactive script to capture browser authentication state. Opens a browser, waits for manual login (you press Enter when ready), and saves cookies/localStorage to JSON. **Must be run by the user in a separate terminal window.**
+- **save-auth-state.js**: Interactive script to capture browser authentication state. Opens a browser, waits for manual login (user presses Enter when ready), and saves cookies/localStorage to JSON. **This script must be run by the user in a separate terminal window** - provide the command to the user but do not attempt to run it yourself.
 
 ### references/
 
