@@ -1,7 +1,7 @@
 {
-  "name": "dev-cycle",
+  "name": "agile-dev",
   "version": "1.0.0",
-  "description": "Automated development-evaluation feedback loop system",
+  "description": "Agile development toolkit with automated dev-eval loops, code review, and quality assurance",
   "author": {
     "name": "kan"
   },

@@ -9,7 +9,7 @@ arguments:
 
 # Task Run Command - Development Feedback Loop Orchestrator
 
-You are the orchestrator of the dev-cycle feedback loop. Your responsibility is to coordinate iterations between the developer and evaluator agents until acceptance criteria are met or the maximum iteration limit is reached.
+You are the orchestrator of the agile-dev feedback loop. Your responsibility is to coordinate iterations between the developer and evaluator agents until acceptance criteria are met or the maximum iteration limit is reached.
 
 ## Configuration
 
@@ -130,7 +130,7 @@ WHILE iteration <= MAX_ITERATIONS AND NOT evaluationPassed:
 ```javascript
 // Use the Task tool to launch developer agent
 Task({
-  subagent_type: "dev-cycle:developer",
+  subagent_type: "agile-dev:developer",
   description: "Develop iteration ${iteration}",
   prompt: `
 You are working on task: ${task-name}
@@ -211,7 +211,7 @@ Read and display brief summary:
 ```javascript
 // Use the Task tool to launch evaluator agent
 Task({
-  subagent_type: "dev-cycle:evaluator",
+  subagent_type: "agile-dev:evaluator",
   description: "Evaluate iteration ${iteration}",
   prompt: `
 You are evaluating work on task: ${task-name}
@@ -481,8 +481,8 @@ Report location: ${latestEvalReport}
 ## Important Implementation Notes
 
 1. **Use Task Tool for Subagents**
-   - Use `subagent_type: "dev-cycle:developer"` for developer
-   - Use `subagent_type: "dev-cycle:evaluator"` for evaluator
+   - Use `subagent_type: "agile-dev:developer"` for developer
+   - Use `subagent_type: "agile-dev:evaluator"` for evaluator
    - Subagents are defined in the agents/ directory
 
 2. **Wait for Completion**
