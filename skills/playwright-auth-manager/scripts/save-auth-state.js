@@ -26,6 +26,9 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 
+// Skill root directory (for loading dependencies)
+const SKILL_ROOT = path.dirname(__dirname);
+
 // Parse command line arguments
 function parseArgs() {
   const args = process.argv.slice(2);
@@ -115,13 +118,15 @@ function checkGitignore(authFilePath) {
 async function saveAuthState() {
   const options = parseArgs();
 
-  // Check if playwright is available
+  // Load playwright from skill directory (not project directory)
   let chromium;
   try {
-    chromium = require('playwright').chromium;
+    const playwrightPath = path.join(SKILL_ROOT, 'node_modules', 'playwright');
+    chromium = require(playwrightPath).chromium;
   } catch (e) {
-    console.error('❌ Playwright not found. Please install it:');
-    console.error('   npm install playwright');
+    console.error('❌ Playwright not found in skill directory.');
+    console.error('   Please run setup first:');
+    console.error(`   cd ${SKILL_ROOT} && npm install`);
     console.error('   npx playwright install chromium');
     process.exit(1);
   }

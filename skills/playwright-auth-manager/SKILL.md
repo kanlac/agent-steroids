@@ -22,10 +22,14 @@ node <path-to-skill>/scripts/setup.js
 ```
 
 The setup script will:
-- Check if Playwright is installed on the system
-- Install Playwright if it's not present
+- Install Playwright **in the skill directory** (not the user's project)
 - Install Chromium browser if needed
 - Do nothing if everything is already installed (safe to run multiple times)
+
+**Important**: Dependencies are installed in the skill's own `node_modules/` directory, keeping the user's project clean. This design ensures:
+- No pollution of project's `package.json` or `node_modules/`
+- No version conflicts with project dependencies
+- Works regardless of the user's project type (Python, Go, etc.)
 
 **Note**: The script handles everything automatically. No need to read its content.
 
@@ -338,8 +342,8 @@ Some websites use short-lived sessions. Suggest:
 
 ### scripts/
 
-- **setup.js**: Initial setup script that checks and installs Playwright if needed. Run this first before using other scripts. Safe to run multiple times.
-- **save-auth-state.js**: Interactive script to capture browser authentication state. Opens a browser, waits for manual login (user presses Enter when ready), and saves cookies/localStorage to JSON. **This script must be run by the user in a separate terminal window** - provide the command to the user but do not attempt to run it yourself.
+- **setup.js**: Initial setup script that installs Playwright in the skill directory (not the user's project). Run this first before using other scripts. Safe to run multiple times.
+- **save-auth-state.js**: Interactive script to capture browser authentication state. Opens a browser with anti-detection flags (can bypass Google login), waits for manual login (user presses Enter when ready), and saves cookies/localStorage to JSON. **This script must be run by the user in a separate terminal window** - provide the command to the user but do not attempt to run it yourself.
 
 ### references/
 

@@ -2,7 +2,9 @@
 /**
  * Playwright Setup Script
  *
- * Checks if Playwright is installed and installs it if necessary.
+ * Installs Playwright dependencies in the SKILL directory (not the user's project).
+ * This keeps the user's project clean and avoids dependency pollution.
+ *
  * Safe to run multiple times - will skip installation if already present.
  */
 
@@ -10,31 +12,29 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+// Skill root directory
+const SKILL_ROOT = path.dirname(__dirname);
+
 function log(message, type = 'info') {
   const icons = {
-    info: 'ℹ️',
-    success: '✅',
-    warning: '⚠️',
-    error: '❌',
-    working: '🔄'
+    info: 'i',
+    success: '+',
+    warning: '!',
+    error: 'x',
+    working: '~'
   };
-  console.log(`${icons[type]}  ${message}`);
+  console.log(`[${icons[type]}] ${message}`);
 }
 
 function isPlaywrightInstalled() {
-  try {
-    require.resolve('playwright');
-    return true;
-  } catch (e) {
-    return false;
-  }
+  const playwrightPath = path.join(SKILL_ROOT, 'node_modules', 'playwright');
+  return fs.existsSync(playwrightPath);
 }
 
 function checkChromiumInstalled() {
   try {
-    const { chromium } = require('playwright');
-    // Try to get executable path - this will throw if browsers aren't installed
-    execSync('npx playwright --version', { stdio: 'pipe' });
+    // Check if chromium browser is installed
+    execSync('npx playwright --version', { stdio: 'pipe', cwd: SKILL_ROOT });
     return true;
   } catch (e) {
     return false;
@@ -42,17 +42,19 @@ function checkChromiumInstalled() {
 }
 
 async function setup() {
-  console.log('\n🎭 Playwright Authentication Manager Setup\n');
+  console.log('\nPlaywright Authentication Manager Setup\n');
+  console.log(`Skill directory: ${SKILL_ROOT}`);
+  console.log('(Dependencies will be installed here, not in your project)\n');
 
-  // Step 1: Check if Playwright package is installed
+  // Step 1: Install npm dependencies in skill directory
   log('Checking Playwright installation...', 'working');
 
   if (!isPlaywrightInstalled()) {
-    log('Playwright not found. Installing...', 'working');
+    log('Installing Playwright in skill directory...', 'working');
     try {
-      execSync('npm install playwright', {
+      execSync('npm install', {
         stdio: 'inherit',
-        cwd: process.cwd()
+        cwd: SKILL_ROOT
       });
       log('Playwright package installed successfully', 'success');
     } catch (error) {
@@ -64,14 +66,15 @@ async function setup() {
     log('Playwright package is already installed', 'success');
   }
 
-  // Step 2: Check if browsers are installed
+  // Step 2: Install Chromium browser
   log('Checking Chromium browser installation...', 'working');
 
   if (!checkChromiumInstalled()) {
-    log('Chromium browser not found. Installing...', 'working');
+    log('Installing Chromium browser...', 'working');
     try {
       execSync('npx playwright install chromium', {
-        stdio: 'inherit'
+        stdio: 'inherit',
+        cwd: SKILL_ROOT
       });
       log('Chromium browser installed successfully', 'success');
     } catch (error) {
@@ -83,7 +86,7 @@ async function setup() {
     log('Chromium browser is already installed', 'success');
   }
 
-  console.log('\n✨ Setup complete! You can now use the playwright-auth-manager skill.\n');
+  console.log('\nSetup complete!\n');
   console.log('Next steps:');
   console.log('  1. Run save-auth-state.js to capture authentication');
   console.log('  2. Configure your MCP server with the auth file');
