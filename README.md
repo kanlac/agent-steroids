@@ -66,14 +66,13 @@ claude "使用 reviewer 智能体审查 src/auth.ts"
 
 ### 安装
 
-```bash
-# 克隆到 Claude 插件目录
-cd ~/.claude/plugins
-git clone <repo-url> agile-dev
+Claude Code:
 
-# 或创建开发用符号链接
-ln -s /path/to/agile-dev ~/.claude/plugins/agile-dev
-```
+1. Add marketplace
+  ```
+  /plugin marketplace add https://github.com/kanlac/agile-dev
+  ```
+2. install with `/plugin`
 
 ### 基础用法
 

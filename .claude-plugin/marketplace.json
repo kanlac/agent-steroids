@@ -1,0 +1,13 @@
+{
+  "name": "agile-dev",
+  "owner": {
+    "name": "Kan"
+  },
+  "plugins": [
+    {
+      "name": "agile-dev",
+      "source": "./",
+      "description": "敏捷开发工具套件，包含自动化工作流、质量保证和代码审查"
+    }
+  ]
+}
