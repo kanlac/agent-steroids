@@ -22,11 +22,9 @@ Manage browser authentication state for Playwright MCP, enabling automated brows
 
 2. **Provide auth capture command** to user - they must run it manually in a separate terminal. See [Saving Authentication State](#saving-authentication-state).
 
-3. **Configure MCP Server** in project's `.mcp.json` or client-specific config. See [references/how-to-install-mcp.md](references/how-to-install-mcp.md).
+3. **Configure MCP Server** using user-scope configuration (not project scope). See [references/how-to-install-mcp.md](references/how-to-install-mcp.md).
 
-4. **Add `.playwright-auth/` to .gitignore**. See [Ensuring Git Ignore](#ensuring-git-ignore).
-
-5. **User must restart** MCP client to load the authenticated session.
+4. **User must restart** MCP client to load the authenticated session.
 
 ### Checking Authentication Status
 
@@ -49,11 +47,9 @@ User needs browser automation with login
     ↓
 Run setup script (node scripts/setup.js)
     ↓
-Check if auth file exists for this session
+Check if auth file exists in ~/.config/playwrightAuth/
     ↓
     ├─ NO → Guide to save auth state (see "Saving Authentication State")
-    │        ↓
-    │        Verify .gitignore (see "Ensuring Git Ignore")
     │        ↓
     │        Configure MCP Server (see "Configuring MCP Server")
     │
@@ -62,7 +58,7 @@ Check if auth file exists for this session
              ├─ NO → Use single MCP instance with one auth file
              │
              └─ YES → Configure multiple MCP instances
-                      (see references/multi-session-setup.md)
+                      (see references/how-to-install-mcp.md)
 ```
 
 ## Saving Authentication State
@@ -88,7 +84,7 @@ node /path/to/skills/playwright-auth-manager/scripts/save-auth-state.js \
   --user jack
 ```
 
-This creates: `.playwright-auth/localhost3000-jack.json`
+This creates: `~/.config/playwrightAuth/localhost3000-jack.json`
 
 ### Script Parameters
 
@@ -97,31 +93,17 @@ This creates: `.playwright-auth/localhost3000-jack.json`
 - `--user <name>`: User identifier like `jack`, `alice` (required)
 - `--output <file>`: Custom output path (optional, overrides standard naming)
 
-**Naming Convention**: Files are saved as `.playwright-auth/{domain}-{user}.json`, matching the MCP server pattern `playwright-{domain}-{user}`.
+**Naming Convention**: Files are saved as `~/.config/playwrightAuth/{domain}-{user}.json`, matching the MCP server pattern `playwright-{domain}-{user}`.
 
 ## Configuring MCP Server
 
-Add MCP server configuration to the project's config file (`.mcp.json`, `opencode.json`, etc.).
+Add MCP server configuration using **user-scope** settings (shared across all projects, not project-specific).
 
 **See [references/how-to-install-mcp.md](references/how-to-install-mcp.md)** for complete configuration examples covering:
-- Different MCP clients (Claude Code, OpenCode, etc.)
+- User-scope configuration for different MCP clients
 - Single and multiple session setup
 - Server naming conventions
 - Path configuration
-
-**See [references/multi-session-setup.md](references/multi-session-setup.md)** for multiple session patterns.
-
-## Ensuring Git Ignore
-
-**Critical: Always exclude auth files from version control.**
-
-Add to `.gitignore`:
-
-```gitignore
-.playwright-auth/
-```
-
-The `save-auth-state.js` script will check and warn if missing.
 
 ## Refreshing Authentication
 
@@ -151,7 +133,7 @@ For runtime session switching, see `browser_run_code` technique in [references/u
 ### Authentication Not Working
 
 Check:
-1. Auth file exists at configured path
+1. Auth file exists at `~/.config/playwrightAuth/`
 2. File contains cookies array
 3. Cookie domains match target website
 4. Cookies not expired - regenerate if needed
@@ -162,11 +144,6 @@ Install Playwright browsers:
 ```bash
 npx playwright install chromium
 ```
-
-### Auth File in Git Status
-
-1. Add `.playwright-auth/` to .gitignore
-2. If already tracked: `git rm --cached .playwright-auth/*`
 
 ### Session Expires Quickly
 
@@ -185,5 +162,4 @@ Options:
 ### references/
 
 - **how-to-install-mcp.md**: Complete MCP configuration guide for all clients.
-- **multi-session-setup.md**: Multiple session configuration patterns.
 - **usage-guide.md**: Comprehensive usage documentation and best practices.

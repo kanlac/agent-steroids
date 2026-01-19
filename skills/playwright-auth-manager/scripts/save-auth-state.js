@@ -8,6 +8,8 @@
  * This script does NOT manage user permissions or access control. It simply
  * saves the authentication state from whatever account you log in to.
  *
+ * Auth files are stored in ~/.config/playwrightAuth/ (user scope, not project scope).
+ *
  * Usage:
  *   node save-auth-state.js [options]
  *
@@ -20,15 +22,19 @@
  * Examples:
  *   node save-auth-state.js --url https://localhost:3000/login --domain localhost3000 --user jack
  *   node save-auth-state.js --url https://github.com/login --domain github --user alice
- *   node save-auth-state.js --url https://app.example.com/login --output ./custom/path.json
+ *   node save-auth-state.js --url https://app.example.com/login --output ~/.config/playwrightAuth/custom.json
  */
 
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const readline = require('readline');
 
 // Skill root directory (for loading dependencies)
 const SKILL_ROOT = path.dirname(__dirname);
+
+// Auth files are stored in user's config directory (user scope, not project scope)
+const AUTH_DIR = path.join(os.homedir(), '.config', 'playwrightAuth');
 
 // Parse command line arguments
 function parseArgs() {
@@ -62,6 +68,8 @@ Playwright Authentication State Saver
 This script saves the authentication state from whatever account you log in to.
 It does NOT manage user permissions or access control.
 
+Auth files are stored in ~/.config/playwrightAuth/ (user scope, shared across projects).
+
 Usage:
   node save-auth-state.js [options]
 
@@ -74,11 +82,11 @@ Options:
 Examples:
   node save-auth-state.js --url https://localhost:3000/login --domain localhost3000 --user jack
   node save-auth-state.js --url https://github.com/login --domain github --user alice
-  node save-auth-state.js --url https://app.example.com/login --output ./custom/path.json
+  node save-auth-state.js --url https://app.example.com/login --output ~/.config/playwrightAuth/custom.json
 
 Naming Convention:
   When using --domain and --user, the file will be saved as:
-    .playwright-auth/{domain}-{user}.json
+    ~/.config/playwrightAuth/{domain}-{user}.json
   This matches the MCP server naming pattern: playwright-{domain}-{user}
         `);
         process.exit(0);
@@ -101,39 +109,17 @@ Naming Convention:
       console.log('Run with --help for more information');
       process.exit(1);
     }
-    options.output = `./.playwright-auth/${options.domain}-${options.user}.json`;
+    options.output = path.join(AUTH_DIR, `${options.domain}-${options.user}.json`);
   }
 
   return options;
 }
 
-// Check if .playwright-auth/ directory should be added to .gitignore
-function checkGitignore(authFilePath) {
-  const gitignorePath = path.join(process.cwd(), '.gitignore');
-
-  // Check if .gitignore exists
-  if (!fs.existsSync(gitignorePath)) {
-    console.log('\n⚠️  No .gitignore file found in current directory');
-    console.log('💡 Consider creating one to avoid committing auth files:');
-    console.log(`   echo ".playwright-auth/" >> .gitignore`);
-    return;
-  }
-
-  // Check if .playwright-auth/ is already in .gitignore
-  const gitignoreContent = fs.readFileSync(gitignorePath, 'utf8');
-  const lines = gitignoreContent.split('\n');
-
-  const hasPattern = lines.some(line => {
-    const trimmed = line.trim();
-    return trimmed === '.playwright-auth/' ||
-           trimmed === '.playwright-auth' ||
-           trimmed === 'playwright-auth/';
-  });
-
-  if (!hasPattern) {
-    console.log('\n⚠️  .playwright-auth/ directory not found in .gitignore');
-    console.log('💡 Add this line to .gitignore to avoid committing auth files:');
-    console.log(`   .playwright-auth/`);
+// Ensure auth directory exists
+function ensureAuthDir() {
+  if (!fs.existsSync(AUTH_DIR)) {
+    fs.mkdirSync(AUTH_DIR, { recursive: true });
+    console.log(`📁 Created auth directory: ${AUTH_DIR}`);
   }
 }
 
@@ -206,11 +192,8 @@ async function saveAuthState() {
       });
     });
 
-    // Ensure output directory exists
-    const outputDir = path.dirname(options.output);
-    if (outputDir !== '.' && !fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
-    }
+    // Ensure auth directory exists
+    ensureAuthDir();
 
     // Save authentication state
     const authStatePath = path.resolve(options.output);
@@ -240,18 +223,17 @@ async function saveAuthState() {
     console.log(`   - ${cookieCount} cookie(s)`);
     console.log(`   - ${originCount} origin(s) with localStorage`);
 
-    // Check .gitignore
-    checkGitignore(authStatePath);
-
     await browser.close();
 
     console.log('\n🎉 Done! Authentication state saved successfully.');
     console.log('\n💡 Next steps:');
-    console.log('   1. Add to MCP config: --storage-state=' + authStatePath);
-    console.log('   2. Ensure .playwright-auth/ is in .gitignore');
+    console.log('   1. Add MCP config to ~/.claude.json (user scope)');
     if (options.domain && options.user) {
-      console.log(`   3. Configure MCP Server as: playwright-${options.domain}-${options.user}`);
-      console.log(`      Example MCP config: See references/how-to-install-mcp.md`);
+      console.log(`   2. Configure MCP Server as: playwright-${options.domain}-${options.user}`);
+      console.log(`      with --storage-state=${authStatePath}`);
+      console.log(`   3. See references/how-to-install-mcp.md for config examples`);
+    } else {
+      console.log(`   2. Use --storage-state=${authStatePath} in MCP config`);
     }
 
   } catch (error) {
