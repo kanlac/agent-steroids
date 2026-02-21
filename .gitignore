@@ -1,9 +1,3 @@
-# Dependencies (created when testing skills)
 node_modules/
 package.json
 package-lock.json
-
-# Playwright auth files
-*.auth.json
-auth.json
-.playwright-auth/
