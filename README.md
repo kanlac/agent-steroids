@@ -7,6 +7,6 @@
 Claude Code:
 
 ```bash
-/plugin marketplace add https://github.com/kanlac/agent-steroids
-/plugin
+claude plugin marketplace add kanlac/agent-steroids
+claude plugin install steroids@agent-steroids
 ```
