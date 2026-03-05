@@ -21,9 +21,13 @@ description: Write or improve Claude Code skills (SKILL.md files). Use when the 
 
 提供分析角度或分类列表时，必须明确标注非穷举，鼓励超出框架的发现。
 
-### 5. 压缩再压缩
+### 5. 压缩概念，保留实操
 
-删到"再删一行就会丢失信息"为止，然后再删一行。
+区分两类内容，压缩策略不同：
+- **概念性描述**（分层、职责划分、架构概述）→ 能从上下文推断的，大胆压缩或删除
+- **实操知识**（具体命令、参数、陷阱、环境行为）→ 这些是用的时候想不起来的东西，必须完整保留
+
+删到"再删一行就会丢失实操知识"为止。
 
 ### 6. Few-shot negatives 比正例更有价值
 
@@ -38,4 +42,5 @@ description: Write or improve Claude Code skills (SKILL.md files). Use when the 
 - [ ] 换环境仍然适用？
 - [ ] 列表/框架标注了非穷举？
 - [ ] 每个段落都是必要的？
+- [ ] 实操知识（命令、参数、陷阱、环境行为）完整保留？
 - [ ] 核心领域有至少 2 条 few-shot negatives？
