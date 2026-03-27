@@ -1,11 +1,14 @@
 #!/bin/bash
-# Generic script: send a prompt to Claude Code running in a tmux session/window
-# Each invocation creates a fresh window with a timestamped name (no session reuse)
+# Launch Claude Code agent in a tmux session/window.
+# Each invocation creates a fresh window with a timestamped name.
 #
-# Usage: claude-tmux-send.sh --session NAME --window NAME --dir PATH --prompt "TEXT"
+# Usage: clean-cron-send.sh --session NAME --window NAME --dir PATH --agent AGENT
+#
+# The agent's initialPrompt (defined in agent frontmatter) is auto-submitted.
+# No need to pass a prompt — just specify which agent to run.
 #
 # Telegram notification: if ~/.claude/channels/telegram/.env contains a bot token,
-# sends a startup notification via Telegram Bot API (pure HTTP, no MCP dependency)
+# sends a startup notification via Telegram Bot API (pure HTTP, no MCP dependency).
 
 set -euo pipefail
 
@@ -15,16 +18,19 @@ while [[ $# -gt 0 ]]; do
     -s|--session) SESSION="$2"; shift 2;;
     -w|--window)  WINDOW="$2";  shift 2;;
     -d|--dir)     DIR="$2";     shift 2;;
-    -p|--prompt)  PROMPT="$2";  shift 2;;
+    -a|--agent)   AGENT="$2";   shift 2;;
     *) echo "Unknown option: $1"; exit 1;;
   esac
 done
 
 # Validate
-if [[ -z "${SESSION:-}" || -z "${WINDOW:-}" || -z "${DIR:-}" || -z "${PROMPT:-}" ]]; then
-  echo "Usage: $0 --session NAME --window NAME --dir DIR --prompt PROMPT"
+if [[ -z "${SESSION:-}" || -z "${WINDOW:-}" || -z "${DIR:-}" || -z "${AGENT:-}" ]]; then
+  echo "Usage: $0 --session NAME --window NAME --dir DIR --agent AGENT"
   exit 1
 fi
+
+# Expand ~ in DIR
+DIR="${DIR/#\~/$HOME}"
 
 # Append timestamp to window name to ensure uniqueness
 TIMESTAMP=$(date +%y%m%d-%H%M)
@@ -39,25 +45,24 @@ if [[ -f "$TG_ENV" && -f "$TG_ACCESS" ]]; then
     if [[ -n "${TG_TOKEN:-}" && -n "${TG_CHAT:-}" ]]; then
         curl -sf "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
           -d chat_id="$TG_CHAT" \
-          -d text="⏰ claude-cron: ${WINDOW} started" \
+          -d text="⏰ clean-cron: ${WINDOW} started" \
           >/dev/null 2>&1 &
     fi
 fi
 
 # Create session if it doesn't exist
 if ! tmux has-session -t "$SESSION" 2>/dev/null; then
-    tmux new-session -d -s "$SESSION" -n "$WINDOW" -c "$DIR" -e "DISABLE_AUTO_UPDATE=true"
+    tmux new-session -d -s "$SESSION" -n "$WINDOW" -c "$DIR"
 else
     tmux new-window -t "$SESSION" -n "$WINDOW" -c "$DIR"
 fi
 
-# Start Claude in the new window
-tmux send-keys -t "${SESSION}:${WINDOW}" "cd '$DIR' && claude --dangerously-skip-permissions" Enter
-sleep 5   # wait for trust prompt
-tmux send-keys -t "${SESSION}:${WINDOW}" Enter  # accept trust
-sleep 15  # wait for Claude to fully start
-echo "$(date): started Claude in ${SESSION}:${WINDOW} (dir: $DIR)"
+# Start Claude with agent (initialPrompt auto-submitted by agent frontmatter)
+tmux send-keys -t "${SESSION}:${WINDOW}" \
+  "cd '$DIR' && claude --agent '$AGENT' --dangerously-skip-permissions" Enter
 
-# Send prompt
-tmux send-keys -t "${SESSION}:${WINDOW}" "$PROMPT" Enter
-echo "$(date): sent prompt to ${SESSION}:${WINDOW}"
+# Wait for trust dialog and accept
+sleep 5
+tmux send-keys -t "${SESSION}:${WINDOW}" Enter
+
+echo "$(date): started claude --agent $AGENT in ${SESSION}:${WINDOW} (dir: $DIR)"
