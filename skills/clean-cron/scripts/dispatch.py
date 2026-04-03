@@ -7,6 +7,7 @@ Called by launchd every minute via: cat dispatch.py | python3
 import os
 import sys
 import subprocess
+import random
 from datetime import datetime
 
 # --- YAML parsing (minimal, no pyyaml fallback) ---
@@ -79,12 +80,19 @@ def main():
         name = task.get("name", "unnamed")
         schedule = task.get("schedule", "")
         shell = task.get("shell", "")
+        delay = task.get("delay", 0)  # random delay 0-N minutes
 
         if not schedule or not shell:
             continue
 
         if cron_match(schedule, now):
-            print(f"{now:%Y-%m-%d %H:%M:%S}: running {name}")
+            # If delay is set, generate random delay and prepend sleep to shell
+            if delay and delay > 0:
+                delay_minutes = random.randint(0, int(delay))
+                print(f"{now:%Y-%m-%d %H:%M:%S}: running {name} (delay: {delay_minutes}m)")
+                shell = f"sleep {delay_minutes}m\n{shell}"
+            else:
+                print(f"{now:%Y-%m-%d %H:%M:%S}: running {name}")
             # Execute shell via bash in background, using echo|bash to avoid provenance issues
             subprocess.Popen(
                 ["/bin/bash", "-c", shell],

@@ -67,11 +67,11 @@ tasks:
     shell: |
       echo "hello world"
 
-  # Claude 任务通过 clean-cron-send.sh 启动
+  # 带随机延迟的任务（delay 单位为分钟，调度器随机取 0-N）
   - name: data-collect
     schedule: "0 10 * * *"
+    delay: 180               # 随机延迟 0-180 分钟，日志会记录实际延迟
     shell: |
-      sleep $((RANDOM % 181))m
       ~/.local/bin/clean-cron-send.sh \
         --session clean-cron --window collect \
         --dir ~/my-project \
@@ -95,6 +95,7 @@ tasks:
 
 - `name`：任务标识符
 - `schedule`：标准 5 字段 cron 表达式（`分 时 日 月 周`）
+- `delay`：（可选）随机延迟上限，单位为分钟。调度器会随机取 `0-N` 分钟，记录到日志后再执行 shell
 - `shell`：要执行的 shell 命令（支持多行）
 
 常用 cron 表达式：
