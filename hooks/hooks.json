@@ -1,0 +1,17 @@
+{
+  "description": "Guard against Request too large (20MB API limit) by monitoring session payload size",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/guard-payload-size.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
