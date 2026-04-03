@@ -1,15 +1,17 @@
 ---
 name: setup-telegram-channel
-description: Configure Claude Code's Telegram Channel for bidirectional messaging. Set up a dedicated channel session (long polling) alongside send-only notification for other sessions. Use when the user asks to "set up Telegram channel", "configure Telegram", "fix Telegram not receiving messages", "Telegram zombie processes", "Telegram 多 session 冲突", "配置 Telegram", or encounters Telegram polling conflicts or file upload failures through proxy.
+description: Configure Claude Code's Telegram Channel for bidirectional messaging. Set up dedicated channel sessions (long polling) alongside send-only notification for other sessions. Supports multiple agents with independent bots. Use when the user asks to "set up Telegram channel", "configure Telegram", "add Telegram agent", "fix Telegram not receiving messages", "Telegram zombie processes", "Telegram 多 session 冲突", "配置 Telegram", "添加 Telegram agent", or encounters Telegram polling conflicts or file upload failures through proxy.
 ---
 
 # Telegram Channel 配置
 
-让 Claude Code 通过 Telegram 接收和回复消息。核心思路：**收发分离**——一个专用 session 负责双向对话，其他 session 只能发通知。
+让 Claude Code 通过 Telegram 接收和回复消息。核心思路：**收发分离**——专用 channel session 负责双向对话，其他 session 只能发通知。支持多个 agent 各自绑定独立 bot。
 
 > **时效性说明**：本 Skill 中的 workaround 是针对当前（2026-03）Claude Code Telegram plugin 和 Bun 的已知问题。如果官方修复了多 session 冲突或 Bun 修复了 proxy bug，这些方案可能不再需要。应用前先确认问题是否仍然存在。
 
 ## 架构
+
+### 单 Agent（基础）
 
 ```
 ┌──────────────────────────┐     ┌─────────────────────────────┐
@@ -19,20 +21,45 @@ description: Configure Claude Code's Telegram Channel for bidirectional messagin
 │  (send-only, 不轮询)     │     │  (双向, long polling)         │
 └───────────┬──────────────┘     └────────────┬────────────────┘
             │ sendMessage                     │ getUpdates + sendMessage
-            │                                 │ + sendDocument + react...
-            ▼                                 ▼
-       ┌─────────────────────────────────────────┐
-       │         Telegram Bot API                 │
-       │   (同一 bot token, 只允许 1 个 polling)   │
-       └─────────────────────────────────────────┘
-                          │
+            └─────────────┬───────────────────┘
                           ▼
-       ┌─────────────────────────────────────────┐
-       │           用户的 Telegram 客户端          │
-       └─────────────────────────────────────────┘
+                   Telegram Bot API
 ```
 
-**关键约束**：Telegram Bot API 的 `getUpdates` 只允许一个消费者。多个 session 同时轮询会 409 Conflict，消息被随机 session 抢走。
+### 多 Agent
+
+每个 agent 对应一个独立的 Telegram bot + channel session。通过 `TELEGRAM_STATE_DIR` 环境变量隔离状态目录，各 bot 独立轮询，天然无 409 冲突。
+
+```
+telegram-notify MCP ──── 默认 bot (广播通知)
+(send-only, 所有 session 共享)
+
+tmux: channel-default ── Telegram Plugin ── Bot Default (getUpdates)
+                         STATE_DIR: ~/.claude/channels/telegram/
+
+tmux: channel-sage ───── Telegram Plugin ── Bot Sage (getUpdates)
+                         STATE_DIR: ~/.claude/channels/telegram-sage/
+
+tmux: channel-xxx ────── Telegram Plugin ── Bot XXX (getUpdates)
+                         STATE_DIR: ~/.claude/channels/telegram-xxx/
+```
+
+**状态目录结构**：
+
+```
+~/.claude/channels/
+├── telegram/                # 默认 agent
+│   ├── .env                 # TELEGRAM_BOT_TOKEN=...
+│   └── access.json          # 权限控制
+├── telegram-sage/           # Sage agent
+│   ├── .env
+│   └── access.json
+└── telegram-<name>/         # 更多 agent...
+    ├── .env
+    └── access.json
+```
+
+**关键约束**：Telegram Bot API 的 `getUpdates` 只允许一个消费者。同一 bot token 多个 session 轮询会 409 Conflict。多 agent 方案中每个 bot 独立，不存在此问题。
 
 ## 前置：清理 MCP 僵尸进程
 
@@ -61,20 +88,60 @@ ps aux | grep -E 'bun run.*(telegram.*start)' | grep -v grep | grep -v 'telegram
 
 token 读取顺序：`$TELEGRAM_BOT_TOKEN` 环境变量 → `~/.claude/channels/telegram/.env`。
 
-### 3. 频道 Session 按需启用
+### 3. 频道 Session 启动
 
-通过 `--settings` 在 session 级重新启用完整 Telegram plugin：
+推荐用 `--agent` 为每个 channel session 指定一个预定义 agent，赋予其专属人格和能力。`--agent` 覆盖 session 的默认 agent 设置，可在 `~/.claude/settings.json` 的 `agents` 中定义，也可通过 `--agents` flag 内联传入 JSON。
+
+#### 单 Agent（默认）
 
 ```bash
 claude --channels 'plugin:telegram@claude-plugins-official' \
+  --agent my-agent \
   --settings '{"enabledPlugins": {"telegram@claude-plugins-official": true}}'
 ```
 
 `--settings` 的 `enabledPlugins` 可在 session 级启用全局未启用的已安装插件，不需要 `--plugin-dir`。
 
+#### 多 Agent
+
+每个 agent 需要：
+1. 在 @BotFather 创建独立 bot，获取 token
+2. 创建状态目录 `~/.claude/channels/telegram-<name>/`，写入 `.env`（token + chat_id）和 `access.json`
+3. 通过 `TELEGRAM_STATE_DIR` 指定状态目录、`--agent` 指定 agent 启动 channel session
+
+```bash
+# Agent A（使用默认状态目录）
+claude --channels 'plugin:telegram@claude-plugins-official' \
+  --agent agent-a \
+  --settings '{"enabledPlugins": {"telegram@claude-plugins-official": true}}'
+
+# Agent B（指定独立状态目录 + 独立 bot）
+TELEGRAM_STATE_DIR=~/.claude/channels/telegram-<name> \
+  claude --channels 'plugin:telegram@claude-plugins-official' \
+    --agent agent-b \
+    --settings '{"enabledPlugins": {"telegram@claude-plugins-official": true}}'
+```
+
+`.env` 文件权限应设为 600：`chmod 600 ~/.claude/channels/telegram-<name>/.env`
+
 ### 4. tmux 常驻 Channel Session
 
-用 tmux 保持 channel session 持久运行，确保 Telegram 消息随时可达。可以开一个专用 tmux window 运行上述命令，或封装为 shell alias。
+用 tmux 保持 channel session 持久运行。多 agent 时为每个 agent 开独立 tmux session：
+
+```bash
+# Agent A
+tmux new-session -d -s channel-a \
+  "claude --channels 'plugin:telegram@claude-plugins-official' \
+    --agent agent-a \
+    --settings '{\"enabledPlugins\":{\"telegram@claude-plugins-official\":true}}'"
+
+# Agent B（示例：Sage）
+tmux new-session -d -s channel-sage \
+  "TELEGRAM_STATE_DIR=\$HOME/.claude/channels/telegram-sage \
+   claude --channels 'plugin:telegram@claude-plugins-official' \
+     --agent sage \
+     --settings '{\"enabledPlugins\":{\"telegram@claude-plugins-official\":true}}'"
+```
 
 ## Bun Proxy 文件上传问题
 
