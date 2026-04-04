@@ -34,7 +34,7 @@ try {
   console.log("可以移除 undici patch。");
   process.exit(0);
 } catch (err: any) {
-  if (err?.message?.includes("socket connection was closed")) {
+  if (err?.message?.includes("socket connection was closed") || err?.message?.includes("Network request for")) {
     console.log("STILL BROKEN: Bun " + Bun.version + " — 继续保留 undici patch。");
     process.exit(1);
   }

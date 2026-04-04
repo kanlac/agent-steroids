@@ -1,6 +1,6 @@
 ---
 name: setup-telegram-channel
-description: Configure Claude Code's Telegram Channel for bidirectional messaging. Set up dedicated channel sessions (long polling) alongside send-only notification for other sessions. Supports multiple agents with independent bots. Use when the user asks to "set up Telegram channel", "configure Telegram", "add Telegram agent", "fix Telegram not receiving messages", "Telegram zombie processes", "Telegram 多 session 冲突", "配置 Telegram", "添加 Telegram agent", or encounters Telegram polling conflicts or file upload failures through proxy.
+description: Configure Claude Code's Telegram Channel for bidirectional messaging. Set up dedicated channel sessions (long polling) alongside send-only notification for other sessions. Supports multiple agents with independent bots, including creating dedicated Agent identities with custom personas. Use when the user asks to "set up Telegram channel", "configure Telegram", "add Telegram agent", "create Telegram bot agent", "fix Telegram not receiving messages", "Telegram 多 session 冲突", "配置 Telegram", "添加 Telegram agent", "给 Telegram bot 创建身份", or encounters Telegram polling conflicts or file upload failures through proxy.
 ---
 
 # Telegram Channel 配置
@@ -61,20 +61,53 @@ tmux: channel-xxx ────── Telegram Plugin ── Bot XXX (getUpdates)
 
 **关键约束**：Telegram Bot API 的 `getUpdates` 只允许一个消费者。同一 bot token 多个 session 轮询会 409 Conflict。多 agent 方案中每个 bot 独立，不存在此问题。
 
-## 前置：清理 MCP 僵尸进程
+## 前置：检查 Bot Token 冲突
 
-配置前**必须**先检查是否有旧的 Telegram MCP 僵尸进程。它们会抢占 polling slot，导致新 channel session 收不到消息。
+配置前检查是否已有进程在用同一个 bot token 轮询。同 token 多个消费者会 409 Conflict。
 
-查找僵尸进程：
-```bash
-ps aux | grep -E 'bun run.*(telegram.*start)' | grep -v grep | grep -v 'telegram-notify'
-```
-
-**只清理 bun telegram MCP 进程，绝不能清理 claude 进程本身。** 识别方法：僵尸进程的命令是 `bun run --cwd .../telegram ...start`，而 claude 进程是 `claude ...`。
-
-清理时保留当前 session 的进程（通过 TTY 或 PID 区分），kill 其余的。清理后确认只剩 0 或 1 个 telegram MCP 进程。
+检测方法：用 `ps eww` 从每个 telegram bun 进程的环境变量中提取 `TELEGRAM_STATE_DIR`（缺省则为默认目录），读对应 `.env` 中的 bot token ID 部分，比对是否有重复。相同 TOKEN_ID 出现多次则需 kill 多余进程。
 
 ## 配置方向
+
+### 0. 创建 Agent 身份（可选）
+
+配置 channel session 前，询问用户是否要为这个 Telegram bot 创建一个专属的 Agent 身份。Agent 身份让 bot 拥有独立的人格、能力范围和系统提示词，而不是用通用的 Claude。
+
+**询问流程**：
+1. 问：「要不要为这个 Telegram bot 创建一个专属的 Agent 身份？」
+2. 如果确认，再问：「Agent 放在全局（所有项目可用）还是当前项目下？默认全局。」
+3. 根据选择，收集 agent 的名称、角色描述等信息，然后创建 agent 文件
+
+**Agent 文件位置**：
+
+| 位置 | 路径 | 适用场景 |
+|------|------|----------|
+| 全局（默认） | `~/.claude/agents/<name>.md` | 通用 agent，跨项目可用 |
+| 项目 | `.claude/agents/<name>.md` | 项目专属 agent，可提交到版本控制 |
+
+**Agent 文件格式**（Markdown + YAML frontmatter）：
+
+```markdown
+---
+name: <lowercase-hyphens>
+description: |
+  <触发条件描述，包含 example 块>
+model: inherit
+color: <red|blue|green|yellow|purple|orange|pink|cyan>
+memory: user    # 全局 agent 用 user，项目 agent 用 project
+---
+
+<system prompt：角色定义、能力、交流风格等>
+```
+
+**注意事项**：
+- `description` 多行内容**必须用 `|` block scalar**，不要用双引号字符串（会导致解析失败、agent 无法加载）
+- `name` 只能用小写字母、数字和连字符，3-50 字符
+- `color` 只接受 8 种值：red, blue, green, yellow, purple, orange, pink, cyan
+- `memory` 选择：全局 agent 配 `user`（跨项目记忆），项目 agent 配 `project`（项目内记忆）
+- 创建后可用 `claude agents` 验证 agent 是否加载成功
+
+创建好的 agent 可通过 `--agent <name>` 在 channel session 启动时指定。
 
 ### 1. 全局禁用 Telegram Plugin
 
