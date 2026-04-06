@@ -2,6 +2,13 @@
 
 Do not commit unless user asked to.
 
+## 公开仓库注意事项
+
+此项目是公开的 Claude Code 插件仓库。**不要在任何文件中包含**：
+- 个人账号、用户名、chat_id、API key
+- 私人业务相关的 skill/agent 名称和工作流
+- 特定于个人环境的路径（使用 `~` 或 `$HOME` 代替绝对路径）
+
 ## 文档组织（docs/）
 
 - [`docs/research/`](./docs/research/)：调研、对比分析、信息源
