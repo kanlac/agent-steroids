@@ -50,6 +50,23 @@ if [[ -f "$TG_ENV" && -f "$TG_ACCESS" ]]; then
     fi
 fi
 
+# --- Cleanup old windows if over limit ---
+MAX_WINDOWS=9
+if tmux has-session -t "$SESSION" 2>/dev/null; then
+    WINDOW_COUNT=$(tmux list-windows -t "$SESSION" | wc -l | tr -d ' ')
+    if [[ "$WINDOW_COUNT" -gt "$MAX_WINDOWS" ]]; then
+        KILL_COUNT=$((WINDOW_COUNT - MAX_WINDOWS))
+        # Kill oldest windows by last-activity time (ascending = oldest first)
+        tmux list-windows -t "$SESSION" -F '#{window_activity} #{window_index}' \
+          | sort -n \
+          | head -n "$KILL_COUNT" \
+          | while read -r _ACTIVITY WIDX; do
+              tmux kill-window -t "${SESSION}:${WIDX}"
+            done
+        echo "$(date): cleaned up $KILL_COUNT old window(s) in session $SESSION (was $WINDOW_COUNT)"
+    fi
+fi
+
 # Create session if it doesn't exist
 if ! tmux has-session -t "$SESSION" 2>/dev/null; then
     tmux new-session -d -s "$SESSION" -n "$WINDOW" -c "$DIR"

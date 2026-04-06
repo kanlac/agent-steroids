@@ -139,6 +139,10 @@ maxTurns: 200
 
 ## 清理历史 window
 
+`clean-cron-send.sh` 在创建新 window 前自动检查当前 session 的 window 数量，超过 9 个时按 last-activity 时间删除最早的 window。无需手动清理。
+
+手动操作：
+
 - 列出：`tmux list-windows -t clean-cron`
 - 关闭单个：`tmux kill-window -t clean-cron:<name>`
 - 关闭全部：`tmux kill-session -t clean-cron`
