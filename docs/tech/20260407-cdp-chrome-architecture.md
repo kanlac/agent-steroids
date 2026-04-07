@@ -1,6 +1,6 @@
 # CDP Chrome 统一架构
 
-> 状态：方案设计  
+> 状态：已实施  
 > 日期：2026-04-07
 
 ## 背景
@@ -42,23 +42,48 @@ Reddit 等平台检测 headless Chrome 特征（`navigator.webdriver=true`、Hea
 
 ### 启动方式
 
-```bash
-PORT=$(cat ~/.config/cdp-chrome/port)
-PROFILE=~/.config/cdp-chrome/profile
+启动脚本位于 `~/.config/cdp-chrome/start.sh`：
 
-# 检查是否已在运行
-if ! curl -s --connect-timeout 1 http://127.0.0.1:$PORT/json/version >/dev/null 2>&1; then
-  /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
-    --remote-debugging-port=$PORT \
-    --user-data-dir=$PROFILE \
-    &>/dev/null &
-  sleep 3
-fi
+```bash
+~/.config/cdp-chrome/start.sh
 ```
+
+脚本会检查是否已在运行，未运行则以 GUI 模式启动 Chrome。关键点：**不带 `--enable-automation` 标志**，避免社交媒体平台（X/Twitter 等）的反自动化检测。
+
+### chrome-devtools-mcp 集成
+
+chrome-devtools-mcp（提供 `mcp__chrome-devtools__*` 系列工具）默认行为是自己启动一个带 `--enable-automation` 的 Chrome 实例。这会导致：
+- `navigator.webdriver = true`
+- X/Twitter 等平台拒绝登录
+- 无法使用持久化的登录态
+
+**解决方案**：通过 `~/.mcp.json` 配置 chrome-devtools-mcp 连接已有的共享 Chrome 实例，而非自己启动：
+
+```json
+{
+  "mcpServers": {
+    "chrome-devtools": {
+      "command": "npx",
+      "args": [
+        "chrome-devtools-mcp@latest",
+        "--browser-url=http://127.0.0.1:9224"
+      ]
+    }
+  }
+}
+```
+
+这样所有 `mcp__chrome-devtools__*` 工具都通过共享的干净 Chrome 操作，享受同样的持久登录态。
 
 ### 操作方式
 
-直连 CDP HTTP API + WebSocket，不经过任何 Proxy 中间层：
+两种等价的操作方式：
+
+**方式 1：chrome-devtools-mcp 工具**（推荐，通过 Claude Code 插件自动可用）
+
+使用 `mcp__chrome-devtools__navigate_page`、`mcp__chrome-devtools__evaluate_script` 等工具操作页面。
+
+**方式 2：直连 CDP HTTP API**（备选，用于 chrome-devtools-mcp 不可用时）
 
 ```bash
 PORT=$(cat ~/.config/cdp-chrome/port)
@@ -83,11 +108,20 @@ curl -s -X PUT "http://127.0.0.1:$PORT/json/close/$TARGET_ID"
 ## 实施步骤
 
 1. [x] 创建配置目录和 port 文件（`~/.config/cdp-chrome/`）
-2. [ ] 编写通用的 `ensure-cdp-chrome.sh` 脚本（读配置、检查运行状态、按需启动），放入 agent-steroids
-3. [ ] 各 skill 的 Chrome 启动脚本改为调用通用脚本或直接读配置
-4. [ ] 首次使用时 GUI 模式启动，手动登录所需站点，cookie 持久化在 profile 中
+2. [x] 编写启动脚本 `~/.config/cdp-chrome/start.sh`（读配置、检查运行状态、按需启动，不带 `--enable-automation`）
+3. [x] 配置 `~/.mcp.json`，让 chrome-devtools-mcp 通过 `--browser-url` 连接共享实例（而非自己启动带 automation 标志的 Chrome）
+4. [x] 首次使用时 GUI 模式启动，手动登录所需站点，cookie 持久化在 profile 中
+5. [ ] 各 skill/agent 的 Chrome 启动逻辑改为调用共享启动脚本或直接读配置
+
+### 使用流程
+
+1. 运行 `~/.config/cdp-chrome/start.sh` 启动共享 Chrome（或设为 login item 开机自启）
+2. 首次需要手动在 Chrome 窗口中登录 X/Twitter、Reddit 等站点
+3. 启动 Claude Code 会话，chrome-devtools-mcp 自动连接共享实例
+4. 后续会话复用同一 Chrome 进程和登录态
 
 ## 开放问题
 
-- [ ] 是否需要多 profile 隔离（不同 skill 用不同 Chrome profile）？当前判断：不需要，不同域名的 cookie 天然隔离
+- [x] 是否需要多 profile 隔离？结论：不需要，不同域名的 cookie 天然隔离
 - [ ] 是否向 web-access skill 提 PR？列表见上方"建议向 web-access skill 提的改进"
+- [ ] 是否将 Chrome 启动脚本设为 macOS login item（开机自启）
