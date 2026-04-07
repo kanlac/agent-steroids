@@ -23,7 +23,7 @@ agents.yaml（统一配置）
       │
       ├── tmux session: channels
       │     ├── window: sage ──── Telegram Plugin（getUpdates + sendMessage）
-      │     ├── window: herald       各自独立 bot token + ��态目录
+      │     ├── window: herald       各自独立 bot token + 状态目录
       │     ├── window: ...          一个 session 管理所有 agent
       │     └── [每个 window 一个 agent 身份文件]
       │
