@@ -2,6 +2,10 @@
 
 Do not commit unless user asked to.
 
+## README 维护
+
+添加、删除或修改 skill、command、agent、hook、MCP server 时，同步更新 `README.md` 中对应的表格，保持项目介绍与实际内容一致。
+
 ## 公开仓库注意事项
 
 此项目是公开的 Claude Code 插件仓库。**不要在任何文件中包含**：
