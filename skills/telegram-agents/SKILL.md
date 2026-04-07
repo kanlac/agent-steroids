@@ -14,8 +14,6 @@ description: |
 
 让多个 Claude agent 各自绑定独立 Telegram bot，通过 tmux 常驻，配合 launchd 定时发送心跳消息。
 
-> **时效性说明**：本 Skill 中的 workaround 针对 2026-03 已知问题。官方修复后部分方案可能不再需要，应用前先确认问题是否仍然存在。
-
 ## 架构
 
 ```
