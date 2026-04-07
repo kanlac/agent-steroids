@@ -93,8 +93,6 @@ dispatcher.py 每分钟被 launchd 触发，读取 agents.yaml，找到当前时
 Agent 身份文件的系统提示词中应包含心跳处理说明，例如：
 - 收到 `[定时任务]` 消息时自动开始执行对应任务
 
-> **注意**：Agent 无法主动触发 `/compact`——这是 CLI 层的用户命令。长期运行的 session 依赖 Claude Code 的自动压缩机制管理上下文。
-
 ## Agent 身份
 
 每个 channel session 绑定一个 agent 身份文件，赋予 bot 独立人格和能力范围。
