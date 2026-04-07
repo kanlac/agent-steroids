@@ -47,6 +47,9 @@ agents.yaml（统一配置）
 # 所有 agent 共用一个 tmux session，每个 agent 一个 window（window 名 = agent key）
 tmux_session: channels
 
+# 定时重启所有 agent（用于加载插件更新），标准 5 字段 cron 表达式
+restart_schedule: "0 4 * * *"
+
 agents:
   sage:
     state_dir: telegram-sage       # 相对于 ~/.claude/channels/
@@ -73,6 +76,12 @@ agents:
 | `0 9 * * 1-5` | 工作日 9:00 |
 | `*/30 * * * *` | 每 30 分钟 |
 | `0 0 1 * *` | 每月 1 号 0:00 |
+
+## 定时重启
+
+常驻的 channel session 在启动时加载插件（skill 列表、hook、MCP server）。插件更新后，已运行的 session 不会自动感知结构性变更。`restart_schedule` 通过定时重建 tmux window 解决这个问题。
+
+dispatcher 匹配到 restart_schedule 时，依次对每个 agent 执行：kill tmux window → 重建 window（与 `/tg-restart` 命令相同的逻辑）。重启当分钟跳过心跳发送，避免向正在启动的 agent 发消息。
 
 ## 心跳机制
 
