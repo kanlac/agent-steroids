@@ -19,12 +19,8 @@ except ImportError:
     print("ERROR: pyyaml not installed. Run: pip3 install pyyaml", file=sys.stderr)
     sys.exit(1)
 
-try:
-    from telethon import TelegramClient
-    import python_socks
-except ImportError:
-    print("ERROR: telethon/python-socks not installed. Run: pip3 install telethon 'python-socks[asyncio]'", file=sys.stderr)
-    sys.exit(1)
+# telethon and python_socks are imported lazily in send_heartbeats()
+# so the dispatcher can still run (and skip heartbeats) without them installed
 
 # --- Config ---
 
@@ -97,6 +93,7 @@ def cron_match(expr, now):
 
 def detect_proxy():
     """Detect proxy from environment variables."""
+    import python_socks
     proxy_url = os.environ.get("all_proxy") or os.environ.get("http_proxy") or ""
     if not proxy_url:
         return None
@@ -135,6 +132,12 @@ def get_bot_username(state_dir):
 
 async def send_heartbeats(pending):
     """Send all pending heartbeat messages as the user via Telethon."""
+    try:
+        from telethon import TelegramClient
+    except ImportError:
+        log.error("telethon not installed — run: pip3 install telethon 'python-socks[asyncio]'")
+        return
+
     if not os.path.exists(SESSION_PATH + ".session"):
         log.error("Session file not found: %s.session — run auth.py first", SESSION_PATH)
         return

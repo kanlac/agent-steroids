@@ -116,12 +116,17 @@ memory: user
 
 ## 首次安装
 
-**目标**：launchd 每分钟调 dispatcher.py，dispatcher 读 agents.yaml 发心跳。
+**不配置心跳的场景**：如果只需要 Telegram channel session（双向对话），不需要定时心跳，可以跳过 dispatcher 和 launchd 的安装。只需创建 agents.yaml、状态目录和 agent 身份文件，然后启动 tmux session。
 
-关键方向：
-- 创建 `~/.config/telegram-agents/`，复制 `${SKILL_PATH}/scripts/dispatcher.py` 进去
-- 创建 `~/Library/LaunchAgents/com.$USER.telegram-agents.plist`，每分钟触发，`StartInterval: 60`
-- dispatcher 通过 `cat dispatcher.py | python3` 执行（绕过 macOS provenance 限制）
+**配置心跳的完整安装**：
+
+1. 创建 `~/.config/telegram-agents/`，复制 `${SKILL_PATH}/scripts/dispatcher.py` 和 `auth.py` 进去
+2. 安装依赖：`pip3 install pyyaml telethon 'python-socks[asyncio]'`
+3. 运行 `python3 ~/.config/telegram-agents/auth.py` 完成 Telethon 用户认证（一次性，输入手机号 + Telegram App 内验证码）。这使 dispatcher 能以用户身份发送消息给 bot，bot 的 getUpdates 才能收到
+4. 创建 `~/Library/LaunchAgents/com.$USER.telegram-agents.plist`，每分钟触发，`StartInterval: 60`
+5. dispatcher 通过 `cat dispatcher.py | python3` 执行（绕过 macOS provenance 限制）
+
+**为什么需要 Telethon**：Telegram Bot API 的 `sendMessage` 发出的消息不会出现在 bot 自己的 `getUpdates` 中——这是 Telegram 的设计限制。Dispatcher 使用 Telethon（User API）以用户身份发送心跳消息，bot 的 channel session 才能正常接收。使用 Telegram Desktop 的公开 API 凭据，安全性等同于官方客户端。
 
 **关键陷阱**：
 
@@ -130,7 +135,7 @@ memory: user
 | `AbandonProcessGroup: true` | launchd 主进程退出后会杀进程组，后台任务被终止 | plist 中加此键 |
 | PATH 极简 | launchd 只有 `/usr/bin:/bin`，找不到 python3/pip 等 | plist 的 `EnvironmentVariables` 中补充 PATH |
 | macOS provenance | Claude 创建的文件带 `com.apple.provenance`，launchd 拒绝直接执行 | `cat \| python3` 管道执行 |
-| pyyaml 依赖 | dispatcher.py 用 `yaml` 模块 | 确认 `pip3 install pyyaml` |
+| MTProto 被墙 | 中国大陆直连 Telegram MTProto 服务器会失败 | dispatcher 自动从 `all_proxy`/`http_proxy` 环境变量检测 SOCKS5/HTTP 代理 |
 
 ## 添加 Agent
 
@@ -168,6 +173,26 @@ TELEGRAM_STATE_DIR=~/.claude/channels/<state_dir> \
 默认 agent（state_dir=telegram）不需要设置 `TELEGRAM_STATE_DIR`。
 
 启动前检查 409 冲突：`ps eww` 查找已有 bun 进程使用同一 token，有则先 kill。
+
+## 心跳端到端测试
+
+**首个配置心跳的 agent 必须经过此验证**。确认整条链路通畅：dispatcher → Telethon → Telegram → bot getUpdates → channel session 处理。
+
+方向：
+
+1. 确认用户已完成 Telethon 认证（`~/.config/telegram-agents/user.session` 存在）。未认证则先引导运行 `auth.py`
+2. 在 agents.yaml 中为目标 agent 添加一条临时心跳，schedule 设为 1-2 分钟后触发
+3. 等待 launchd 触发 dispatcher
+4. 检查 `/tmp/telegram-agents.log` 确认出现 "Sent heartbeat for agent=..."
+5. 检查 agent 的 tmux window 确认收到消息并开始处理（`tmux capture-pane` 搜索 `定时任务`）
+6. 验证通过后删除临时心跳
+
+**常见问题排查**：
+- 日志显示 "Session file not found" → 运行 `auth.py`
+- 日志显示 "Session not authorized" → 重新运行 `auth.py`
+- 日志显示网络错误 → 检查代理配置（launchd 环境需要在 plist 中设置 proxy 环境变量）
+- 日志无任何输出 → 检查 `launchctl list | grep telegram-agents`，确认 plist 已加载
+- bot 端无反应 → 确认 bot 的 channel session 在 tmux 中运行
 
 ## 全局 Telegram 配置
 
