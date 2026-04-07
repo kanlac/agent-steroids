@@ -1,26 +1,44 @@
 #!/usr/bin/env python3
 """
 Telegram-agents heartbeat dispatcher: read agents.yaml, match cron expressions,
-send heartbeat messages via Telegram Bot API for matching agents.
+send heartbeat messages as the user via Telethon (User API).
 Called by launchd every minute via: cat dispatcher.py | python3
 """
 
+import asyncio
 import json
 import logging
 import os
+import re
 import sys
-import urllib.request
-import urllib.error
 from datetime import datetime
 
-# --- YAML parsing ---
 try:
     import yaml
 except ImportError:
     print("ERROR: pyyaml not installed. Run: pip3 install pyyaml", file=sys.stderr)
     sys.exit(1)
 
+try:
+    from telethon import TelegramClient
+    import python_socks
+except ImportError:
+    print("ERROR: telethon/python-socks not installed. Run: pip3 install telethon 'python-socks[asyncio]'", file=sys.stderr)
+    sys.exit(1)
+
+# --- Config ---
+
+CHANNELS_DIR = os.path.expanduser("~/.claude/channels")
+CONFIG_DIR = os.path.expanduser("~/.config/telegram-agents")
+CONFIG_FILE = os.path.join(CONFIG_DIR, "agents.yaml")
+SESSION_PATH = os.path.join(CONFIG_DIR, "user")
+
+# Official TelegramDesktop credentials
+API_ID = 2040
+API_HASH = "b18441a1ff607e10a989891a5462e627"
+
 # --- Logging ---
+
 logging.basicConfig(
     filename="/tmp/telegram-agents.log",
     level=logging.INFO,
@@ -30,6 +48,7 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 # --- Cron expression matching (ported from clean-cron/scripts/dispatch.py) ---
+
 
 def _field_match(pattern, value, max_val):
     """Match a single cron field against a value."""
@@ -73,64 +92,86 @@ def cron_match(expr, now):
     )
 
 
-# --- Telegram API ---
+# --- Proxy ---
 
-def read_bot_token(state_dir):
-    """Read TELEGRAM_BOT_TOKEN from ~/.claude/channels/<state_dir>/.env"""
-    env_path = os.path.expanduser(f"~/.claude/channels/{state_dir}/.env")
+
+def detect_proxy():
+    """Detect proxy from environment variables."""
+    proxy_url = os.environ.get("all_proxy") or os.environ.get("http_proxy") or ""
+    if not proxy_url:
+        return None
+    m = re.match(r"(socks5|http)://([^:]+):(\d+)", proxy_url)
+    if not m:
+        return None
+    scheme, host, port = m.group(1), m.group(2), int(m.group(3))
+    proxy_type = python_socks.ProxyType.SOCKS5 if scheme == "socks5" else python_socks.ProxyType.HTTP
+    return (proxy_type, host, port)
+
+
+# --- Telegram ---
+
+
+def get_bot_username(state_dir):
+    """Get bot @username by calling Bot API getMe with the bot's token."""
+    env_path = os.path.join(CHANNELS_DIR, state_dir, ".env")
     if not os.path.exists(env_path):
         raise FileNotFoundError(f".env not found: {env_path}")
+    token = None
     with open(env_path) as f:
         for line in f:
             line = line.strip()
             if line.startswith("TELEGRAM_BOT_TOKEN="):
-                return line.split("=", 1)[1].strip()
-    raise ValueError(f"TELEGRAM_BOT_TOKEN not found in {env_path}")
+                token = line.split("=", 1)[1].strip()
+                break
+    if not token:
+        raise ValueError(f"TELEGRAM_BOT_TOKEN not found in {env_path}")
+
+    import urllib.request
+    url = f"https://api.telegram.org/bot{token}/getMe"
+    with urllib.request.urlopen(url, timeout=10) as resp:
+        data = json.load(resp)
+    return "@" + data["result"]["username"]
 
 
-def read_chat_id(state_dir):
-    """Read chat_id from ~/.claude/channels/<state_dir>/access.json"""
-    access_path = os.path.expanduser(f"~/.claude/channels/{state_dir}/access.json")
-    if not os.path.exists(access_path):
-        raise FileNotFoundError(f"access.json not found: {access_path}")
-    with open(access_path) as f:
-        data = json.load(f)
-    allow_from = data.get("allowFrom", [])
-    if not allow_from:
-        raise ValueError(f"allowFrom is empty in {access_path}")
-    return allow_from[0]
+async def send_heartbeats(pending):
+    """Send all pending heartbeat messages as the user via Telethon."""
+    if not os.path.exists(SESSION_PATH + ".session"):
+        log.error("Session file not found: %s.session — run auth.py first", SESSION_PATH)
+        return
 
+    proxy = detect_proxy()
+    client = TelegramClient(SESSION_PATH, API_ID, API_HASH, proxy=proxy)
+    try:
+        await client.connect()
+        if not await client.is_user_authorized():
+            log.error("Session not authorized — run auth.py to re-authenticate")
+            return
 
-def send_telegram_message(bot_token, chat_id, text):
-    """Send a message via Telegram Bot API using urllib.request."""
-    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-    payload = json.dumps({"chat_id": chat_id, "text": text}).encode("utf-8")
-    req = urllib.request.Request(
-        url,
-        data=payload,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=15) as resp:
-        return json.load(resp)
+        for agent_name, bot_username, message in pending:
+            try:
+                await client.send_message(bot_username, message)
+                log.info("Sent heartbeat for agent=%s", agent_name)
+            except Exception as e:
+                log.error("Failed to send to agent=%s: %s", agent_name, e)
+    finally:
+        await client.disconnect()
 
 
 # --- Main ---
 
+
 def main():
-    config_file = os.path.expanduser("~/.config/telegram-agents/agents.yaml")
-    if not os.path.exists(config_file):
-        log.debug("Config not found: %s", config_file)
+    if not os.path.exists(CONFIG_FILE):
         return
 
-    with open(config_file) as f:
+    with open(CONFIG_FILE) as f:
         config = yaml.safe_load(f)
 
     if not config or "agents" not in config:
-        log.debug("No agents defined in config")
         return
 
     now = datetime.now()
+    pending = []
 
     for agent_name, agent_cfg in config["agents"].items():
         state_dir = agent_cfg.get("state_dir")
@@ -142,30 +183,20 @@ def main():
         for hb in heartbeats:
             schedule = hb.get("schedule", "")
             prompt = hb.get("prompt", "")
-
             if not schedule or not prompt:
                 continue
 
-            if not cron_match(schedule, now):
-                continue
+            if cron_match(schedule, now):
+                try:
+                    bot_username = get_bot_username(state_dir)
+                    timestamp = now.strftime("%Y-%m-%d %H:%M")
+                    message = f"[定时任务 {timestamp}] {prompt}"
+                    pending.append((agent_name, bot_username, message))
+                except (FileNotFoundError, ValueError) as e:
+                    log.warning("Config error for agent=%s: %s", agent_name, e)
 
-            # Build timestamped message
-            timestamp = now.strftime("%Y-%m-%d %H:%M")
-            message = f"[定时任务 {timestamp}] {prompt}"
-
-            try:
-                bot_token = read_bot_token(state_dir)
-                chat_id = read_chat_id(state_dir)
-                send_telegram_message(bot_token, chat_id, message)
-                log.info("Sent heartbeat for agent=%s schedule=%s prompt=%r", agent_name, schedule, prompt)
-            except FileNotFoundError as e:
-                log.warning("Config missing for agent=%s: %s", agent_name, e)
-            except ValueError as e:
-                log.warning("Config error for agent=%s: %s", agent_name, e)
-            except urllib.error.URLError as e:
-                log.error("Network error for agent=%s: %s", agent_name, e)
-            except Exception as e:
-                log.error("Unexpected error for agent=%s: %s", agent_name, e)
+    if pending:
+        asyncio.run(send_heartbeats(pending))
 
 
 if __name__ == "__main__":
