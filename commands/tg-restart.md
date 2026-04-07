@@ -22,14 +22,16 @@ arguments:
 
 ## 重启流程
 
-1. **终止旧会话**：若 tmux 会话存在，执行 `tmux kill-session -t <tmux>`
-2. **启动新会话**：组装启动命令并用 tmux 包裹运行：
+所有 agent 运行在同一个 tmux session 的不同 window 中。session 名称从 agents.yaml 顶层 `tmux_session` 字段读取，window 名称 = agent key（即 agents.yaml 中的 key）。
+
+1. **终止旧 window**：若 tmux window 存在，执行 `tmux kill-window -t <tmux_session>:<agent-name>`
+2. **启动新 window**：在 session 中创建新 window：
 
 ```
-tmux new-session -d -s <tmux> "TELEGRAM_STATE_DIR=~/.claude/channels/<state_dir> claude --channels 'plugin:telegram@claude-plugins-official' --agent <agent> --dangerously-skip-permissions --settings '{\"enabledPlugins\":{\"telegram@claude-plugins-official\":true}}'"
+tmux new-window -t <tmux_session> -n <agent-name> -c <dir> "TELEGRAM_STATE_DIR=~/.claude/channels/<state_dir> claude --channels 'plugin:telegram@claude-plugins-official' --agent <agent> --dangerously-skip-permissions --settings '{\"enabledPlugins\":{\"telegram@claude-plugins-official\":true}}'"
 ```
 
-其中 `<tmux>`、`<state_dir>`、`<agent>` 均从 agents.yaml 对应 agent 配置中读取。
+其中各字段从 agents.yaml 读取。若 tmux session 不存在，改用 `tmux new-session -d -s <tmux_session> -n <agent-name> ...` 创建。
 
-3. **等待验证**：等待 3 秒后运行 `tmux has-session -t <tmux>` 确认会话是否成功启动
+3. **等待验证**：等待 3 秒后运行 `tmux list-windows -t <tmux_session>` 确认 window 是否存在
 4. **报告结果**：告知用户重启成功或失败，失败时提示可通过 `/tg-logs` 查看日志排查

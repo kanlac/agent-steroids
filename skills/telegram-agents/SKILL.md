@@ -21,9 +21,11 @@ description: |
 ```
 agents.yaml（统一配置）
       │
-      ├── tmux: channel-<name> × N ──── Telegram Plugin（getUpdates + sendMessage）
-      │         [Agent 身份文件]                   │
-      │                                     Bot API（各自独立 token）
+      ├── tmux session: channels
+      │     ├── window: sage ──── Telegram Plugin（getUpdates + sendMessage）
+      │     ├── window: herald       各自独立 bot token + ��态目录
+      │     ├── window: ...          一个 session 管理所有 agent
+      │     └── [每个 window 一个 agent 身份文件]
       │
       └── launchd（每分钟触发）
               │
@@ -42,11 +44,13 @@ agents.yaml（统一配置）
 `~/.config/telegram-agents/agents.yaml` 是唯一配置源：
 
 ```yaml
+# 所有 agent 共用一个 tmux session，每个 agent 一个 window（window 名 = agent key）
+tmux_session: channels
+
 agents:
   sage:
     state_dir: telegram-sage       # 相对于 ~/.claude/channels/
     agent: sage                    # agent 身份 (~/.claude/agents/<name>.md)
-    tmux: channel-sage             # tmux session 名
     dir: ~/projects/my-project     # 工作目录（claude 启动路径）
     heartbeats:
       - schedule: "0 9 * * *"     # 标准 5 字段 cron：分 时 日 月 周
@@ -57,7 +61,6 @@ agents:
   default:
     state_dir: telegram            # 默认 agent 用 telegram/
     agent: my-assistant
-    tmux: channel-default
     dir: ~
 ```
 
@@ -131,32 +134,38 @@ memory: user
 
 ## 添加 Agent
 
-方向：BotFather 建 bot → 创建状态目录 → 写 agent 身份 → 更新 agents.yaml → 启动 tmux channel session。
+方向：BotFather 建 bot → 创建状态目录 → 写 agent 身份 → 更新 agents.yaml → 在 tmux session 中添加 window。
 
 **状态目录结构**：
 
 ```
 ~/.claude/channels/telegram-<name>/
-├── .env          # TELEGRAM_BOT_TOKEN=... 和 TELEGRAM_CHAT_ID=...（chmod 600）
+├── .env          # TELEGRAM_BOT_TOKEN=...（chmod 600）
 └── access.json   # 权限控制（allowFrom 列表）
 ```
 
-**Channel session 启动命令模板**：
+**Channel session 管理**：
+
+所有 agent 共用一个 tmux session（名称在 agents.yaml 的 `tmux_session` 中定义），每个 agent 一个 window。
 
 ```bash
-# 非默认 agent（name ≠ default）
-TELEGRAM_STATE_DIR=~/.claude/channels/telegram-<name> \
-  claude --channels 'plugin:telegram@claude-plugins-official' \
-    --agent <agent-name> \
-    --settings '{"enabledPlugins": {"telegram@claude-plugins-official": true}}'
+# 创建 session（首个 agent，window 名 = agent key）
+tmux new-session -d -s <tmux_session> -n <name> -c <dir> "<command>"
 
-# 默认 agent（name = default，状态目录用 telegram/）
-claude --channels 'plugin:telegram@claude-plugins-official' \
-  --agent <agent-name> \
-  --settings '{"enabledPlugins": {"telegram@claude-plugins-official": true}}'
+# 添加更多 agent 到同一 session
+tmux new-window -t <tmux_session> -n <name> -c <dir> "<command>"
 ```
 
-用 tmux 包裹保持常驻：`tmux new-session -d -s <session-name> "<command>"`
+其中 command 为：
+
+```bash
+TELEGRAM_STATE_DIR=~/.claude/channels/<state_dir> \
+  claude --channels 'plugin:telegram@claude-plugins-official' \
+    --agent <agent> --dangerously-skip-permissions \
+    --settings '{"enabledPlugins": {"telegram@claude-plugins-official": true}}'
+```
+
+默认 agent（state_dir=telegram）不需要设置 `TELEGRAM_STATE_DIR`。
 
 启动前检查 409 冲突：`ps eww` 查找已有 bun 进程使用同一 token，有则先 kill。
 

@@ -13,7 +13,7 @@ description: 查看所有 Telegram agent 的运行状态
 
 对每个 agent：
 
-1. **tmux 状态**：运行 `tmux has-session -t <tmux>` 判断会话是否存活（exit 0 = alive，非 0 = dead）
+1. **tmux 状态**：运行 `tmux list-windows -t <tmux_session>` 检查对应 window（名称 = agent key）是否存在
 2. **最近心跳**：读取 `/tmp/telegram-agents.log` 最后 20 行，提取该 agent 名称对应的最近一条心跳记录和时间戳
 3. **心跳计划**：从 agents.yaml 中读取该 agent 的 `heartbeats[].schedule` 列表
 
