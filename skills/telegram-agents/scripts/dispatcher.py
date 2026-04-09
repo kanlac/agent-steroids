@@ -10,7 +10,9 @@ import json
 import logging
 import os
 import re
+import subprocess
 import sys
+import time
 from datetime import datetime
 
 try:
@@ -131,33 +133,123 @@ def get_bot_username(state_dir):
 
 
 async def send_heartbeats(pending):
-    """Send all pending heartbeat messages as the user via Telethon."""
+    """Send all pending heartbeat messages as the user via Telethon.
+
+    Each heartbeat entry includes an optional session name. Heartbeats are
+    grouped by session so we only open one TelegramClient per unique session.
+    """
     try:
         from telethon import TelegramClient
     except ImportError:
         log.error("telethon not installed — run: pip3 install telethon 'python-socks[asyncio]'")
         return
 
-    if not os.path.exists(SESSION_PATH + ".session"):
-        log.error("Session file not found: %s.session — run auth.py first", SESSION_PATH)
+    proxy = detect_proxy()
+
+    # Group by session path
+    by_session = {}
+    for agent_name, bot_username, message, session_name in pending:
+        session_path = os.path.join(CONFIG_DIR, session_name) if session_name else SESSION_PATH
+        by_session.setdefault(session_path, []).append((agent_name, bot_username, message))
+
+    for session_path, items in by_session.items():
+        if not os.path.exists(session_path + ".session"):
+            agent_names = ", ".join(a for a, _, _ in items)
+            log.error("Session file not found: %s.session (agents: %s) — run: python3 auth.py %s",
+                       session_path, agent_names, os.path.basename(session_path))
+            continue
+
+        client = TelegramClient(session_path, API_ID, API_HASH, proxy=proxy)
+        try:
+            await client.connect()
+            if not await client.is_user_authorized():
+                log.error("Session not authorized: %s — run: python3 auth.py %s",
+                           session_path, os.path.basename(session_path))
+                continue
+
+            for agent_name, bot_username, message in items:
+                try:
+                    await client.send_message(bot_username, message)
+                    log.info("Sent heartbeat for agent=%s via session=%s", agent_name, os.path.basename(session_path))
+                except Exception as e:
+                    log.error("Failed to send to agent=%s: %s", agent_name, e)
+        finally:
+            await client.disconnect()
+
+
+# --- Restart ---
+
+
+def restart_agents(config):
+    """Restart all agent tmux windows to pick up plugin/skill updates."""
+    tmux_session = config.get("tmux_session", "channels")
+    agents = config.get("agents", {})
+
+    # Check if tmux session exists
+    result = subprocess.run(
+        ["tmux", "has-session", "-t", tmux_session], capture_output=True
+    )
+    if result.returncode != 0:
+        log.info("tmux session '%s' not found, skipping restart", tmux_session)
         return
 
-    proxy = detect_proxy()
-    client = TelegramClient(SESSION_PATH, API_ID, API_HASH, proxy=proxy)
-    try:
-        await client.connect()
-        if not await client.is_user_authorized():
-            log.error("Session not authorized — run auth.py to re-authenticate")
-            return
+    for agent_name, agent_cfg in agents.items():
+        state_dir = agent_cfg.get("state_dir", "telegram")
+        agent_id = agent_cfg.get("agent", "")
+        work_dir = os.path.expanduser(agent_cfg.get("dir", "~"))
 
-        for agent_name, bot_username, message in pending:
-            try:
-                await client.send_message(bot_username, message)
-                log.info("Sent heartbeat for agent=%s", agent_name)
-            except Exception as e:
-                log.error("Failed to send to agent=%s: %s", agent_name, e)
-    finally:
-        await client.disconnect()
+        # Build claude command
+        cmd_parts = []
+        if state_dir != "telegram":
+            cmd_parts.append(
+                f"TELEGRAM_STATE_DIR=~/.claude/channels/{state_dir}"
+            )
+        cmd_parts.append("claude")
+        cmd_parts.append("--channels 'plugin:telegram@claude-plugins-official'")
+        if agent_id:
+            cmd_parts.append(f"--agent {agent_id}")
+        cmd_parts.append("--dangerously-skip-permissions")
+        cmd_parts.append(
+            """--settings '{"enabledPlugins":{"telegram@claude-plugins-official":true}}'"""
+        )
+        claude_cmd = " ".join(cmd_parts)
+
+        # Kill existing window (ignore if not found)
+        subprocess.run(
+            ["tmux", "kill-window", "-t", f"{tmux_session}:{agent_name}"],
+            capture_output=True,
+        )
+        time.sleep(1)
+
+        # Check if session still exists (killed last window → session gone)
+        result = subprocess.run(
+            ["tmux", "has-session", "-t", tmux_session], capture_output=True
+        )
+        if result.returncode != 0:
+            subprocess.run(
+                [
+                    "tmux", "new-session", "-d",
+                    "-s", tmux_session,
+                    "-n", agent_name,
+                    "-c", work_dir,
+                    claude_cmd,
+                ],
+                capture_output=True,
+            )
+        else:
+            subprocess.run(
+                [
+                    "tmux", "new-window",
+                    "-t", tmux_session,
+                    "-n", agent_name,
+                    "-c", work_dir,
+                    claude_cmd,
+                ],
+                capture_output=True,
+            )
+        log.info("Restarted agent=%s", agent_name)
+
+    log.info("All agents restarted for plugin reload")
 
 
 # --- Main ---
@@ -174,6 +266,14 @@ def main():
         return
 
     now = datetime.now()
+
+    # Check restart schedule — restart takes priority over heartbeats
+    restart_schedule = config.get("restart_schedule")
+    if restart_schedule and cron_match(restart_schedule, now):
+        log.info("Restart schedule matched: %s", restart_schedule)
+        restart_agents(config)
+        return
+
     pending = []
 
     for agent_name, agent_cfg in config["agents"].items():
@@ -182,6 +282,8 @@ def main():
 
         if not state_dir or not heartbeats:
             continue
+
+        user_session = agent_cfg.get("user_session")  # per-agent session, or None for default
 
         for hb in heartbeats:
             schedule = hb.get("schedule", "")
@@ -194,7 +296,7 @@ def main():
                     bot_username = get_bot_username(state_dir)
                     timestamp = now.strftime("%Y-%m-%d %H:%M")
                     message = f"[定时任务 {timestamp}] {prompt}"
-                    pending.append((agent_name, bot_username, message))
+                    pending.append((agent_name, bot_username, message, user_session))
                 except (FileNotFoundError, ValueError) as e:
                     log.warning("Config error for agent=%s: %s", agent_name, e)
 
