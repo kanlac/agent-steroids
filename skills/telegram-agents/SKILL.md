@@ -59,6 +59,15 @@ agents:
       - schedule: "0 20 * * *"
         prompt: 晚间回顾
 
+  customer-bot:
+    state_dir: telegram-customer   # 面向外部用户的 bot
+    agent: customer-bot
+    dir: ~/projects/customer
+    user_session: customer-user    # 使用独立的 Telethon session（见「多用户认证」）
+    heartbeats:
+      - schedule: "0 9 * * *"
+        prompt: 推送每日内容
+
   default:
     state_dir: telegram            # 默认 agent 用 telegram/
     agent: my-assistant
@@ -128,11 +137,27 @@ memory: user
 
 1. 创建 `~/.config/telegram-agents/`，复制 `${SKILL_PATH}/scripts/dispatcher.py` 和 `auth.py` 进去
 2. 安装依赖：`pip3 install pyyaml telethon 'python-socks[asyncio]'`
-3. 运行 `python3 ~/.config/telegram-agents/auth.py` 完成 Telethon 用户认证（一次性，输入手机号 + Telegram App 内验证码）。这使 dispatcher 能以用户身份发送消息给 bot，bot 的 getUpdates 才能收到
+3. 运行 `python3 ~/.config/telegram-agents/auth.py` 完成默认用户的 Telethon 认证（一次性，输入手机号 + Telegram App 内验证码）。这使 dispatcher 能以用户身份发送消息给 bot，bot 的 getUpdates 才能收到
 4. 创建 `~/Library/LaunchAgents/com.$USER.telegram-agents.plist`，每分钟触发，`StartInterval: 60`
 5. dispatcher 通过 `cat dispatcher.py | python3` 执行（绕过 macOS provenance 限制）
 
 **为什么需要 Telethon**：Telegram Bot API 的 `sendMessage` 发出的消息不会出现在 bot 自己的 `getUpdates` 中——这是 Telegram 的设计限制。Dispatcher 使用 Telethon（User API）以用户身份发送心跳消息，bot 的 channel session 才能正常接收。使用 Telegram Desktop 的公开 API 凭据，安全性等同于官方客户端。
+
+## 多用户认证
+
+当 bot 面向的不是 bot 拥有者本人，而是其他 Telegram 用户时，心跳需要以该用户的身份发送，否则 bot 的 access control（allowFrom）会拒绝消息。
+
+**架构**：每个需要独立用户身份的 agent 在 agents.yaml 中指定 `user_session` 字段，指向一个独立的 Telethon session 文件。不指定则使用默认的 `user.session`。
+
+**添加新用户认证**：
+
+1. 在 agents.yaml 中为 agent 添加 `user_session: <session-name>`
+2. 运行 `python3 ~/.config/telegram-agents/auth.py <session-name>`，以该用户的手机号完成认证
+3. 生成 `~/.config/telegram-agents/<session-name>.session`
+
+auth.py 支持命名参数：不带参数创建默认 `user.session`，带参数创建命名 session。
+
+**dispatcher 行为**：发送心跳时按 session 分组，同一 session 的心跳共用一个 TelegramClient 连接。缺失 session 文件时跳过对应 agent 并记录错误日志，不影响其他 agent。
 
 **关键陷阱**：
 

@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """
 One-time Telethon authentication.
-Creates a session file at ~/.config/telegram-agents/user.session
-Run interactively: python3 auth.py
+Creates a session file at ~/.config/telegram-agents/<name>.session
+
+Usage:
+  python3 auth.py              # default session: "user"
+  python3 auth.py xiaomai-user # named session: "xiaomai-user"
 
 Auto-detects SOCKS5/HTTP proxy from environment variables (all_proxy, http_proxy).
 """
@@ -10,6 +13,7 @@ Auto-detects SOCKS5/HTTP proxy from environment variables (all_proxy, http_proxy
 import asyncio
 import os
 import re
+import sys
 
 from telethon import TelegramClient
 import python_socks
@@ -18,7 +22,7 @@ import python_socks
 API_ID = 2040
 API_HASH = "b18441a1ff607e10a989891a5462e627"
 
-SESSION_PATH = os.path.expanduser("~/.config/telegram-agents/user")
+CONFIG_DIR = os.path.expanduser("~/.config/telegram-agents")
 
 
 def detect_proxy():
@@ -38,12 +42,16 @@ def detect_proxy():
 
 
 async def main():
+    session_name = sys.argv[1] if len(sys.argv) > 1 else "user"
+    session_path = os.path.join(CONFIG_DIR, session_name)
+
+    print(f"Authenticating session: {session_name}")
     proxy = detect_proxy()
-    client = TelegramClient(SESSION_PATH, API_ID, API_HASH, proxy=proxy)
+    client = TelegramClient(session_path, API_ID, API_HASH, proxy=proxy)
     await client.start()
     me = await client.get_me()
     print(f"Authenticated as: {me.first_name} (id: {me.id})")
-    print(f"Session saved to: {SESSION_PATH}.session")
+    print(f"Session saved to: {session_path}.session")
     await client.disconnect()
 
 
