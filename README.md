@@ -21,6 +21,7 @@ claude plugin install steroids@agent-steroids
 | [`read-book`](skills/read-book/SKILL.md) | EPUB 书籍中英双语翻译，以及阅读和讨论书籍内容。 |
 | [`wechat-desktop`](skills/wechat-desktop/SKILL.md) | 通过 computer-use MCP 在 macOS 上读取、浏览和总结微信群聊消息。 |
 | [`html-to-pdf`](skills/html-to-pdf/SKILL.md) | 将样式化 HTML 转为高质量单页 PDF。自动处理动态元素（scroll-snap、CSS 动画、IntersectionObserver），含可复用生成脚本。 |
+| [`clipping`](skills/clipping/SKILL.md) | 将网页文章保存为本地 Markdown 笔记。支持微信公众号等 JS 渲染页面，对信息图/表格截图使用 PaddleOCR 提取文本并重构为 Markdown 表格。 |
 
 ### Commands
 
