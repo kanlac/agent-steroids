@@ -1,13 +1,6 @@
 ---
 name: telegram-agents
-description: |
-  Configure and manage Telegram-connected Claude agents with heartbeat scheduling on macOS.
-  Use when the user wants to: "set up Telegram agent", "add heartbeat", "configure Telegram channel",
-  "管理 Telegram agent", "配置心跳", "添加定时任务", "Telegram 多 agent", "配置 Telegram",
-  "添加 Telegram agent", "给 Telegram bot 创建身份", "设置定时任务", "新增定时任务",
-  "每天X点执行Y", "schedule a task", "run this automatically", "set up a cron job",
-  or encounters Telegram polling conflicts, 409 Conflict, file upload failures through proxy,
-  or needs to add recurring/periodic automated task execution for Claude agents.
+description: Configure and manage Telegram-connected Claude agents with heartbeat scheduling on macOS. Use when the user wants to "set up Telegram agent", "add heartbeat", "configure Telegram channel", "管理 Telegram agent", "配置心跳", "添加定时任务", "Telegram 多 agent", "配置 Telegram", "添加 Telegram agent", "给 Telegram bot 创建身份", "设置定时任务", "新增定时任务", "每天X点执行Y", "schedule a task", "run this automatically", "set up a cron job", or encounters Telegram polling conflicts, 409 Conflict, file upload failures through proxy, or needs to add recurring/periodic automated task execution for Claude agents.
 ---
 
 # Telegram Agents
@@ -164,7 +157,7 @@ auth.py 支持命名参数：不带参数创建默认 `user.session`，带参数
 | 陷阱 | 原因 | 解决 |
 |---|---|---|
 | `AbandonProcessGroup: true` | launchd 主进程退出后会杀进程组，后台任务被终止 | plist 中加此键 |
-| PATH 极简 | launchd 只有 `/usr/bin:/bin`，找不到 python3/pip 等 | plist 的 `EnvironmentVariables` 中补充 PATH |
+| PATH 极简 | launchd 只有 `/usr/bin:/bin`，找不到 python3/pip 等 | plist 的 PATH 中补充 Homebrew、`~/.local/bin`、`~/.bun/bin` 等 |
 | macOS provenance | Claude 创建的文件带 `com.apple.provenance`，launchd 拒绝直接执行 | `cat \| python3` 管道执行 |
 | MTProto 被墙 | 中国大陆直连 Telegram MTProto 服务器会失败 | dispatcher 自动从 `all_proxy`/`http_proxy` 环境变量检测 SOCKS5/HTTP 代理 |
 
@@ -224,6 +217,7 @@ TELEGRAM_STATE_DIR=~/.claude/channels/<state_dir> \
 - 日志显示网络错误 → 检查代理配置（launchd 环境需要在 plist 中设置 proxy 环境变量）
 - 日志无任何输出 → 检查 `launchctl list | grep telegram-agents`，确认 plist 已加载
 - bot 端无反应 → 确认 bot 的 channel session 在 tmux 中运行
+- agent 在线但收不到消息 → 用 `--debug-file` 启动检查是否有 `spawn bun ENOENT`，确认 bun 在 PATH 中（launchd 重启的 agent 继承精简 PATH）
 
 ## 全局 Telegram 配置
 
@@ -247,4 +241,4 @@ TELEGRAM_STATE_DIR=~/.claude/channels/<state_dir> \
 - **409 Conflict**：同一 bot token 多个 session 轮询会冲突。多 agent 方案中每个 agent 独立 token，无此问题。单 agent 场景中，普通 session 全局禁用插件可防止误启轮询
 - **AbandonProcessGroup**：launchd plist 必须加 `AbandonProcessGroup: true`，否则 dispatcher 后台化任务后主进程退出，后台任务被立即终止
 - **macOS provenance**：Claude Code 创建的脚本文件带 `com.apple.provenance` 扩展属性，launchd 无法直接执行。用 `cat | python3`（dispatcher）和 `echo | bash`（shell 任务）绕过
-- **launchd PATH**：launchd 环境 PATH 极简，plist 中必须显式补充 Homebrew 路径和 `~/.local/bin`
+- **launchd PATH**：launchd 环境 PATH 极简，plist 中必须显式补充 Homebrew 路径、`~/.local/bin` 和 `~/.bun/bin`。Telegram 插件的 MCP server 用 `bun` 启动（`.mcp.json` 中 `"command": "bun"`），缺少 bun 路径会导致 `spawn bun ENOENT`，agent 看似正常运行但完全收不到消息
