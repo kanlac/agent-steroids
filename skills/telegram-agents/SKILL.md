@@ -81,7 +81,7 @@ agents:
 
 常驻的 channel session 在启动时加载插件（skill 列表、hook、MCP server）。插件更新后，已运行的 session 不会自动感知结构性变更。`restart_schedule` 通过定时重建 tmux window 解决这个问题。
 
-dispatcher 匹配到 restart_schedule 时，依次对每个 agent 执行：kill tmux window → 重建 window（与 `/tg-restart` 命令相同的逻辑）。重启当分钟跳过心跳发送，避免向正在启动的 agent 发消息。
+dispatcher 匹配到 restart_schedule 时，依次对每个 agent 执行：从 tmux pane 状态栏捕获 session ID → kill tmux window → 用 `--resume <session-id>` 重建 window（与 `/tg-restart` 命令相同的逻辑）。这样重启后 agent 保持之前的会话上下文。重启当分钟跳过心跳发送，避免向正在启动的 agent 发消息。
 
 ## 心跳机制
 
@@ -159,7 +159,7 @@ auth.py 支持命名参数：不带参数创建默认 `user.session`，带参数
 | `AbandonProcessGroup: true` | launchd 主进程退出后会杀进程组，后台任务被终止 | plist 中加此键 |
 | PATH 极简 | launchd 只有 `/usr/bin:/bin`，找不到 python3/pip 等 | plist 的 PATH 中补充 Homebrew、`~/.local/bin`、`~/.bun/bin` 等 |
 | macOS provenance | Claude 创建的文件带 `com.apple.provenance`，launchd 拒绝直接执行 | `cat \| python3` 管道执行 |
-| MTProto 被墙 | 中国大陆直连 Telegram MTProto 服务器会失败 | dispatcher 自动从 `all_proxy`/`http_proxy` 环境变量检测 SOCKS5/HTTP 代理 |
+| MTProto 被墙 | 中国大陆直连 Telegram MTProto 服务器会失败 | dispatcher 从 `all_proxy`/`http_proxy` 环境变量检测代理，但 launchd 环境没有这些变量——必须在 plist 的 bash 脚本中显式 export，否则 Telethon 会直连超时 |
 
 ## 添加 Agent
 
