@@ -170,8 +170,21 @@ auth.py 支持命名参数：不带参数创建默认 `user.session`，带参数
 ```
 ~/.claude/channels/telegram-<name>/
 ├── .env          # TELEGRAM_BOT_TOKEN=...（chmod 600）
-└── access.json   # 权限控制（allowFrom 列表）
+└── access.json   # 权限控制（见下方格式）
 ```
+
+**access.json 必须预填 bot 拥有者的 Telegram user ID**，否则 bot 启动后进入 pairing 模式（要求用户发配对码），增加不必要的操作步骤。从已有 agent 的 `access.json` 中复制 `allowFrom` 列表即可：
+
+```json
+{
+  "dmPolicy": "allowlist",
+  "allowFrom": ["<owner_telegram_user_id>"],
+  "groups": {},
+  "pending": {}
+}
+```
+
+查找自己的 user ID：`cat ~/.claude/channels/telegram/access.json | grep allowFrom`
 
 **Channel session 管理**：
 
