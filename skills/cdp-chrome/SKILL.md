@@ -20,7 +20,7 @@ description: |
 
 **Scope: This Skill governs all headed (GUI) Chrome usage.** Any task that needs a visible Chrome browser — social media, login-required sites, JS-rendered pages, anti-bot-protected sites — must follow this Skill. Headless browser usage (unit testing your own code, PDF generation) is out of scope.
 
-This Skill defines the architecture, the rules every agent must follow, and includes all scripts needed for setup.
+This Skill defines the architecture, the rules every agent must follow, and includes all scripts needed for setup. It is written to work for both Claude-style and Codex-style local agent setups.
 
 ## Why This Exists
 
@@ -36,7 +36,14 @@ When multiple skills/agents each launch their own Chrome, ports collide, session
 
 ### chrome-devtools-mcp Specifically
 
-The chrome-devtools-mcp MCP server (providing `mcp__chrome-devtools__*` tools) defaults to spawning its own Chrome via Puppeteer with `--enable-automation` and `--remote-debugging-pipe`. Our `~/.mcp.json` override makes it connect to the shared clean instance instead via `--browser-url`.
+The chrome-devtools-mcp MCP server (providing `mcp__chrome-devtools__*` tools) defaults to spawning its own Chrome via Puppeteer with `--enable-automation` and `--remote-debugging-pipe`.
+
+That default is unacceptable for this workflow:
+- it creates a disposable profile instead of using the shared logged-in profile
+- it loses saved sessions and cookies
+- it is trivially identifiable as automation
+
+The MCP server must therefore be configured to connect to the existing shared instance with `--browserUrl=http://127.0.0.1:<port>` rather than launching a browser.
 
 ## Architecture
 
@@ -46,8 +53,11 @@ The chrome-devtools-mcp MCP server (providing `mcp__chrome-devtools__*` tools) d
   profile/          # --user-data-dir (persistent login sessions)
   start.sh          # Launch script — deployed from this Skill's scripts/
 
-~/.mcp.json         # Deployed from this Skill's scripts/
-  chrome-devtools → --browser-url=http://127.0.0.1:<port>
+Agent config (tooling-specific, but always user-scope/global)
+  Claude-style config:
+    chrome-devtools → --browserUrl=http://127.0.0.1:<port>
+  Codex-style config:
+    mcp_servers.chrome-devtools.args = ["--browserUrl", "http://127.0.0.1:<port>", ...]
 ```
 
 **Key properties of the shared Chrome:**
@@ -66,11 +76,27 @@ For a fresh environment, deploy the scripts from this Skill:
 
 2. Deploy the launch script from `scripts/start.sh` in this Skill directory to `~/.config/cdp-chrome/start.sh`. Make it executable.
 
-3. Deploy `scripts/mcp.json` from this Skill directory to `~/.mcp.json`. Adjust the port in `--browser-url` to match the port file if it differs from 9224.
+3. Register chrome-devtools at **user scope** so it applies in every directory.
+
+   Claude-style example:
+
+   ```bash
+   claude mcp add chrome-devtools -s user -- npx chrome-devtools-mcp@latest --browserUrl=http://127.0.0.1:9224
+   ```
+
+   Codex-style example:
+
+   ```toml
+   [mcp_servers.chrome-devtools]
+   command = "chrome-devtools-mcp"
+   args = ["--browserUrl", "http://127.0.0.1:9224", "--no-usage-statistics"]
+   ```
+
+   Adjust the port if it differs from 9224. Do NOT create a project-level `./.mcp.json` for this — that only activates when the cwd matches one project.
 
 4. Run the start script, then manually log in to needed sites (X/Twitter, Reddit, etc.) in the Chrome window. Sessions persist in the profile.
 
-5. Ensure the user's global `~/.claude/CLAUDE.md` references this Skill as mandatory for all browser operations.
+5. Ensure the user's global agent instructions reference this Skill as mandatory for all browser operations.
 
 ## Rules for Agents
 
@@ -80,7 +106,7 @@ Do not start a new Chrome process. Do not use Puppeteer's `launch()` or Playwrig
 
 ### 2. Connect, don't launch
 
-- **chrome-devtools-mcp tools** (`mcp__chrome-devtools__*`): already configured via `~/.mcp.json`. Just use them.
+- **chrome-devtools-mcp tools** (`mcp__chrome-devtools__*`): should already be configured at user scope to use `--browserUrl=http://127.0.0.1:<port>`. Just use them.
 - **Direct CDP access** (fallback): read port from `~/.config/cdp-chrome/port`, use `http://127.0.0.1:<port>/json/...`
 
 ### 3. Clean up your tabs
@@ -95,13 +121,83 @@ Don't clear cookies, change settings, or install extensions. The profile contain
 
 If chrome-devtools-mcp tools fail to connect, check if the shared Chrome is running. If not, run the start script at `~/.config/cdp-chrome/start.sh`.
 
+### 6. Verify that you are on the correct instance
+
+Do not assume that successful browser automation means the configuration is correct. A misconfigured MCP can silently launch a wrong browser that looks usable but has the wrong profile.
+
+Minimum checks:
+- Confirm the shared debugging endpoint is live:
+  - `cat ~/.config/cdp-chrome/port`
+  - `curl http://127.0.0.1:<port>/json/version`
+- Confirm the real shared browser has tabs or login state you expect:
+  - `curl http://127.0.0.1:<port>/json/list`
+- If using process inspection, the correct shared instance should show:
+  - `--remote-debugging-port=<port>`
+  - `--user-data-dir=$HOME/.config/cdp-chrome/profile`
+
+Red flags that mean you are on the wrong browser:
+- process args contain `--enable-automation`
+- process args contain `--remote-debugging-pipe`
+- `user-data-dir` points to a temp directory such as `puppeteer_dev_chrome_profile-*`
+- sites that should be logged in are unexpectedly logged out
+
+If any red flag appears, stop browsing and fix the MCP registration before proceeding.
+
+### 7. Common misconfiguration: Codex launching Puppeteer anyway
+
+In Codex-style setups, a common failure mode is:
+
+- the shared Chrome on `127.0.0.1:<port>` is running correctly
+- but the Codex MCP entry for `chrome-devtools` does not include `--browserUrl`
+- so `chrome-devtools-mcp` launches its own temporary Chrome anyway
+
+Typical bad config:
+
+```toml
+[mcp_servers.chrome-devtools]
+command = "chrome-devtools-mcp"
+args = ["--isolated", "--no-usage-statistics"]
+```
+
+Typical good config:
+
+```toml
+[mcp_servers.chrome-devtools]
+command = "chrome-devtools-mcp"
+args = ["--browserUrl", "http://127.0.0.1:9224", "--no-usage-statistics"]
+```
+
+If you fix the config, restart the agent session before trusting `mcp__chrome_devtools__*` again. Existing sessions may remain attached to the wrong browser until restarted.
+
+### 8. MCP config changes require session restart
+
+**This is critical and easy to forget.** When you update the MCP registration (e.g., adding `--browserUrl`), the running MCP server process still uses the old config. The fix only takes effect after restarting the Claude Code / Codex session. In the meantime, `mcp__chrome-devtools__*` tools will silently connect to (or launch) the wrong browser.
+
+**If you cannot restart the session** (e.g., other agents sharing the session, or mid-task), bypass the MCP tools and use the CDP HTTP API directly:
+
+```bash
+# Read the port
+PORT=$(cat ~/.config/cdp-chrome/port)
+
+# Open a new tab
+curl -s -X PUT "http://127.0.0.1:$PORT/json/new?https://example.com"
+
+# List open tabs
+curl -s "http://127.0.0.1:$PORT/json/list"
+
+# Close a tab by ID
+curl -s -X PUT "http://127.0.0.1:$PORT/json/close/$TAB_ID"
+```
+
+This connects to the correct shared Chrome regardless of MCP state.
+
 ## Ensuring Compliance
 
 This Skill is **mandatory, not optional**. Every agent that touches a browser must follow it.
 
-### Global CLAUDE.md
+### Global agent instructions
 
-The user's `~/.claude/CLAUDE.md` must contain a directive like:
+The user's global instructions should contain a directive like:
 
 > **凡是需要有头（GUI）Chrome 的操作，必须遵循 `steroids:cdp-chrome` Skill** — 先 invoke 该 Skill 再开始操作。禁止自行启动 Chrome。
 
