@@ -122,6 +122,8 @@ memory: user
 - `color` 只接受 8 种值：red, blue, green, yellow, purple, orange, pink, cyan
 - `memory: user` 用于全局 agent（跨项目记忆），`memory: project` 用于项目 agent
 
+**回复排版**：Telegram reply 默认传 `format: "markdownv2"` 以及完整转义规则属于 Telegram 通用约定，写在用户全局 CLAUDE.md 的「Telegram Channel 交互」章节，所有接入 Telegram 的会话自动加载，不需要在每个 agent 身份文件里重复。
+
 ## 首次安装
 
 **不配置心跳的场景**：如果只需要 Telegram channel session（双向对话），不需要定时心跳，可以跳过 dispatcher 和 launchd 的安装。只需创建 agents.yaml、状态目录和 agent 身份文件，然后启动 tmux session。
