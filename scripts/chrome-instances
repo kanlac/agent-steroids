@@ -1,0 +1,239 @@
+#!/usr/bin/env bash
+# Manage running Chrome instances on macOS
+
+SCRIPT_PATH="$(realpath "$0")"
+INSTALL_DIR="$HOME/.local/bin"
+CMD_NAME="chrome-instances"
+CMD_ALIAS="cri"
+
+instance_name() {
+  local data_dir="$1"
+  if [[ -z "$data_dir" ]]; then
+    echo "Default"
+  else
+    basename "$data_dir"
+  fi
+}
+
+parse_instance() {
+  local args="$1"
+  _data_dir=$(echo "$args" | grep -oE 'user-data-dir=[^ ]+' | cut -d= -f2)
+  _headless=$(echo "$args" | grep -oE 'headless=[^ ]+' | cut -d= -f2)
+  _name=$(instance_name "$_data_dir")
+  [[ -n "$_headless" ]] && _name="$_name (headless)"
+}
+
+get_window_titles() {
+  local pid="$1"
+  osascript -e "
+    tell application \"System Events\"
+      try
+        set targetProcess to first process whose unix id is $pid
+        set windowNames to name of every window of targetProcess
+        set output to \"\"
+        repeat with w in windowNames
+          set output to output & w & \"|\"
+        end repeat
+        return output
+      on error
+        return \"\"
+      end try
+    end tell
+  " 2>/dev/null
+}
+
+list_instances() {
+  echo "=== Running Chrome Instances ==="
+  echo ""
+
+  local count=0
+  for pid in $(pgrep -f 'MacOS/Google Chrome$'); do
+    local args
+    args=$(ps -p "$pid" -o args= 2>/dev/null) || continue
+    parse_instance "$args"
+
+    local display_dir="${_data_dir:-~/Library/Application Support/Google/Chrome}"
+    display_dir="${display_dir/#$HOME/~}"
+    printf "  %s\n" "$_name"
+    printf "    PID:   %s\n" "$pid"
+    printf "    Path:  %s\n" "$display_dir"
+
+    if [[ -n "$_headless" ]]; then
+      printf "    (headless — no windows)\n"
+    else
+      local titles
+      titles=$(get_window_titles "$pid")
+      if [[ -n "$titles" ]]; then
+        printf "    Windows:\n"
+        local IFS='|'
+        for title in $titles; do
+          [[ -z "$title" ]] && continue
+          local profile="Default"
+          local page="$title"
+          page="${page% - Google Chrome}"
+          if [[ "$page" == *" - "* ]]; then
+            profile="${page##* - }"
+            page="${page% - *}"
+          fi
+          printf "      [%s]  %s\n" "$profile" "$page"
+        done
+      else
+        printf "    Windows: (none or no Accessibility permission)\n"
+      fi
+    fi
+
+    echo ""
+    count=$((count + 1))
+  done
+
+  if [[ $count -eq 0 ]]; then
+    echo "  No Chrome instances running."
+    echo ""
+  fi
+
+  echo "Total: $count instance(s)"
+}
+
+focus_instance() {
+  local target="$1"
+  local target_pid=""
+
+  for pid in $(pgrep -f 'MacOS/Google Chrome$'); do
+    local args
+    args=$(ps -p "$pid" -o args= 2>/dev/null) || continue
+    parse_instance "$args"
+
+    if [[ "$pid" == "$target" ]]; then
+      target_pid="$pid"; break
+    fi
+    if [[ "${_name,,}" == "${target,,}"* ]]; then
+      target_pid="$pid"; break
+    fi
+  done
+
+  if [[ -z "$target_pid" ]]; then
+    echo "No Chrome instance matching '$target'" >&2
+    return 1
+  fi
+
+  local args
+  args=$(ps -p "$target_pid" -o args= 2>/dev/null)
+  parse_instance "$args"
+
+  if [[ -n "$_headless" ]]; then
+    echo "'$_name' is headless — no window to focus" >&2
+    return 1
+  fi
+
+  osascript -e "
+    tell application \"System Events\"
+      set targetProcess to first process whose unix id is $target_pid
+      set frontmost of targetProcess to true
+    end tell
+  " 2>/dev/null
+
+  if [[ $? -eq 0 ]]; then
+    echo "Focused: $_name (PID $target_pid)"
+  else
+    echo "Failed to focus PID $target_pid — grant Accessibility permission to Terminal" >&2
+    return 1
+  fi
+}
+
+open_default() {
+  local default_pid
+  default_pid=$(pgrep -f 'MacOS/Google Chrome$' | while read -r pid; do
+    local args
+    args=$(ps -p "$pid" -o args= 2>/dev/null) || continue
+    if ! echo "$args" | grep -q 'user-data-dir='; then
+      echo "$pid"
+      break
+    fi
+  done)
+
+  if [[ -n "$default_pid" ]]; then
+    focus_instance "$default_pid"
+  else
+    open -na "Google Chrome" --args --profile-directory="Default"
+    echo "Launched: Default Chrome"
+  fi
+}
+
+install_script() {
+  mkdir -p "$INSTALL_DIR"
+
+  local changed=0
+  for name in "$CMD_NAME" "$CMD_ALIAS"; do
+    local target="$INSTALL_DIR/$name"
+    if [[ -L "$target" && "$(readlink "$target")" == "$SCRIPT_PATH" ]]; then
+      echo "Already installed: $target"
+    else
+      ln -sf "$SCRIPT_PATH" "$target"
+      echo "Installed: $target -> $SCRIPT_PATH"
+      changed=1
+    fi
+  done
+
+  if ! echo "$PATH" | tr ':' '\n' | grep -qx "$INSTALL_DIR"; then
+    echo "Note: add $INSTALL_DIR to your PATH if not already"
+  fi
+}
+
+show_help() {
+  cat <<'EOF'
+chrome-instances (cri) — manage multiple Chrome instances on macOS
+
+Usage:
+  cri [command] [args]
+
+Commands:
+  list, ls       List all running instances with profiles & windows (default)
+  focus, f       Bring a Chrome instance window to front
+  open, o        Open default Chrome (or focus it if already running)
+  install        Symlink to ~/.local/bin as both "chrome-instances" and "cri"
+  help, -h       Show this help
+
+List output:
+  Each instance shows its user-data-dir path and windows. Profile names
+  are parsed from Chrome window titles via AppleScript (no debug port needed).
+
+  Instances are named by the basename of their --user-data-dir flag.
+  The default Chrome (no --user-data-dir) is shown as "Default".
+
+Focus:
+  cri focus <pid|name>
+
+  Match by PID or instance name (case-insensitive prefix match).
+
+  Examples:
+    cri f default        # focus the default Chrome
+    cri f 883            # focus by PID
+    cri f my-profile     # focus by data dir basename
+EOF
+}
+
+case "${1:-}" in
+  focus|f)
+    if [[ -z "${2:-}" ]]; then
+      show_help >&2
+      exit 1
+    fi
+    focus_instance "$2"
+    ;;
+  open|o)
+    open_default
+    ;;
+  install)
+    install_script
+    ;;
+  help|-h|--help)
+    show_help
+    ;;
+  list|ls|"")
+    list_instances
+    ;;
+  *)
+    show_help >&2
+    exit 1
+    ;;
+esac

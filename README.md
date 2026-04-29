@@ -49,6 +49,12 @@ claude plugin install steroids@agent-steroids
 |------|------|
 | [`guard-payload-size`](hooks/guard-payload-size.sh) | 会话 payload 接近 20MB API 限制时告警，提示执行 `/compact`。临时方案，待官方修复后可移除。 |
 
+### Scripts
+
+| 脚本 | 说明 |
+|------|------|
+| [`chrome-instances`](scripts/chrome-instances) | 管理 macOS 上的多 Chrome 实例。列出所有实例及其 Profile/窗口，按 PID 或名称聚焦窗口。通过 AppleScript 解析窗口标题，无需调试端口。`chrome-instances install` 一键 symlink 到 `~/.local/bin`。 |
+
 ### MCP Servers
 
 | Server | 说明 |
@@ -63,6 +69,7 @@ agent-steroids/
   skills/               # 自包含的方法论文档（含脚本）
   commands/             # 斜杠命令（frontmatter 驱动）
   agents/               # 子 agent 定义
+  scripts/              # 独立 CLI 工具
   hooks/                # 事件驱动的自动化
   mcp-servers/          # MCP 服务器实现
   docs/
