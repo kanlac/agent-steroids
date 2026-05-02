@@ -19,10 +19,72 @@ chrome_pids() {
   pgrep -x "Google Chrome" 2>/dev/null || true
 }
 
+has_flag() {
+  local args="$1"
+  local flag="$2"
+  printf "%s\n" "$args" | grep -Eq -- "(^| )--$flag([= ]|$)"
+}
+
+flag_value() {
+  local args="$1"
+  local flag="$2"
+  local match
+  match=$(printf "%s\n" "$args" | grep -oE -- "(^| )--$flag(=[^ ]+| [^ ]+)" | head -n 1) || true
+  match="${match# }"
+  match="${match#--$flag}"
+
+  if [[ "$match" == =* ]]; then
+    printf "%s\n" "${match#=}"
+  elif [[ "$match" == " "* ]]; then
+    printf "%s\n" "${match# }"
+  fi
+}
+
+default_data_dir() {
+  printf "%s\n" "$HOME/Library/Application Support/Google/Chrome"
+}
+
+active_cdp_port() {
+  local data_dir="$1"
+  local active_file="$data_dir/DevToolsActivePort"
+  local port
+
+  [[ -r "$active_file" ]] || return 1
+  IFS= read -r port < "$active_file" || return 1
+  [[ "$port" =~ ^[0-9]+$ ]] || return 1
+  printf "%s\n" "$port"
+}
+
+cdp_info() {
+  local args="$1"
+  local data_dir="${2:-$(default_data_dir)}"
+  local port
+
+  if has_flag "$args" "remote-debugging-pipe"; then
+    echo "pipe"
+    return
+  fi
+
+  port=$(flag_value "$args" "remote-debugging-port")
+  [[ -n "$port" ]] || return
+
+  if [[ "$port" == "0" ]]; then
+    if port=$(active_cdp_port "$data_dir"); then
+      echo "$port (assigned)"
+    else
+      echo "0 (assigned port unavailable)"
+    fi
+  else
+    echo "$port"
+  fi
+}
+
 parse_instance() {
   local args="$1"
-  _data_dir=$(echo "$args" | grep -oE 'user-data-dir=[^ ]+' | cut -d= -f2)
-  _headless=$(echo "$args" | grep -oE 'headless=[^ ]+' | cut -d= -f2)
+  _data_dir=$(flag_value "$args" "user-data-dir")
+  _headless=""
+  has_flag "$args" "headless" && _headless="${_headless:-yes}"
+  _cdp=$(cdp_info "$args" "$_data_dir")
   _name=$(instance_name "$_data_dir")
   [[ -n "$_headless" ]] && _name="$_name (headless)"
 }
@@ -61,6 +123,7 @@ list_instances() {
     printf "  %s\n" "$_name"
     printf "    PID:   %s\n" "$pid"
     printf "    Path:  %s\n" "$display_dir"
+    [[ -n "$_cdp" ]] && printf "    CDP:   %s\n" "$_cdp"
 
     if [[ -n "$_headless" ]]; then
       printf "    (headless — no windows)\n"
@@ -198,11 +261,15 @@ Commands:
   help, -h       Show this help
 
 List output:
-  Each instance shows its user-data-dir path and windows. Profile names
-  are parsed from Chrome window titles via AppleScript (no debug port needed).
+  Each instance shows its user-data-dir path, CDP endpoint when enabled,
+  and windows. Profile names are parsed from Chrome window titles via
+  AppleScript (no debug port needed).
 
   Instances are named by the basename of their --user-data-dir flag.
   The default Chrome (no --user-data-dir) is shown as "Default".
+  CDP shows --remote-debugging-port, "pipe" for --remote-debugging-pipe,
+  or the assigned port from DevToolsActivePort when Chrome was started
+  with --remote-debugging-port=0.
 
 Focus:
   cri focus <pid|name>
