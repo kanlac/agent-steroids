@@ -15,6 +15,10 @@ instance_name() {
   fi
 }
 
+chrome_pids() {
+  pgrep -x "Google Chrome" 2>/dev/null || true
+}
+
 parse_instance() {
   local args="$1"
   _data_dir=$(echo "$args" | grep -oE 'user-data-dir=[^ ]+' | cut -d= -f2)
@@ -47,7 +51,7 @@ list_instances() {
   echo ""
 
   local count=0
-  for pid in $(pgrep -f 'MacOS/Google Chrome$'); do
+  for pid in $(chrome_pids); do
     local args
     args=$(ps -p "$pid" -o args= 2>/dev/null) || continue
     parse_instance "$args"
@@ -98,7 +102,7 @@ focus_instance() {
   local target="$1"
   local target_pid=""
 
-  for pid in $(pgrep -f 'MacOS/Google Chrome$'); do
+  for pid in $(chrome_pids); do
     local args
     args=$(ps -p "$pid" -o args= 2>/dev/null) || continue
     parse_instance "$args"
@@ -142,7 +146,7 @@ focus_instance() {
 
 open_default() {
   local default_pid
-  default_pid=$(pgrep -f 'MacOS/Google Chrome$' | while read -r pid; do
+  default_pid=$(chrome_pids | while read -r pid; do
     local args
     args=$(ps -p "$pid" -o args= 2>/dev/null) || continue
     if ! echo "$args" | grep -q 'user-data-dir='; then
