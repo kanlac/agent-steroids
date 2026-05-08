@@ -106,9 +106,9 @@ allowed-tools: Bash, Read, Write, WebFetch
 
 没有 DOI 时先用 CrossRef API 查询：`GET https://api.crossref.org/works?query.title={title}&rows=3`
 
-### Tier 3: 导航（多步浏览器交互，串行）
+### Tier 3: 导航（多步浏览器交互，每篇论文独立 tab 可并行）
 
-共享 Chrome session：
+共享 Chrome session，每篇论文在独立 tab 中操作：
 - **CNKI 下载**（需 `cnki_auto_download: true` + 已登录 + 有额度）：跳转到付费页则**立即停止**
 - **Anna's Archive**: `https://annas-archive.org/search?q={query}` → 找下载链接
 - **LibGen**: `https://libgen.is/scimag/?q={doi_or_title}` → 点击镜像链接
