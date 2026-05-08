@@ -61,6 +61,10 @@ Key properties: GUI mode, no `--enable-automation`, persistent profile, single p
 
 4. Run start script, manually log in to needed sites. Sessions persist in profile.
 
+## Page Interaction
+
+与页面交互时，优先用 `evaluate_script` 执行 JS 精准提取/操作，不要依赖 `take_snapshot` 的完整 A11Y 树——复杂页面的快照动辄 80K+ 字符，超出工具限制且浪费 token。详见 `references/page-interaction.md`。
+
 ## Rules for Agents
 
 ### 1. Never launch your own Chrome
