@@ -47,7 +47,7 @@ allowed-tools: Bash, Read, Write, WebFetch
 | 站点 | 阶段 | 用途 | 备注 |
 |------|------|------|------|
 | Google Scholar | 检索 | 国际论文检索，顺带给出 OA 直链 | 需浏览器；反爬严，遇验证码要手动 |
-| CNKI 知网 | 检索+下载 | 中文论文检索与下载 | 搜索和摘要免费；全文下载需付费或机构订阅 |
+| CNKI 知网 | 检索+下载 | 中文论文检索与下载 | 检索免费无需登录；下载需账号有额度或机构订阅 |
 | arXiv | 下载 | CS/ML 预印本 PDF 直链 | `arxiv.org/pdf/{id}.pdf`，无需认证 |
 | Sci-Hub | 下载 | 非 OA 论文按 DOI 下载 | 覆盖 ~85% 已发表论文；2024+ 新论文收录有延迟 |
 | CrossRef API | 辅助 | 标题 → DOI 查询 | 纯 HTTP，免费无 key，毫秒级 |
@@ -75,7 +75,7 @@ allowed-tools: Bash, Read, Write, WebFetch
 
 详细操作流程见 `references/cnki-workflow.md`。
 `browser_navigate` → `https://kns.cnki.net/kns8s/search`，填入关键词。
-搜索和摘要免费开放；全文下载需登录——个人账号按篇付费，机构账号通过 IP/VPN 访问（覆盖范围取决于机构采购的子库）。
+搜索、摘要、关键词、作者等元数据无需登录即可获取（共享 Chrome profile 自带 cookie，不会触发验证码）。检索阶段不需要确保已登录。
 
 ### 结果输出
 
@@ -88,10 +88,9 @@ allowed-tools: Bash, Read, Write, WebFetch
 
 ### 批量下载策略
 
-按层级批量处理，逐层收窄：
-1. **Tier 1**: 所有论文并发 curl（10-20 并发），收集失败列表
-2. **Tier 2**: 失败的论文批量解析（5-10 并发）
-3. **Tier 3**: 仍失败的论文浏览器导航（3-5 tab 并发，每篇独立 tab）
+按层级批量处理，逐层收窄：先 Tier 1 处理所有论文，失败的进 Tier 2，仍失败的进 Tier 3。
+
+Tier 2/3 涉及多个站点时，按站点分独立进程并行（遵循 `cdp-chrome` 并行安全规则），进程内串行逐篇处理。多源都成功的论文，对比后保留最优版本。
 
 ### 论文匹配校验
 
@@ -115,8 +114,8 @@ allowed-tools: Bash, Read, Write, WebFetch
 
 ### Tier 3: 导航（多步浏览器交互）
 
-共享 Chrome session，每篇论文在独立 tab 中操作：
-- **CNKI 下载**（需 `cnki_auto_download: true` + 已登录 + 有额度）：跳转到付费页则**立即停止**
+共享 Chrome session：
+- **CNKI 下载**（需 `cnki_auto_download: true` + 已登录 + 账号有下载能力）：仅当账号有实际额度或机构订阅时才有意义，否则跳过。跳转到付费页则**立即停止**
 - **Anna's Archive**: `https://annas-archive.org/search?q={query}` → 找下载链接
 - **LibGen**: `https://libgen.is/scimag/?q={doi_or_title}` → 点击镜像链接
 
