@@ -5,8 +5,8 @@
 
 ## Prerequisites
 
-1. Agent Chrome running on port 9225 (call `check_port`)
-2. User logged into CNKI in Agent Chrome profile
+1. CDP Chrome 共享实例已运行（端口见 steroids 配置文件的 `cdp-chrome.port`）
+2. User logged into CNKI in Chrome profile
 3. Playwright MCP connected (without `--isolated` flag — must share login cookies)
 
 ## Login Verification

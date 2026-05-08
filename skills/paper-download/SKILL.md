@@ -22,22 +22,25 @@ allowed-tools: Bash, Read, Write, WebFetch
 
 ## 用户配置
 
-路径：`~/.config/academic-skills/config.json`（首次使用时询问用户后创建）
+路径（首次使用时询问用户后创建）：
+- macOS/Linux: `~/.config/steroids.json`
+- Windows: `%APPDATA%\steroids.json`
 
 ```json
 {
-  "cnki_auto_download": false,
-  "download_dir": "~/Downloads/papers"
+  "paper-download": {
+    "cnki_auto_download": false
+  }
 }
 ```
 
 - `cnki_auto_download`: 允许使用知网机构免费额度自动下载（遇付费页仍停止）
-- `download_dir`: PDF 保存目录
+
 
 ## Prerequisites
 
 依赖 `steroids:cdp-chrome` Skill 提供的共享 Chrome 实例（检索和下载均需要）：
-1. 读取端口：`cat ~/.config/cdp-chrome/port`
+1. 读取端口：从 steroids 配置文件（macOS/Linux: `~/.config/steroids.json`，Windows: `%APPDATA%\steroids.json`）的 `cdp-chrome.port` 获取
 2. 检查是否运行：`curl -s http://127.0.0.1:<port>/json/version`
 3. 未运行 → 执行 `~/.config/cdp-chrome/start.sh` 启动
 4. 首次使用 → 先 invoke `steroids:cdp-chrome` 完成环境搭建
@@ -92,7 +95,7 @@ claude mcp add playwright -s user -- npx @playwright/mcp@latest --cdp-endpoint h
    - PDF 在 `<iframe>` / `<embed>` 的 src 中；2023 后新论文收录低，快速跳过
 
 下载：`curl -L -C - --retry 3 -o "{path}" "{url}"`
-命名：`作者_短标题_年份.pdf`，保存到 `download_dir`
+命名：`作者_短标题_年份.pdf`
 校验：文件前 4 字节为 `%PDF`，否则视为失败
 
 ### Tier 2: 浏览器导航（无需登录）

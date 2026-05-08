@@ -5,7 +5,8 @@
 # Starts Chrome in GUI mode with remote debugging enabled.
 # Key: does NOT use --enable-automation, so navigator.webdriver stays false.
 
-PORT=$(cat ~/.config/cdp-chrome/port)
+CONFIG="${APPDATA:-$HOME/.config}/steroids.json"
+PORT=$(python3 -c "import json; print(json.load(open('$CONFIG'))['cdp-chrome']['port'])" 2>/dev/null || echo 9222)
 PROFILE="$HOME/.config/cdp-chrome/profile"
 
 # Check if already running (try IPv4, then IPv6 on macOS)

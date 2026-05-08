@@ -6,6 +6,15 @@ Do not commit unless user asked to.
 
 添加、删除或修改 skill、command、agent、hook、MCP server 时，同步更新 `README.md` 中对应的表格，保持项目介绍与实际内容一致。
 
+## 用户配置文件规范
+
+所有 skill 的用户配置统一存放在一个 JSON 文件中，按 skill 名分 key：
+- macOS/Linux: `~/.config/steroids.json`
+- Windows: `%APPDATA%\steroids.json`
+- Shell 中解析路径: `${APPDATA:-$HOME/.config}/steroids.json`
+
+文档中引用配置路径时**必须同时注明两个平台**，或使用"steroids 配置文件"泛指。
+
 ## 公开仓库注意事项
 
 此项目是公开的 Claude Code 插件仓库。**不要在任何文件中包含**：
