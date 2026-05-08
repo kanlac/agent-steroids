@@ -86,6 +86,15 @@ allowed-tools: Bash, Read, Write, WebFetch
 
 ## 阶段二：下载（逐级处理）
 
+### 批量下载策略
+
+按层级批量处理，逐层收窄：
+1. **Tier 1**: 所有论文并发 curl（10-20 并发），收集失败列表
+2. **Tier 2**: 失败的论文批量解析（5-10 并发）
+3. **Tier 3**: 仍失败的论文浏览器导航（3-5 tab 并发，每篇独立 tab）
+
+大部分论文在 Tier 1 即可解决，避免无谓开浏览器。
+
 ### 论文匹配校验
 
 跨源下载必须校验：DOI 精确匹配 > 标题相似度 > 标题+作者+年份。
@@ -106,7 +115,7 @@ allowed-tools: Bash, Read, Write, WebFetch
 
 没有 DOI 时先用 CrossRef API 查询：`GET https://api.crossref.org/works?query.title={title}&rows=3`
 
-### Tier 3: 导航（多步浏览器交互，每篇论文独立 tab 可并行）
+### Tier 3: 导航（多步浏览器交互）
 
 共享 Chrome session，每篇论文在独立 tab 中操作：
 - **CNKI 下载**（需 `cnki_auto_download: true` + 已登录 + 有额度）：跳转到付费页则**立即停止**
