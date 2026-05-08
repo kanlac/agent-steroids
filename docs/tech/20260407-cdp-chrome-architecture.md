@@ -52,7 +52,7 @@ Reddit 等平台检测 headless Chrome 特征（`navigator.webdriver=true`、Hea
 
 ### chrome-devtools-mcp 集成
 
-chrome-devtools-mcp（提供 `mcp__chrome-devtools__*` 系列工具）默认行为是自己启动一个带 `--enable-automation` 的 Chrome 实例。这会导致：
+chrome-devtools-mcp（提供 `mcp__cdp-chrome__*` 系列工具）默认行为是自己启动一个带 `--enable-automation` 的 Chrome 实例。这会导致：
 - `navigator.webdriver = true`
 - X/Twitter 等平台拒绝登录
 - 无法使用持久化的登录态
@@ -62,7 +62,7 @@ chrome-devtools-mcp（提供 `mcp__chrome-devtools__*` 系列工具）默认行�
 ```json
 {
   "mcpServers": {
-    "chrome-devtools": {
+    "cdp-chrome": {
       "command": "npx",
       "args": [
         "chrome-devtools-mcp@latest",
@@ -73,7 +73,7 @@ chrome-devtools-mcp（提供 `mcp__chrome-devtools__*` 系列工具）默认行�
 }
 ```
 
-这样所有 `mcp__chrome-devtools__*` 工具都通过共享的干净 Chrome 操作，享受同样的持久登录态。
+这样所有 `mcp__cdp-chrome__*` 工具都通过共享的干净 Chrome 操作，享受同样的持久登录态。
 
 ### 操作方式
 
@@ -81,7 +81,7 @@ chrome-devtools-mcp（提供 `mcp__chrome-devtools__*` 系列工具）默认行�
 
 **方式 1：chrome-devtools-mcp 工具**（推荐，通过 Claude Code 插件自动可用）
 
-使用 `mcp__chrome-devtools__navigate_page`、`mcp__chrome-devtools__evaluate_script` 等工具操作页面。
+使用 `mcp__cdp-chrome__navigate_page`、`mcp__cdp-chrome__evaluate_script` 等工具操作页面。
 
 **方式 2：直连 CDP HTTP API**（备选，用于 chrome-devtools-mcp 不可用时）
 

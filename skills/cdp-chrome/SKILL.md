@@ -26,7 +26,7 @@ CDP tools default to `--enable-automation`, setting `navigator.webdriver = true`
 
 Multiple agents each launching Chrome causes port collisions, session conflicts, fragmented login state. A single shared instance eliminates all of this.
 
-chrome-devtools-mcp specifically must be configured with `--browserUrl=http://127.0.0.1:<port>` to connect to the shared instance, not launch its own Puppeteer Chrome.
+chrome-devtools-mcp must be registered as `cdp-chrome`（not `chrome-devtools`）with `--browserUrl` to connect to the shared instance, not launch its own Puppeteer Chrome. This avoids conflicts if the user already has a `chrome-devtools` MCP for other purposes.
 
 ## Architecture
 
@@ -41,7 +41,7 @@ Config file:
   start.sh          # Launch script — deployed from this Skill's scripts/
 ```
 
-Key properties: GUI mode, no `--enable-automation`, persistent profile, single port from config.
+Key properties: GUI mode, no `--enable-automation`, persistent profile, single port from config. CDP 每个 tab 有独立的 WebSocket 端点，天然支持多 agent 并行操作不同 tab，无需额外协调。
 
 ## Setup (New Machine)
 
@@ -53,9 +53,9 @@ Key properties: GUI mode, no `--enable-automation`, persistent profile, single p
 
 2. Deploy `scripts/start.sh` from this Skill to `~/.config/cdp-chrome/start.sh`. Make executable.
 
-3. Register chrome-devtools at **user scope**:
+3. Register MCP at **user scope** (name must be `cdp-chrome`, not `chrome-devtools`):
    ```bash
-   claude mcp add chrome-devtools -s user -- npx chrome-devtools-mcp@latest --browserUrl=http://127.0.0.1:9224
+   claude mcp add cdp-chrome -s user -- npx chrome-devtools-mcp@latest --browserUrl=http://127.0.0.1:9224
    ```
    Do NOT create project-level `./.mcp.json` for this.
 
@@ -73,12 +73,12 @@ Do not start a new Chrome process. Do not use Puppeteer's `launch()` or Playwrig
 
 ### 2. Connect, don't launch
 
-- **chrome-devtools-mcp tools** (`mcp__chrome-devtools__*`): already configured at user scope.
+- **cdp-chrome MCP tools** (`mcp__cdp-chrome__*`): already configured at user scope.
 - **Direct CDP access** (fallback): read port from config, use `http://127.0.0.1:<port>/json/...`
 
 ### 3. Clean up your tabs
 
-Open tabs for your task, close them when done. Other agents share the same browser.
+Multiple agents can operate different tabs in parallel — each tab has its own CDP WebSocket endpoint. Open tabs for your task via `new_page`, close them when done. Don't touch other agents' tabs.
 
 ### 4. Don't modify the browser profile
 
@@ -94,7 +94,7 @@ Check: `curl http://127.0.0.1:<port>/json/version` and `/json/list`.
 
 Red flags (wrong browser): `--enable-automation` in process args, `--remote-debugging-pipe`, temp `user-data-dir` like `puppeteer_dev_chrome_profile-*`, unexpected logouts. Stop and fix MCP registration if any appear.
 
-Common Codex misconfiguration: MCP entry missing `--browserUrl` → chrome-devtools-mcp launches its own Chrome silently.
+Common misconfiguration: MCP registered as `chrome-devtools` instead of `cdp-chrome`, or missing `--browserUrl` → launches its own Chrome silently.
 
 ### 7. MCP config changes require session restart
 
