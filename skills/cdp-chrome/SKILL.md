@@ -26,8 +26,6 @@ CDP tools default to `--enable-automation`, setting `navigator.webdriver = true`
 
 Multiple agents each launching Chrome causes port collisions, session conflicts, fragmented login state. A single shared instance eliminates all of this.
 
-chrome-devtools-mcp must be registered as `cdp-chrome`（not `chrome-devtools`）with `--browserUrl` to connect to the shared instance, not launch its own Puppeteer Chrome. This avoids conflicts if the user already has a `chrome-devtools` MCP for other purposes.
-
 ## Architecture
 
 ```
@@ -53,10 +51,15 @@ Key properties: GUI mode, no `--enable-automation`, persistent profile, single p
 
 2. Deploy `scripts/start.sh` from this Skill to `~/.config/cdp-chrome/start.sh`. Make executable.
 
-3. Register MCP at **user scope** (name must be `cdp-chrome`, not `chrome-devtools`):
+3. Register MCP — all MCP-capable agents (Claude Code, Codex, etc.) use the same server, name must be `cdp-chrome`（not `chrome-devtools`）:
+
    ```bash
+   # Claude Code
    claude mcp add cdp-chrome -s user -- npx chrome-devtools-mcp@latest --browserUrl=http://127.0.0.1:9224
    ```
+
+   其他 agent 用各自的 MCP 配置方式注册同一个 server，关键参数相同：server 为 `chrome-devtools-mcp`，名称为 `cdp-chrome`，必须带 `--browserUrl` 指向共享实例。不带 `--browserUrl` 会自行启动 Chrome，违反共享原则。
+
    Do NOT create project-level `./.mcp.json` for this.
 
 4. Run start script, manually log in to needed sites. Sessions persist in profile.
@@ -71,24 +74,29 @@ Key properties: GUI mode, no `--enable-automation`, persistent profile, single p
 
 Do not start a new Chrome process. Do not use Puppeteer's `launch()` or Playwright's `chromium.launch()`.
 
-### 2. Connect, don't launch
+### 2. Connect via MCP
 
-- **cdp-chrome MCP tools** (`mcp__cdp-chrome__*`): already configured at user scope.
-- **Direct CDP access** (fallback): read port from config, use `http://127.0.0.1:<port>/json/...`
+Use `mcp__cdp-chrome__*` tools. All agents share the same tool interface.
 
-### 3. Clean up your tabs
+### 3. Parallel safety
 
-Multiple agents can operate different tabs in parallel — each tab has its own CDP WebSocket endpoint. Open tabs for your task via `new_page`, close them when done. Don't touch other agents' tabs.
+每个 tab 有独立的 CDP WebSocket 端点（按唯一 hex ID 区分），天然支持并行。但 MCP 实例有全局的「当前选中页面」状态——**同进程内多个 subagent 共享 MCP 实例，并行操作浏览器会互相干扰**（select_page 状态冲突）。
 
-### 4. Don't modify the browser profile
+安全的并行方式：独立进程（Teammate、多个 `claude -p`、多个 Codex 实例），各自有独立 MCP 实例。
+
+### 4. Clean up your tabs
+
+Open tabs for your task via `new_page`, close them when done. Don't touch other agents' tabs.
+
+### 5. Don't modify the browser profile
 
 Don't clear cookies, change settings, or install extensions.
 
-### 5. Check before assuming it's running
+### 6. Check before assuming it's running
 
 If tools fail to connect, run `~/.config/cdp-chrome/start.sh`.
 
-### 6. Verify correct instance
+### 7. Verify correct instance
 
 Check: `curl http://127.0.0.1:<port>/json/version` and `/json/list`.
 
@@ -96,12 +104,12 @@ Red flags (wrong browser): `--enable-automation` in process args, `--remote-debu
 
 Common misconfiguration: MCP registered as `chrome-devtools` instead of `cdp-chrome`, or missing `--browserUrl` → launches its own Chrome silently.
 
-### 7. MCP config changes require session restart
+### 8. MCP config changes require session restart
 
-The running MCP process uses old config until restart. If you cannot restart, bypass MCP and use CDP HTTP API directly:
+The running MCP process uses old config until restart. If you cannot restart, use CDP HTTP API directly as fallback:
 
 ```bash
-CONFIG="${APPDATA:-$HOME/.config}/steroids.json"  # Windows: %APPDATA%, others: ~/.config
+CONFIG="${APPDATA:-$HOME/.config}/steroids.json"
 PORT=$(python3 -c "import json,os; print(json.load(open(os.path.expandvars('$CONFIG')))['cdp-chrome']['port'])")
 curl -s -X PUT "http://127.0.0.1:$PORT/json/new?https://example.com"  # open tab
 curl -s "http://127.0.0.1:$PORT/json/list"                             # list tabs
