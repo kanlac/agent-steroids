@@ -22,6 +22,7 @@ claude plugin install steroids@agent-steroids
 | [`wechat-desktop`](skills/wechat-desktop/SKILL.md) | 通过 computer-use MCP 在 macOS 上读取、浏览和总结微信群聊消息。 |
 | [`html-to-pdf`](skills/html-to-pdf/SKILL.md) | 将样式化 HTML 转为高质量单页 PDF。自动处理动态元素（scroll-snap、CSS 动画、IntersectionObserver），含可复用生成脚本。 |
 | [`clipping`](skills/clipping/SKILL.md) | 将网页文章保存为本地 Markdown 笔记。支持微信公众号等 JS 渲染页面，对信息图/表格截图使用 PaddleOCR 提取文本并重构为 Markdown 表格。 |
+| [`paper-download`](skills/paper-download/SKILL.md) | 学术论文下载。三级策略：OA 直链、出版商页面导航、知网登录。支持 arXiv、Springer、MDPI、知网等主流平台。 |
 
 ### Commands
 
@@ -39,8 +40,6 @@ claude plugin install steroids@agent-steroids
 
 | Agent | 说明 |
 |-------|------|
-| [`developer`](agents/developer.md) | 根据需求和反馈执行开发任务。 |
-| [`evaluator`](agents/evaluator.md) | 对照需求评估开发成果并运行测试。 |
 | [`reviewer`](agents/reviewer.md) | 审查指定的代码变更。 |
 
 ### Hooks

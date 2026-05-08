@@ -3,3 +3,9 @@ package.json
 package-lock.json
 *-workspace/
 .remember
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
