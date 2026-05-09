@@ -13,6 +13,10 @@ allowed-tools: Bash, Read, Write, WebFetch
 
 学术论文检索与下载。检索和下载是两个独立阶段，用户没有明确要求下载时只做检索。
 
+## STOP: 使用浏览器前必须先 invoke `steroids:cdp-chrome`
+
+所有浏览器操作均通过该 Skill 提供的共享 Chrome 实例进行。**不得使用其他任何 Chrome/browser MCP 工具。**
+
 ## 核心原则
 
 1. **检索和下载分离** — 用户说"找/搜/检索"→ 只做阶段一；用户说"下载/下/get PDF"→ 做阶段一+二。不要自作主张进入下载阶段
@@ -23,11 +27,7 @@ allowed-tools: Bash, Read, Write, WebFetch
 
 ## Prerequisites
 
-依赖 `steroids:cdp-chrome` Skill 提供的共享 Chrome 实例：
-1. 读取端口：从 steroids 配置文件（macOS/Linux: `~/.config/steroids.json`，Windows: `%APPDATA%\steroids.json`）的 `cdp-chrome.port` 获取
-2. 检查是否运行：`curl -s http://127.0.0.1:<port>/json/version`
-3. 未运行 → 执行 `~/.config/cdp-chrome/start.sh` 启动
-4. 首次使用 → 先 invoke `steroids:cdp-chrome` 完成环境搭建
+使用浏览器前 invoke `steroids:cdp-chrome`，由该 Skill 负责环境检查与启动。
 
 ## 用户配置
 
