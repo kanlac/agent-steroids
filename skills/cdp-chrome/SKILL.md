@@ -74,9 +74,14 @@ Key properties: GUI mode, no `--enable-automation`, persistent profile, single p
 
 Do not start a new Chrome process. Do not use Puppeteer's `launch()` or Playwright's `chromium.launch()`.
 
-### 2. Connect via MCP
+### 2. Use ONLY `mcp__cdp-chrome__*` — no other Chrome MCP
 
-Use `mcp__cdp-chrome__*` tools. All agents share the same tool interface.
+**Exclusively use `mcp__cdp-chrome__*` tools.** If you see other Chrome/browser MCP tools in your tool list — such as `mcp__chrome-devtools__*`, `mcp__playwright__*`, `mcp__puppeteer__*`, or any other name — **do NOT use them**. They launch a separate Chrome instance with `--enable-automation` and `--remote-debugging-pipe`, setting `navigator.webdriver = true` and triggering bot detection. The whole point of this Skill is to avoid exactly that.
+
+If `mcp__cdp-chrome__*` tools are not available in your session, **do not fall back to other browser tools**. Instead:
+1. Run the setup command to register the MCP: `claude mcp add cdp-chrome -s user -- npx chrome-devtools-mcp@latest --browserUrl=http://127.0.0.1:9224`
+2. Tell the user: "MCP 已注册，请在新会话中重新打开以加载工具。"
+3. Stop — do not attempt the browser task in the current session.
 
 ### 3. Parallel safety
 
