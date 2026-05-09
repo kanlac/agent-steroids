@@ -35,11 +35,20 @@
 
 ## 下载
 
-搜索阶段获取论文元数据后，下载走 paper-download Skill 的 Tier 策略，不在知网内逐篇点击下载。
+仅当配置 `cnki_auto_download: true` 且账号有实际额度时，才尝试知网站内下载。**下载前必须告知用户篇数并确认**——每篇会消耗账号额度。
 
-仅当配置 `cnki_auto_download: true` 且账号有实际额度时，才尝试知网站内下载：
-1. 进入论文详情页，找 PDF/CAJ 下载按钮
-2. 仅 CAJ 可用时告知用户，建议走其他渠道
+### 反盗链：必须从 abstract 页 click
+
+CNKI 的 PDF 下载链（`bar.cnki.net/bar/download/order?id=...`）有严格来源检查。直接 `navigate` 或 `curl` 该 URL 会跳到 `ErrorMsg.html?ErrMsg=来源应用不正确`。
+
+正确流程：
+1. `navigate` → 论文 abstract 页（PDF token 由该页 JS 生成，绑定 session）
+2. `evaluate_script` → 找到 `innerText="PDF下载"` 的 `<a>` 元素
+3. `click` 该元素（保持 Referer + cookie 同源）
+4. 浏览器原生下载到 `~/Downloads` (mac)
+5. 移动到目标目录并重命名
+
+仅 CAJ 可用时告知用户，建议走其他渠道。
 
 ## 验证码处理
 

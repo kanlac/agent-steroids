@@ -4,7 +4,7 @@ description: |
   Use when the user asks to "download a paper", "find a paper",
   "get PDF for DOI", "下载论文", "找论文", "知网下载",
   or mentions academic paper retrieval needs.
-version: 0.9.0
+version: 1.0.0
 user-invocable: true
 allowed-tools: Bash, Read, Write, WebFetch
 ---
@@ -24,7 +24,7 @@ allowed-tools: Bash, Read, Write, WebFetch
 
 1. **检索和下载分离** — 用户说"找/搜/检索"→ 只做阶段一；用户说"下载/下/get PDF"→ 做阶段一+二。不要自作主张进入下载阶段
 2. **检索不回退** — 阶段一只用 CNKI 和 Google Scholar，遇到验证码让用户手动解决后继续，不要因为验证码就放弃该站点转用其他检索方式（如 OpenAlex、CrossRef 等不是检索工具）
-3. **确保论文匹配** — 跨源下载时必须用 DOI 或标题+作者校验
+3. **确保论文匹配** — 跨源下载必须校验：DOI 精确匹配 > 标题相似度 ≥ 0.4 > 弃用。永远不要无校验取 CrossRef top-1
 4. **永远不主动付费** — 不点击任何付费按钮
 5. **逐级升级** — 能用 HTTP 直链就不走浏览器
 
@@ -44,28 +44,40 @@ allowed-tools: Bash, Read, Write, WebFetch
 
 ---
 
+## 三层执行环境
+
+下载站点按执行环境分层。Agent 根据 Tier 选择调用方式，逐层升级（1→2→3），不跳级也不回退。
+
+| Tier | 执行环境 | 适用场景 | 并行 |
+|---|---|---|---|
+| 1 | HTTP（curl / API） | URL 已知、无 JS 渲染、无反爬 | 可并行，同域名限速 |
+| 2 | Headless 浏览器 | 需 JS 渲染或轻度反爬，不需登录态 | subagent 各起实例并行 |
+| 3 | 共享 headed Chrome | 需登录态 / 需用户解 CAPTCHA | 串行（共享单实例），同站点批量复用会话 |
+
+---
+
 ## 站点速查表
 
 ### 主力站点
 
-| 站点 | 阶段 | 用途 | 备注 |
-|------|------|------|------|
-| Google Scholar | 检索 | 国际论文检索，顺带给出 OA 直链 | 需浏览器；反爬严，遇验证码要手动 |
-| CNKI 知网 | 检索+下载 | 中文论文检索与下载 | 检索免费无需登录；下载需账号有额度或机构订阅 |
-| arXiv | 下载 | CS/ML 预印本 PDF 直链 | `arxiv.org/pdf/{id}.pdf`，无需认证；API 限速 1 req/3s，并发需加 delay |
-| Unpaywall API | 辅助 | 查 OA 状态 + 找合法 PDF 直链 | 免费无 key；能区分 gold/hybrid/closed；Sci-Hub 失效后找非 arXiv OA 链接的首选 |
-| CrossRef API | 辅助 | 标题 → DOI 查询 | 纯 HTTP，免费无 key，毫秒级 |
+| 站点 | 阶段 | Tier | 用途 | 备注 |
+|------|------|:---:|------|------|
+| Google Scholar | 检索 | 3 | 国际论文检索，顺带给出 OA 直链 | 反爬严，遇验证码要手动 |
+| CNKI 知网 | 检索+下载 | 3 | 中文论文检索与下载 | 检索免费；下载需账号额度 |
+| arXiv | 下载 | 1 | CS/ML/物理/数学预印本 | `arxiv.org/pdf/{id}.pdf`；API 限速 1 req/3s |
+| Unpaywall API | 辅助 | — | 查 OA 状态 + 找 PDF 直链 | 免费无 key；区分 gold/hybrid/closed |
+| CrossRef API | 辅助 | — | 标题 → DOI 查询 | 免费无 key，毫秒级 |
 
 ### 补充站点
 
-| 站点 | 阶段 | 用途 | 备注 |
-|------|------|------|------|
-| Sci-Hub | 下载 | 2021 年前非 OA 论文 | 数据库已冻结于 2021 年底，2022+ 论文基本不可用；镜像轮询：se → st → ru |
-| Anna's Archive | 下载 | Sci-Hub 失败时的备选 | 覆盖面更广（含书籍）；可达性不稳定，可能需要额外代理配置 |
-| LibGen | 下载 | 同上，偏书籍 | 期刊论文覆盖与 Sci-Hub 相近，同样停更于 2021 年前后 |
-| PMC | 下载 | 生物医学 OA 论文 | `ncbi.nlm.nih.gov/pmc`，CS 方向基本用不到 |
-| OpenAlex | 检索 | 元数据补全、OA 状态批量查询 | Scholar 已覆盖其主要功能，仅在需要批量 API 查询时有用 |
-| 期刊官网（MDPI、Springer 等） | 下载 | Gold/Hybrid OA 期刊 PDF | curl 直连常被 bot 检测拦截返回 HTML；应走浏览器 JS fetch |
+| 站点 | 阶段 | Tier | 用途 | 备注 |
+|------|------|:---:|------|------|
+| Sci-Hub | 下载 | 2 | ≤2021 年非 OA 论文 | **≥2022 直接跳过**；镜像：se → st → ru |
+| Anna's Archive | 下载 | 2 | Sci-Hub 备选 | ≤2021；可达性不稳定 |
+| LibGen | 下载 | 2 | 同上，偏书籍 | 同 Sci-Hub 停更于 2021 |
+| PMC | 下载 | 1 | 生物医学 OA 论文 | CS 方向基本用不到 |
+| 期刊官网 | 下载 | 2-3 | OA 期刊 PDF | 轻防护 Tier 2；ScienceDirect 等重防护 Tier 3 |
+| OpenAlex | 辅助 | — | 元数据补全、批量 OA 查询 | 全文搜索噪声大，不做检索主源 |
 
 ---
 
@@ -76,7 +88,7 @@ allowed-tools: Bash, Read, Write, WebFetch
 ### Google Scholar（国际论文）
 
 `browser_navigate` → `https://scholar.google.com`，填入关键词/标题。
-反爬较严，遇验证码提示用户手动完成，等用户确认后继续检索。右侧 [PDF] 标记即 OA 直链，记录备用。
+反爬较严，遇验证码提示用户手动完成，等用户确认后继续检索。同一会话内 reCAPTCHA 触发 3 次以上，说明代理节点 IP 信用低——停止让用户解，建议换节点/区域后重试。右侧 [PDF] 标记即 OA 直链，记录备用。
 
 ### CNKI（中文论文）
 
@@ -108,46 +120,54 @@ allowed-tools: Bash, Read, Write, WebFetch
 
 ## 阶段二：下载（仅在用户明确要求时执行）
 
-### 批量下载策略
+### 输出目录
 
-按层级批量处理，逐层收窄：先 Tier 1 处理所有论文，失败的进 Tier 2，仍失败的进 Tier 3。
+每次下载创建独立批次目录：`batch_<主题>_<YYYY-MM-DD>/`，内含 `pdfs/`（交付物）和 `_workspace/`（中间脚本、日志、快照）。报告 xlsx 放批次目录顶层。
 
-Tier 2/3 涉及多个站点时，按站点分独立进程并行（遵循 `cdp-chrome` 并行安全规则），进程内串行逐篇处理。多源都成功的论文，对比后保留最优版本。
+### OA 分流（下载前必做）
 
-### 论文匹配校验
+下载前先用 Unpaywall 批量查有 DOI 论文的 OA 状态，按结果预分流到对应 Tier，避免盲试：
 
-跨源下载必须校验：DOI 精确匹配 > 标题相似度 > 标题+作者+年份。
+- **OA 有直链**（gold/green）→ Tier 1
+- **非 OA + CS/物理/数学** → 先用 arXiv API 查预印本（标题/DOI 反查，相似度 ≥ 0.4），命中则 Tier 1
+- **非 OA + ≤2021** → Tier 2（Sci-Hub）
+- **非 OA + ≥2022** → **跳过 Sci-Hub/LibGen/Anna's Archive**（已停更），直接标记「需付费」
 
-### Tier 1: 直链（URL 模式已知，直接 curl，可并行）
+预分流后，Tier 1 先批量处理，失败的降级到 Tier 2，仍失败的降级到 Tier 3。
 
-- **arXiv**: `https://arxiv.org/pdf/{id}.pdf`（并发时加 3s delay，遵守限速）
-- **Scholar OA 直链**（检索阶段已获取，右侧 [PDF] 标记）
-- **Unpaywall OA 直链**: `GET https://api.unpaywall.org/v2/{doi}?email={user_email}` → 取 `best_oa_location.url_for_pdf`
+### Tier 1: HTTP 直链（curl / API，可并行）
+
+- **arXiv**: `https://arxiv.org/pdf/{id}.pdf`（并发加 3s delay）
+- **Scholar OA 直链**（检索阶段已获取）
+- **Unpaywall OA 直链**: `GET https://api.unpaywall.org/v2/{doi}?email={user_email}` → `best_oa_location.url_for_pdf`
+- **PMC**: `ncbi.nlm.nih.gov/pmc/articles/{pmcid}/pdf/`（生物医学）
 
 下载：`curl -L -C - --retry 3 -o "{path}" "{url}"`
 命名：`作者_短标题_年份.pdf`
-校验：文件前 4 字节为 `%PDF`，否则视为失败（期刊官网常返回 HTML，必须校验）
+校验：文件前 4 字节为 `%PDF` **且 ≥ 50KB**。低于此阈值视为失败（stub 文件、HTML 伪装、登录页 PDF 化均低于 50KB，真实学术 PDF 最小也有数百 KB）
 
-### Tier 2: 解析（给 DOI/URL，提取 PDF 地址）
+### Tier 2: Headless 解析（需 JS 渲染，不需登录）
 
-- **Sci-Hub**（仅 2021 年前论文有效，镜像轮询）: `sci-hub.se/{doi}` → `sci-hub.st/{doi}` → `sci-hub.ru/{doi}` — PDF 在 `<iframe>` / `<embed>` 的 src 中
-- **出版商页面**: 解析 DOI 重定向 → 找 PDF 按钮/直链
+- **Sci-Hub**（**≤2021 年才尝试，≥2022 直接跳过**）: 镜像 `sci-hub.se/{doi}` → `.st` → `.ru`，PDF 在 `<iframe>/<embed>` src
+- **出版商页面**（轻度反爬）: 解析 DOI 重定向 → 找 PDF 直链
+- **Anna's Archive / LibGen**（≤2021，可达性不稳定）
 
-没有 DOI 时先用 CrossRef API 查询：`GET https://api.crossref.org/works?query.title={title}&rows=3`
+没有 DOI 时先用 CrossRef API 查询：`GET https://api.crossref.org/works?query.title={title}&rows=3`（取结果前必须做标题相似度校验）
 
-### Tier 3: 导航（多步浏览器交互）
+### Tier 3: 共享 Chrome（需登录态 / CAPTCHA，串行）
 
-共享 Chrome session：
-- **期刊官网**（MDPI、Springer 等 Gold/Hybrid OA）：curl 常被 bot 检测拦截，必须走浏览器 JS fetch 下载
-- **CNKI 下载**（需 `cnki_auto_download: true` + 已登录 + 账号有下载能力）：仅当账号有实际额度或机构订阅时才有意义，否则跳过。跳转到付费页则**立即停止**
-- **Anna's Archive**: `https://annas-archive.org/search?q={query}` → 找下载链接（可达性不稳定）
-- **LibGen**: `https://libgen.is/scimag/?q={doi_or_title}` → 点击镜像链接（同 Sci-Hub，停更于 2021 年前后）
+同站点批量处理：解一次 CAPTCHA 后立即顺序处理同站点其他论文，复用会话（约 30 分钟有效）。
+
+- **期刊官网重防护**（ScienceDirect 多层 Cloudflare、Sage 等）
+- **CNKI 下载**（需 `cnki_auto_download: true` + 已登录）：**下载前必须告知用户篇数并确认**，会消耗账号额度。详见 `references/cnki-workflow.md`。跳转到付费页则立即停止
 
 ### 下载结果标记
 
+完成后更新 Excel 中的下载状态列。
+
 | 状态 | 含义 |
 |------|------|
-| ✓ 已下载 | PDF 已保存 |
+| ✓ 已下载 | PDF 已保存，标注本地文件名 |
 | ✗ 需付费 | 附论文页链接 |
 | ✗ 需手动 | 验证码等需人工 |
 | ✗ 未找到 | 所有渠道均失败 |
@@ -158,3 +178,4 @@ Tier 2/3 涉及多个站点时，按站点分独立进程并行（遵循 `cdp-ch
 
 所有无法解决的问题立即用中文告知用户，不静默重试超过一次，不在验证码上循环。
 知网遇滑块验证码 → 提示用户在 Chrome 中手动完成；登录失效 → 提示重新登录。
+Google Scholar reCAPTCHA 3 次以上 → 停止让用户解，建议换代理节点。
