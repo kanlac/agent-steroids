@@ -13,9 +13,12 @@ allowed-tools: Bash, Read, Write, WebFetch
 
 学术论文检索与下载。检索和下载是两个独立阶段，用户没有明确要求下载时只做检索。
 
-## STOP: 使用浏览器前必须先 invoke `steroids:cdp-chrome`
+## STOP: 浏览器工具约束
 
-所有浏览器操作均通过该 Skill 提供的共享 Chrome 实例进行。**不得使用其他任何 Chrome/browser MCP 工具。**
+所有浏览器操作必须使用 `mcp__cdp-chrome__*` 工具。**不得使用其他任何 Chrome/browser MCP 工具。**
+
+- `mcp__cdp-chrome__*` 可用 → 直接使用
+- 不可用 → invoke `steroids:cdp-chrome` 完成安装，然后停止，提示用户在新会话中继续
 
 ## 核心原则
 
