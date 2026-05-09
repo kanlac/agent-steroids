@@ -4,7 +4,7 @@ description: |
   Use when the user asks to "download a paper", "find a paper",
   "get PDF for DOI", "下载论文", "找论文", "知网下载",
   or mentions academic paper retrieval needs.
-version: 0.8.0
+version: 0.9.0
 user-invocable: true
 allowed-tools: Bash, Read, Write, WebFetch
 ---
@@ -85,10 +85,21 @@ allowed-tools: Bash, Read, Write, WebFetch
 
 ### 结果输出
 
-- ≤10 条 → 直接展示结构化列表
-- \>10 条 → 整理为表格（标题、作者、期刊、年份、DOI、OA 状态）
+检索完成后**必须**生成一个 Excel 文件（`.xlsx`），不论结果数量多少。字段：
 
-检索完成后**停下来**，将结果展示给用户。不要自动进入下载阶段，除非用户明确要求了下载。
+| 列 | 说明 |
+|---|---|
+| 标题 | 论文标题 |
+| 作者 | 第一作者 + et al. |
+| 期刊/会议 | 发表来源 |
+| 年份 | 发表年份 |
+| DOI | 如有 |
+| OA 状态 | Open Access / Closed / 未知 |
+| 链接 | 论文详情页 URL（知网/Scholar） |
+| PDF 直链 | 检索阶段发现的 OA 直链（如有） |
+| 摘要 | 如已获取 |
+
+生成后告知用户文件路径，并在终端简要列出前几条结果。检索到此为止——不要自动进入下载阶段，除非用户明确要求了下载。
 
 ---
 
