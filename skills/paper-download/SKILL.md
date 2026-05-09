@@ -13,12 +13,9 @@ allowed-tools: Bash, Read, Write, WebFetch
 
 学术论文检索与下载。检索和下载是两个独立阶段，用户没有明确要求下载时只做检索。
 
-## STOP: 浏览器工具约束
+## Prerequisites
 
-所有浏览器操作必须使用 `mcp__cdp-chrome__*` 工具。**不得使用其他任何 Chrome/browser MCP 工具。**
-
-- `mcp__cdp-chrome__*` 可用 → 直接使用
-- 不可用 → invoke `steroids:cdp-chrome` 完成安装，然后停止，提示用户在新会话中继续
+检索阶段使用 Google Scholar 和 CNKI（均为 Tier 3），开始前先 invoke `steroids:cdp-chrome` 启动共享 Chrome。
 
 ## 核心原则
 
@@ -27,10 +24,6 @@ allowed-tools: Bash, Read, Write, WebFetch
 3. **确保论文匹配** — 跨源下载必须校验：DOI 精确匹配 > 标题相似度 ≥ 0.4 > 弃用。永远不要无校验取 CrossRef top-1
 4. **永远不主动付费** — 不点击任何付费按钮
 5. **逐级升级** — 能用 HTTP 直链就不走浏览器
-
-## Prerequisites
-
-使用浏览器前 invoke `steroids:cdp-chrome`，由该 Skill 负责环境检查与启动。
 
 ## 用户配置
 
@@ -52,7 +45,7 @@ allowed-tools: Bash, Read, Write, WebFetch
 |---|---|---|---|
 | 1 | HTTP（curl / API） | URL 已知、无 JS 渲染、无反爬 | 可并行，同域名限速 |
 | 2 | Headless 浏览器 | 需 JS 渲染或轻度反爬，不需登录态 | subagent 各起实例并行 |
-| 3 | 共享 headed Chrome | 需登录态 / 需用户解 CAPTCHA | 串行（共享单实例），同站点批量复用会话 |
+| 3 | 共享 headed Chrome（`mcp__cdp-chrome__*`） | 需登录态 / 需用户解 CAPTCHA | 串行（共享单实例），同站点批量复用会话。使用前 invoke `steroids:cdp-chrome` |
 
 ---
 
