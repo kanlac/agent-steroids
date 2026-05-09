@@ -51,7 +51,7 @@ Key properties: GUI mode, no `--enable-automation`, persistent profile, single p
 
 2. Deploy `scripts/start.sh` from this Skill to `~/.config/cdp-chrome/start.sh`. Make executable.
 
-3. Register MCP — all MCP-capable agents (Claude Code, Codex, etc.) use the same server, name must be `cdp-chrome`（not `chrome-devtools`）:
+3. Register MCP — name must be `cdp-chrome`. This is **additive**: do not remove or modify any existing Chrome/browser MCPs the user may already have.
 
    ```bash
    # Claude Code
