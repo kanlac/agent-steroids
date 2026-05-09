@@ -4,7 +4,7 @@ description: |
   Use when the user asks to "download a paper", "find a paper",
   "get PDF for DOI", "下载论文", "找论文", "知网下载",
   or mentions academic paper retrieval needs.
-version: 0.6.0
+version: 0.7.0
 user-invocable: true
 allowed-tools: Bash, Read, Write, WebFetch
 ---
@@ -48,19 +48,20 @@ allowed-tools: Bash, Read, Write, WebFetch
 |------|------|------|------|
 | Google Scholar | 检索 | 国际论文检索，顺带给出 OA 直链 | 需浏览器；反爬严，遇验证码要手动 |
 | CNKI 知网 | 检索+下载 | 中文论文检索与下载 | 检索免费无需登录；下载需账号有额度或机构订阅 |
-| arXiv | 下载 | CS/ML 预印本 PDF 直链 | `arxiv.org/pdf/{id}.pdf`，无需认证 |
-| Sci-Hub | 下载 | 非 OA 论文按 DOI 下载 | 覆盖 ~85% 已发表论文；2024+ 新论文收录有延迟 |
+| arXiv | 下载 | CS/ML 预印本 PDF 直链 | `arxiv.org/pdf/{id}.pdf`，无需认证；API 限速 1 req/3s，并发需加 delay |
+| Unpaywall API | 辅助 | 查 OA 状态 + 找合法 PDF 直链 | 免费无 key；能区分 gold/hybrid/closed；Sci-Hub 失效后找非 arXiv OA 链接的首选 |
 | CrossRef API | 辅助 | 标题 → DOI 查询 | 纯 HTTP，免费无 key，毫秒级 |
 
 ### 补充站点
 
 | 站点 | 阶段 | 用途 | 备注 |
 |------|------|------|------|
-| Anna's Archive | 下载 | Sci-Hub 失败时的备选 | 覆盖面更广（含书籍）；速度较慢 |
-| LibGen | 下载 | 同上，偏书籍 | 期刊论文覆盖弱于 Sci-Hub |
+| Sci-Hub | 下载 | 2021 年前非 OA 论文 | 数据库已冻结于 2021 年底，2022+ 论文基本不可用；镜像轮询：se → st → ru |
+| Anna's Archive | 下载 | Sci-Hub 失败时的备选 | 覆盖面更广（含书籍）；可达性不稳定，可能需要额外代理配置 |
+| LibGen | 下载 | 同上，偏书籍 | 期刊论文覆盖与 Sci-Hub 相近，同样停更于 2021 年前后 |
 | PMC | 下载 | 生物医学 OA 论文 | `ncbi.nlm.nih.gov/pmc`，CS 方向基本用不到 |
-| OpenAlex | 检索 | 元数据补全、OA 状态查询 | Scholar 已覆盖其主要功能，仅在需要批量 API 查询时有用 |
-| 期刊官网 | 下载 | 个别中文 OA 期刊直接下 PDF | 需逐站摸索，如 jsjkx.com |
+| OpenAlex | 检索 | 元数据补全、OA 状态批量查询 | Scholar 已覆盖其主要功能，仅在需要批量 API 查询时有用 |
+| 期刊官网（MDPI、Springer 等） | 下载 | Gold/Hybrid OA 期刊 PDF | curl 直连常被 bot 检测拦截返回 HTML；应走浏览器 JS fetch |
 
 ---
 
@@ -98,16 +99,17 @@ Tier 2/3 涉及多个站点时，按站点分独立进程并行（遵循 `cdp-ch
 
 ### Tier 1: 直链（URL 模式已知，直接 curl，可并行）
 
-- **arXiv**: `https://arxiv.org/pdf/{id}.pdf`
+- **arXiv**: `https://arxiv.org/pdf/{id}.pdf`（并发时加 3s delay，遵守限速）
 - **Scholar OA 直链**（检索阶段已获取，右侧 [PDF] 标记）
+- **Unpaywall OA 直链**: `GET https://api.unpaywall.org/v2/{doi}?email={user_email}` → 取 `best_oa_location.url_for_pdf`
 
 下载：`curl -L -C - --retry 3 -o "{path}" "{url}"`
 命名：`作者_短标题_年份.pdf`
-校验：文件前 4 字节为 `%PDF`，否则视为失败
+校验：文件前 4 字节为 `%PDF`，否则视为失败（期刊官网常返回 HTML，必须校验）
 
 ### Tier 2: 解析（给 DOI/URL，提取 PDF 地址）
 
-- **Sci-Hub**（镜像轮询）: `sci-hub.se/{doi}` → `sci-hub.st/{doi}` → `sci-hub.ru/{doi}` — PDF 在 `<iframe>` / `<embed>` 的 src 中
+- **Sci-Hub**（仅 2021 年前论文有效，镜像轮询）: `sci-hub.se/{doi}` → `sci-hub.st/{doi}` → `sci-hub.ru/{doi}` — PDF 在 `<iframe>` / `<embed>` 的 src 中
 - **出版商页面**: 解析 DOI 重定向 → 找 PDF 按钮/直链
 
 没有 DOI 时先用 CrossRef API 查询：`GET https://api.crossref.org/works?query.title={title}&rows=3`
@@ -115,9 +117,10 @@ Tier 2/3 涉及多个站点时，按站点分独立进程并行（遵循 `cdp-ch
 ### Tier 3: 导航（多步浏览器交互）
 
 共享 Chrome session：
+- **期刊官网**（MDPI、Springer 等 Gold/Hybrid OA）：curl 常被 bot 检测拦截，必须走浏览器 JS fetch 下载
 - **CNKI 下载**（需 `cnki_auto_download: true` + 已登录 + 账号有下载能力）：仅当账号有实际额度或机构订阅时才有意义，否则跳过。跳转到付费页则**立即停止**
-- **Anna's Archive**: `https://annas-archive.org/search?q={query}` → 找下载链接
-- **LibGen**: `https://libgen.is/scimag/?q={doi_or_title}` → 点击镜像链接
+- **Anna's Archive**: `https://annas-archive.org/search?q={query}` → 找下载链接（可达性不稳定）
+- **LibGen**: `https://libgen.is/scimag/?q={doi_or_title}` → 点击镜像链接（同 Sci-Hub，停更于 2021 年前后）
 
 ### 下载结果标记
 
