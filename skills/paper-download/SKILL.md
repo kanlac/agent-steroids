@@ -4,21 +4,22 @@ description: |
   Use when the user asks to "download a paper", "find a paper",
   "get PDF for DOI", "下载论文", "找论文", "知网下载",
   or mentions academic paper retrieval needs.
-version: 0.7.0
+version: 0.8.0
 user-invocable: true
 allowed-tools: Bash, Read, Write, WebFetch
 ---
 
 # Paper Download Skill
 
-两阶段学术论文下载：先检索收集元数据，再按成本递增逐级下载。
+学术论文检索与下载。检索和下载是两个独立阶段，用户没有明确要求下载时只做检索。
 
 ## 核心原则
 
-1. **检索和下载分离** — Scholar/CNKI 用于检索，下载走独立的 Tier 策略
-2. **确保论文匹配** — 跨源下载时必须用 DOI 或标题+作者校验
-3. **永远不主动付费** — 不点击任何付费按钮
-4. **逐级升级** — 能用 HTTP 直链就不走浏览器
+1. **检索和下载分离** — 用户说"找/搜/检索"→ 只做阶段一；用户说"下载/下/get PDF"→ 做阶段一+二。不要自作主张进入下载阶段
+2. **检索不回退** — 阶段一只用 CNKI 和 Google Scholar，遇到验证码让用户手动解决后继续，不要因为验证码就放弃该站点转用其他检索方式（如 OpenAlex、CrossRef 等不是检索工具）
+3. **确保论文匹配** — 跨源下载时必须用 DOI 或标题+作者校验
+4. **永远不主动付费** — 不点击任何付费按钮
+5. **逐级升级** — 能用 HTTP 直链就不走浏览器
 
 ## Prerequisites
 
@@ -67,25 +68,31 @@ allowed-tools: Bash, Read, Write, WebFetch
 
 ## 阶段一：检索
 
+检索只用 CNKI 和 Google Scholar，不用其他站点替代。遇到验证码是正常的，提示用户在 Chrome 中手动完成，等用户确认后继续——不要放弃该站点。
+
 ### Google Scholar（国际论文）
 
 `browser_navigate` → `https://scholar.google.com`，填入关键词/标题。
-反爬较严，遇验证码提示用户手动完成。右侧 [PDF] 标记即 OA 直链，优先使用。
+反爬较严，遇验证码提示用户手动完成，等用户确认后继续检索。右侧 [PDF] 标记即 OA 直链，记录备用。
 
 ### CNKI（中文论文）
 
 详细操作流程见 `references/cnki-workflow.md`。
 使用高级检索 `https://kns.cnki.net/kns8s/AdvSearch`，支持来源过滤（CSSCI/核心期刊）、多字段组合、框内运算符。
-搜索、摘要、关键词、作者等元数据无需登录即可获取（共享 Chrome profile 自带 cookie，不会触发验证码）。检索阶段不需要确保已登录。
+搜索、摘要、关键词、作者等元数据无需登录即可获取（共享 Chrome profile 自带 cookie，通常不会触发验证码）。检索阶段不需要确保已登录。
+
+**遇到安全验证/滑块验证码时**：提示用户在 Chrome 窗口中手动完成，等用户确认后继续。这是知网的正常行为，不是错误，不要因此放弃知网。
 
 ### 结果输出
 
 - ≤10 条 → 直接展示结构化列表
-- \>10 条 → 整理为表格（标题、作者、期刊、年份、DOI、OA、下载状态）
+- \>10 条 → 整理为表格（标题、作者、期刊、年份、DOI、OA 状态）
+
+检索完成后**停下来**，将结果展示给用户。不要自动进入下载阶段，除非用户明确要求了下载。
 
 ---
 
-## 阶段二：下载（逐级处理）
+## 阶段二：下载（仅在用户明确要求时执行）
 
 ### 批量下载策略
 
