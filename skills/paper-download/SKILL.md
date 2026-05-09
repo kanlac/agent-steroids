@@ -74,7 +74,7 @@ allowed-tools: Bash, Read, Write, WebFetch
 ### CNKI（中文论文）
 
 详细操作流程见 `references/cnki-workflow.md`。
-`browser_navigate` → `https://kns.cnki.net/kns8s/search`，填入关键词。
+使用高级检索 `https://kns.cnki.net/kns8s/AdvSearch`，支持来源过滤（CSSCI/核心期刊）、多字段组合、框内运算符。
 搜索、摘要、关键词、作者等元数据无需登录即可获取（共享 Chrome profile 自带 cookie，不会触发验证码）。检索阶段不需要确保已登录。
 
 ### 结果输出

@@ -1,113 +1,57 @@
 # CNKI (知网) Workflow
 
-> Tool names below (e.g., `browser_navigate`, `browser_evaluate`) are from `@playwright/mcp`.
-> Discover actual tool names from the connected MCP at runtime and use the closest match.
+通过 `mcp__cdp-chrome__*` 工具操作共享 Chrome 实例。
 
-## Prerequisites
+## 检索
 
-1. CDP Chrome 共享实例已运行（端口见 steroids 配置文件的 `cdp-chrome.port`）
-2. User logged into CNKI in Chrome profile
-3. Playwright MCP connected (without `--isolated` flag — must share login cookies)
+`navigate_page` → `https://kns.cnki.net/kns8s/AdvSearch`
 
-## Login Verification
+无需登录，共享 Chrome profile 的 cookie 自动绕过验证码。
 
-```
-browser_navigate → https://www.cnki.net
-browser_snapshot → look for login indicator
-```
+高级检索能力：
+- **来源类别过滤**：选择"学术期刊"类别后，可勾选 CSSCI、SCI、北大核心等来源
+- **多字段组合**：主题、关键词、作者、机构等字段独立设置
+- **多组关键词**：每组填入独立检索行，行间选择 AND/OR 逻辑
 
-**Logged in indicators:**
-- Username/avatar visible in top navigation
-- No "登录" / "注册" prominent buttons
+### 检索框内运算符
 
-**Not logged in:**
-- Stop immediately
-- Tell user: "知网登录已失效，请在 Agent Chrome 窗口中访问 https://www.cnki.net 重新登录"
-- Wait for user confirmation before retrying
+知网检索框支持三个运算符（前后各留一个空格）：
+- `+`（或）：`人工智能 + 机器学习 + 深度学习`
+- `*`（与）：`区块链 * 供应链`
+- `-`（非）：`大数据 - 综述`
 
-## Search Flow
+典型用法：用同义词/同位词扩展提高召回率，如 `数字化转型 + 数字化变革 + 数字化`。
 
-1. Navigate to search page:
-   ```
-   browser_navigate → https://kns.cnki.net/kns8s/search
-   ```
+### 结果优化
 
-2. Fill search box:
-   ```
-   browser_fill → input#txt_SearchText → "{query}"
-   ```
+搜索完成后可进一步优化结果质量和提取效率：
+- **按被引排序**：点击"被引"列头，按引用量降序（高影响力论文优先）
+- **50 条/页**：底部分页区切换为 50 条，减少翻页
+- **摘要视图**：切换详细/摘要视图，无需逐篇点入即可获取摘要
 
-3. Click search:
-   ```
-   browser_click → button.search-btn (or input.btnSearch)
-   ```
+### 批量数据提取
 
-4. Wait for results:
-   ```
-   browser_wait_for → .result-table-list (timeout 10s)
-   ```
+用 `evaluate_script` 一次性提取当前页所有结果的结构化数据（标题、作者、期刊、年份、被引数、摘要），避免逐条 snapshot。翻页后重复提取，直至满足数量需求。
 
-5. Read results:
-   ```
-   browser_snapshot → extract paper titles, authors, sources
-   ```
+## 下载
 
-## Download Flow
+搜索阶段获取论文元数据后，下载走 paper-download Skill 的 Tier 策略，不在知网内逐篇点击下载。
 
-1. Click target paper title link:
-   ```
-   browser_click → paper title link
-   ```
+仅当配置 `cnki_auto_download: true` 且账号有实际额度时，才尝试知网站内下载：
+1. 进入论文详情页，找 PDF/CAJ 下载按钮
+2. 仅 CAJ 可用时告知用户，建议走其他渠道
 
-2. Wait for detail page:
-   ```
-   browser_wait_for → .doc-top (or .wx-tit)
-   ```
+## 验证码处理
 
-3. Find PDF download button:
-   ```
-   browser_snapshot → look for "PDF下载" link/button
-   ```
-   Common selectors: `a#pdfDown`, `a[href*="download"]`, link with text "PDF下载"
+知网使用滑块验证码（腾讯防水墙）。出现时：
+- 告知用户："知网需要验证码，请在 Chrome 窗口中手动完成"
+- 等用户确认后重试
 
-4. Click download:
-   ```
-   browser_click → PDF download link
-   ```
+## 常见问题
 
-5. If only CAJ available:
-   - Inform user: "该论文仅提供 CAJ 格式，无 PDF 可下载"
-   - Suggest alternatives
-
-## CAPTCHA Handling
-
-CNKI uses Tencent slider CAPTCHA.
-
-**Detection:** After any action, check:
-```
-browser_evaluate → document.querySelector('#tcaptcha_transform_dy')?.getBoundingClientRect().top >= 0
-```
-
-If true (CAPTCHA visible):
-- Take screenshot for user reference
-- Tell user: "出现验证码，请在 Agent Chrome 窗口中手动完成滑块验证"
-- Wait for user confirmation
-- Retry the previous action
-
-## Advanced: Batch Export
-
-For multiple papers from search results:
-1. Use `browser_evaluate` to check checkboxes for desired papers
-2. Click batch export button
-3. This avoids navigating to each paper individually
-
-## Error Scenarios
-
-| Error | Detection | Response |
-|-------|-----------|----------|
-| Not logged in | "请登录" text on page | Ask user to login |
-| No permission | "没有该资源的使用权限" | "账户没有下载权限" |
-| CAPTCHA | tcaptcha element visible | Ask user to solve |
-| Paper not found | Empty result list | Suggest alternate search terms |
-| Network timeout | Page load timeout | Retry once, then report |
-| CAJ only | No PDF button, only CAJ | Inform user, suggest alternatives |
+| 情况 | 处理 |
+|------|------|
+| 首次访问被验证码拦截 | 提示用户手动完成，完成后 cookie 持久化 |
+| "没有该资源的使用权限" | 账户无下载权限，跳过知网下载走其他渠道 |
+| 结果为空 | 建议放宽关键词、去掉来源限制 |
+| 仅 CAJ 无 PDF | 告知用户，建议 Sci-Hub 等替代 |
