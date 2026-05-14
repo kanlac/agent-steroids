@@ -1,0 +1,649 @@
+#!/usr/bin/env python3
+"""Switch agent CLI accounts while keeping shared runtime state."""
+
+from __future__ import annotations
+
+import argparse
+import base64
+import json
+import os
+import signal
+import shutil
+import subprocess
+import sys
+import termios
+import time
+import tty
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+
+
+INSTALL_DIR = Path.home() / ".local" / "bin"
+COMMAND_NAME = "agent-switch"
+CODEX_HOME = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser()
+CODEX_AUTHS_DIR = Path(os.environ.get("CODEX_AUTHS_DIR", Path.home() / ".codex-auths")).expanduser()
+
+
+@dataclass(frozen=True)
+class Account:
+    name: str
+    path: Path
+    account_id: str | None
+    email: str | None
+    plan: str | None
+
+
+@dataclass(frozen=True)
+class ProcessInfo:
+    pid: str
+    kind: str
+    command: str
+
+
+def eprint(message: str) -> None:
+    print(message, file=sys.stderr)
+
+
+def load_json(path: Path) -> dict:
+    with path.open("r", encoding="utf-8") as file:
+        data = json.load(file)
+    if not isinstance(data, dict):
+        raise ValueError(f"{path} is not a JSON object")
+    return data
+
+
+def account_id_from_auth(path: Path) -> str | None:
+    try:
+        auth = load_json(path)
+    except Exception:
+        return None
+    tokens = auth.get("tokens")
+    if isinstance(tokens, dict):
+        account_id = tokens.get("account_id")
+        if isinstance(account_id, str) and account_id:
+            return account_id
+    return None
+
+
+def jwt_payload(token: str) -> dict:
+    parts = token.split(".")
+    if len(parts) < 2:
+        return {}
+    payload = parts[1]
+    payload += "=" * ((4 - len(payload) % 4) % 4)
+    try:
+        data = json.loads(base64.urlsafe_b64decode(payload))
+    except Exception:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def email_from_auth(path: Path) -> str | None:
+    try:
+        auth = load_json(path)
+    except Exception:
+        return None
+    tokens = auth.get("tokens")
+    if not isinstance(tokens, dict):
+        return None
+    id_token = tokens.get("id_token")
+    if not isinstance(id_token, str) or not id_token:
+        return None
+    email = jwt_payload(id_token).get("email")
+    return email if isinstance(email, str) and email else None
+
+
+def display_plan(value: str | None) -> str:
+    if not value:
+        return "unknown"
+    return value
+
+
+def account_label(account: Account) -> str:
+    return account.email or account.name
+
+
+def snapshot_name_from_email(email: str | None) -> str | None:
+    if not email:
+        return None
+    local = email.split("@", 1)[0].strip().lower()
+    safe = "".join(ch if ch.isalnum() or ch in ("-", "_") else "-" for ch in local)
+    safe = safe.strip("-_")
+    return safe or None
+
+
+def discover_accounts() -> list[Account]:
+    if not CODEX_AUTHS_DIR.exists():
+        return []
+    accounts: list[Account] = []
+    for path in sorted(CODEX_AUTHS_DIR.glob("*.auth.json")):
+        name = path.name[: -len(".auth.json")]
+        if name:
+            accounts.append(
+                Account(
+                    name=name,
+                    path=path,
+                    account_id=account_id_from_auth(path),
+                    email=email_from_auth(path),
+                    plan=read_account_plan(name),
+                )
+            )
+    return accounts
+
+
+def current_live_account_id() -> str | None:
+    return account_id_from_auth(CODEX_HOME / "auth.json")
+
+
+def current_live_email() -> str | None:
+    return email_from_auth(CODEX_HOME / "auth.json")
+
+
+def codex_status_line(accounts: list[Account]) -> str:
+    live_email = current_live_email()
+    if live_email:
+        return f"{live_email} ({display_plan(live_plan_for_accounts(accounts))})"
+    return "not logged in"
+
+
+def color_enabled() -> bool:
+    return sys.stdout.isatty() and os.environ.get("NO_COLOR") is None
+
+
+def style(text: str, code: str) -> str:
+    if not color_enabled():
+        return text
+    return f"\x1b[{code}m{text}\x1b[0m"
+
+
+def status_value(text: str) -> str:
+    if text == "not logged in" or text.startswith("not logged in "):
+        return style(text, "33;1")
+    return style(text, "32;1")
+
+
+def latest_session_plan() -> str | None:
+    sessions_dir = CODEX_HOME / "sessions"
+    if not sessions_dir.exists():
+        return None
+    files = [path for path in sessions_dir.glob("**/*.jsonl") if path.is_file()]
+    files.sort(key=lambda path: path.stat().st_mtime, reverse=True)
+    for path in files[:50]:
+        try:
+            lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
+        except OSError:
+            continue
+        for line in reversed(lines):
+            if '"rate_limits"' not in line or '"plan_type"' not in line:
+                continue
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            rate_limits = event.get("payload", {}).get("rate_limits")
+            if not isinstance(rate_limits, dict):
+                continue
+            plan_type = rate_limits.get("plan_type")
+            if isinstance(plan_type, str) and plan_type:
+                return plan_type
+    return None
+
+
+def read_account_plan(name: str) -> str | None:
+    path = CODEX_AUTHS_DIR / f"{name}.meta.json"
+    try:
+        data = load_json(path)
+    except Exception:
+        return None
+    plan = data.get("plan")
+    return plan if isinstance(plan, str) and plan else None
+
+
+def write_account_metadata(
+    name: str,
+    account_id: str | None,
+    email: str | None,
+    plan: str | None,
+) -> None:
+    metadata = {
+        "account_id": account_id,
+        "email": email,
+        "plan": plan,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    path = CODEX_AUTHS_DIR / f"{name}.meta.json"
+    atomic_write_text(path, json.dumps(metadata, indent=2, sort_keys=True) + "\n", mode=0o600)
+
+
+def live_plan_for_accounts(accounts: list[Account]) -> str | None:
+    if not current_live_email():
+        return None
+    active = active_account(accounts)
+    if active:
+        return active.plan
+    return None
+
+
+def live_matches_account(account: Account) -> bool:
+    live_id = current_live_account_id()
+    if live_id and account.account_id and account.account_id == live_id:
+        return True
+    live_email = current_live_email()
+    return bool(live_email and account.email and account.email == live_email)
+
+
+def active_account(accounts: list[Account]) -> Account | None:
+    for account in accounts:
+        if live_matches_account(account):
+            return account
+    return None
+
+
+def atomic_copy(src: Path, dst: Path, mode: int = 0o600) -> None:
+    if not src.exists():
+        raise FileNotFoundError(src)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dst.with_name(f".{dst.name}.tmp.{os.getpid()}")
+    shutil.copyfile(src, tmp)
+    os.chmod(tmp, mode)
+    os.replace(tmp, dst)
+
+
+def atomic_write_text(path: Path, text: str, mode: int = 0o600) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f".{path.name}.tmp.{os.getpid()}")
+    tmp.write_text(text, encoding="utf-8")
+    os.chmod(tmp, mode)
+    os.replace(tmp, path)
+
+
+def save_current_snapshot() -> None:
+    accounts = discover_accounts()
+    active = active_account(accounts)
+    if not active:
+        return
+    auth_path = CODEX_HOME / "auth.json"
+    if not auth_path.exists():
+        return
+    atomic_copy(auth_path, active.path)
+    write_account_metadata(
+        active.name,
+        current_live_account_id(),
+        current_live_email(),
+        latest_session_plan(),
+    )
+
+
+def save_live_snapshot_as(name: str | None = None) -> str:
+    auth_path = CODEX_HOME / "auth.json"
+    if not auth_path.exists():
+        raise SystemExit(f"Codex auth not found: {auth_path}")
+    resolved_name = name or snapshot_name_from_email(current_live_email())
+    if not resolved_name:
+        raise SystemExit("Cannot infer snapshot name. Use: agent-switch codex logout <name>")
+    atomic_copy(auth_path, CODEX_AUTHS_DIR / f"{resolved_name}.auth.json")
+    write_account_metadata(
+        resolved_name,
+        current_live_account_id(),
+        current_live_email(),
+        latest_session_plan(),
+    )
+    return resolved_name
+
+
+def remove_live_auth() -> None:
+    auth_path = CODEX_HOME / "auth.json"
+    try:
+        auth_path.unlink()
+    except FileNotFoundError:
+        pass
+
+
+def clear_codex_apps_cache() -> int:
+    cache_dir = CODEX_HOME / "cache" / "codex_apps_tools"
+    if not cache_dir.exists():
+        return 0
+    removed = 0
+    for path in cache_dir.glob("*.json"):
+        try:
+            path.unlink()
+            removed += 1
+        except FileNotFoundError:
+            pass
+    return removed
+
+
+def list_processes() -> list[ProcessInfo]:
+    try:
+        output = subprocess.check_output(
+            ["ps", "-axo", "pid=,comm=,args="],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception:
+        return []
+
+    own_pid = str(os.getpid())
+    results: list[ProcessInfo] = []
+    for line in output.splitlines():
+        parts = line.strip().split(None, 2)
+        if len(parts) < 3:
+            continue
+        pid, comm, args = parts
+        if pid == own_pid:
+            continue
+        lower = args.lower()
+        comm_lower = comm.lower()
+        if "agent-switch" in lower:
+            continue
+        if "chrome_crashpad_handler" in lower:
+            continue
+
+        kind: str | None = None
+        if "codex-acp" in lower:
+            kind = "codex-acp"
+        elif "/applications/codex.app/" in lower or comm_lower.endswith("/codex") and "codex.app" in lower:
+            kind = "Codex.app"
+        elif "node /opt/homebrew/bin/codex" in lower or "/@openai/codex/" in lower or " /opt/homebrew/bin/codex" in lower:
+            kind = "codex-cli"
+
+        if kind:
+            results.append(ProcessInfo(pid=pid, kind=kind, command=args))
+    return results
+
+
+def print_processes(processes: list[ProcessInfo]) -> None:
+    for proc in processes:
+        command = proc.command
+        if len(command) > 140:
+            command = f"{command[:137]}..."
+        eprint(f"  PID {proc.pid:<7} {proc.kind:<10} {command}")
+
+
+def stop_processes(processes: list[ProcessInfo]) -> None:
+    eprint("Force-stopping Codex-related processes:")
+    print_processes(processes)
+    for proc in processes:
+        try:
+            os.kill(int(proc.pid), signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        except PermissionError as exc:
+            eprint(f"Cannot stop PID {proc.pid}: {exc}")
+
+    pids = {proc.pid for proc in processes}
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        remaining = [proc for proc in list_processes() if proc.pid in pids]
+        if not remaining:
+            eprint("Stopped Codex-related processes.")
+            return
+        time.sleep(0.2)
+
+    remaining = [proc for proc in list_processes() if proc.pid in pids]
+    if remaining:
+        eprint("Some processes did not exit after SIGTERM; sending SIGKILL:")
+        print_processes(remaining)
+        for proc in remaining:
+            try:
+                os.kill(int(proc.pid), signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            except PermissionError as exc:
+                eprint(f"Cannot kill PID {proc.pid}: {exc}")
+
+    deadline = time.monotonic() + 2
+    while time.monotonic() < deadline:
+        remaining = [proc for proc in list_processes() if proc.pid in pids]
+        if not remaining:
+            eprint("Stopped Codex-related processes.")
+            return
+        time.sleep(0.2)
+
+    remaining = [proc for proc in list_processes() if proc.pid in pids]
+    if remaining:
+        eprint("Still running after --force:")
+        print_processes(remaining)
+        raise SystemExit(2)
+
+
+def ensure_no_codex_processes(force: bool = False) -> None:
+    processes = list_processes()
+    if not processes:
+        return
+    if force:
+        stop_processes(processes)
+        return
+    eprint("Refusing to switch while Codex-related processes are running:")
+    print_processes(processes)
+    eprint("")
+    eprint("Close Codex CLI sessions, Codex.app, and editor ACP integrations, then retry.")
+    eprint("Use --force to stop those processes automatically before switching.")
+    raise SystemExit(2)
+
+
+def print_accounts(accounts: list[Account]) -> None:
+    live_plan = live_plan_for_accounts(accounts)
+    print("Codex accounts:")
+    print(f"  {style('Current:', '36;1')} {status_value(codex_status_line(accounts))}")
+    if not accounts:
+        print("  Snapshots: (none)")
+        print("")
+        if current_live_email():
+            print("Save current account snapshot:")
+            print("  agent-switch codex logout")
+        else:
+            print("Run codex login, then save the account with:")
+            print("  agent-switch codex logout")
+        return
+    print("")
+    for index, account in enumerate(accounts, start=1):
+        markers = []
+        if live_matches_account(account):
+            markers.append("current")
+        suffix = f" [{', '.join(markers)}]" if markers else ""
+        plan = live_plan if "current" in markers and live_plan else account.plan
+        print(
+            f"  {index}. {account_label(account):<32} "
+            f"{display_plan(plan)}{suffix}"
+        )
+
+
+def render_menu(accounts: list[Account], selected: int) -> None:
+    live_plan = live_plan_for_accounts(accounts)
+    sys.stdout.write("\x1b[2J\x1b[H")
+    print("Select Codex account (↑/↓, Enter; q to cancel)")
+    print(f"{style('Current:', '36;1')} {status_value(codex_status_line(accounts))}")
+    print("")
+    for index, account in enumerate(accounts):
+        cursor = ">" if index == selected else " "
+        markers = []
+        if live_matches_account(account):
+            markers.append("current")
+        suffix = f" [{', '.join(markers)}]" if markers else ""
+        plan = live_plan if "current" in markers and live_plan else account.plan
+        print(
+            f"{cursor} {index + 1}. {account_label(account):<32} "
+            f"{display_plan(plan)}{suffix}"
+        )
+    sys.stdout.flush()
+
+
+def read_key() -> str:
+    ch = sys.stdin.read(1)
+    if ch == "\x1b":
+        rest = sys.stdin.read(2)
+        return ch + rest
+    return ch
+
+
+def choose_interactively(accounts: list[Account]) -> Account:
+    selected = next((i for i, account in enumerate(accounts) if live_matches_account(account)), 0)
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        tty.setcbreak(fd)
+        while True:
+            render_menu(accounts, selected)
+            key = read_key()
+            if key in ("q", "Q", "\x03"):
+                raise SystemExit(130)
+            if key in ("\r", "\n"):
+                sys.stdout.write("\x1b[2J\x1b[H")
+                return accounts[selected]
+            if key == "\x1b[A":
+                selected = (selected - 1) % len(accounts)
+            elif key == "\x1b[B":
+                selected = (selected + 1) % len(accounts)
+            elif key.isdigit() and key != "0":
+                index = int(key) - 1
+                if 0 <= index < len(accounts):
+                    selected = index
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+
+def resolve_account(accounts: list[Account], selector: str) -> Account:
+    if selector.isdigit():
+        index = int(selector) - 1
+        if 0 <= index < len(accounts):
+            return accounts[index]
+    matches = [
+        account
+        for account in accounts
+        if account.name == selector or account.email == selector
+    ]
+    if not matches:
+        matches = [
+            account
+            for account in accounts
+            if account.name.startswith(selector)
+            or (account.email and account.email.startswith(selector))
+        ]
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        names = ", ".join(account.name for account in matches)
+        raise SystemExit(f"Ambiguous account '{selector}': {names}")
+    raise SystemExit(f"Unknown account: {selector}")
+
+
+def switch_codex(account: Account, force: bool = False) -> None:
+    ensure_no_codex_processes(force=force)
+    save_current_snapshot()
+    atomic_copy(account.path, CODEX_HOME / "auth.json")
+    write_account_metadata(account.name, account.account_id, account.email, account.plan)
+    removed = clear_codex_apps_cache()
+    print(f"Switched Codex account to: {account_label(account)}")
+    print(f"Plan: {display_plan(account.plan)}")
+    if removed:
+        print(f"Cleared codex_apps tool cache: {removed} file(s)")
+
+
+def cmd_codex(args: argparse.Namespace) -> None:
+    codex_args = args.codex_args
+    if codex_args and codex_args[0] == "logout":
+        ensure_no_codex_processes(force=args.force)
+        if len(codex_args) > 2:
+            raise SystemExit("Usage: agent-switch codex logout [name]")
+        name = save_live_snapshot_as(codex_args[1] if len(codex_args) == 2 else None)
+        remove_live_auth()
+        removed = clear_codex_apps_cache()
+        print(f"Saved current Codex account snapshot: {name}")
+        if removed:
+            print(f"Cleared codex_apps tool cache: {removed} file(s)")
+        print("You can now run: codex login")
+        return
+
+    accounts = discover_accounts()
+    if args.list:
+        print_accounts(accounts)
+        return
+    if not accounts:
+        print_accounts(accounts)
+        raise SystemExit(1)
+
+    print_accounts(accounts)
+    print("")
+    if codex_args:
+        if len(codex_args) > 1:
+            raise SystemExit("Usage: agent-switch codex [account]")
+        account = resolve_account(accounts, codex_args[0])
+    else:
+        if not sys.stdin.isatty():
+            raise SystemExit("No TTY available. Use: agent-switch codex <name|number>")
+        account = choose_interactively(accounts)
+
+    if live_matches_account(account):
+        print(f"Codex account already active: {account_label(account)}")
+        return
+    switch_codex(account, force=args.force)
+
+
+def cmd_install(_: argparse.Namespace) -> None:
+    INSTALL_DIR.mkdir(parents=True, exist_ok=True)
+    script_path = Path(__file__).resolve()
+    target = INSTALL_DIR / COMMAND_NAME
+    if target.is_symlink() and Path(os.readlink(target)) == script_path:
+        print(f"Already installed: {target}")
+    else:
+        if target.exists() and not target.is_symlink():
+            raise SystemExit(f"Refusing to replace non-symlink: {target}")
+        target.unlink(missing_ok=True)
+        target.symlink_to(script_path)
+        print(f"Installed: {target} -> {script_path}")
+    path_entries = os.environ.get("PATH", "").split(os.pathsep)
+    if str(INSTALL_DIR) not in path_entries:
+        print(f"Note: add {INSTALL_DIR} to PATH if needed")
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog=COMMAND_NAME,
+        description="Switch agent CLI accounts while sharing config, skills, and sessions.",
+        epilog=(
+            "Examples:\n"
+            "  agent-switch\n"
+            "  agent-switch install\n"
+            "  agent-switch codex\n"
+            "  agent-switch codex work@example.com\n"
+            "  agent-switch codex logout\n"
+            "  agent-switch codex --force logout\n"
+            "  agent-switch codex logout work"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    subparsers = parser.add_subparsers(dest="command")
+
+    install = subparsers.add_parser("install", help="Install agent-switch to ~/.local/bin")
+    install.set_defaults(func=cmd_install)
+
+    codex = subparsers.add_parser("codex", help="List or switch Codex accounts")
+    codex.add_argument(
+        "codex_args",
+        nargs="*",
+        help="Account name/email/prefix/list number, or: logout [name]",
+    )
+    codex.add_argument("--list", "-l", action="store_true", help="List Codex accounts and exit")
+    codex.add_argument(
+        "--force",
+        "-f",
+        action="store_true",
+        help="Stop Codex-related processes before switching or logging out",
+    )
+    codex.set_defaults(func=cmd_codex)
+    return parser
+
+
+def main() -> None:
+    parser = build_parser()
+    args = parser.parse_args()
+    if not hasattr(args, "func"):
+        cmd_codex(argparse.Namespace(codex_args=[], list=False, force=False))
+        return
+    args.func(args)
+
+
+if __name__ == "__main__":
+    main()

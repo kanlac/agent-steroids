@@ -60,7 +60,8 @@ claude plugin install steroids@agent-steroids
 
 | 脚本 | 说明 |
 |------|------|
-| [`chrome-instances`](plugins/steroids/scripts/chrome-instances) | 管理 macOS 上的多 Chrome 实例。列出所有实例及其 Profile/窗口，按 PID 或名称聚焦窗口。通过 AppleScript 解析窗口标题，无需调试端口。`chrome-instances install` 一键 symlink 到 `~/.local/bin`。 |
+| [`agent-switch`](scripts/agent-switch) | 切换本机 agent CLI 账号。当前支持 Codex：`agent-switch` 与 `agent-switch codex` 等价，显示当前 live auth 账号和账号快照列表，共享 `~/.codex` 配置、skills、sessions，仅切换账号认证快照；`agent-switch codex logout` 保存当前账号并移除 live auth，便于重新 `codex login`；切换前检查 Codex CLI、Codex.app 和 `codex-acp` 进程，`--force` 可先结束这些进程再继续。`agent-switch install` 一键 symlink 到 `~/.local/bin`。 |
+| [`chrome-instances`](scripts/chrome-instances) | 管理 macOS 上的多 Chrome 实例。列出所有实例及其 Profile/窗口，按 PID 或名称聚焦窗口。通过 AppleScript 解析窗口标题，无需调试端口。`chrome-instances install` 一键 symlink 到 `~/.local/bin`。 |
 
 ### MCP Servers
 
@@ -74,13 +75,13 @@ claude plugin install steroids@agent-steroids
 agent-steroids/
   .agents/plugins/      # Codex marketplace 配置
   .claude-plugin/       # Claude marketplace 配置
+  scripts/              # 独立 CLI 工具
   plugins/steroids/     # Claude / Codex 共用插件包
     .claude-plugin/     # Claude 插件清单
     .codex-plugin/      # Codex 插件清单
     skills/             # 自包含的方法论文档（含脚本）
     commands/           # 斜杠命令（frontmatter 驱动）
     agents/             # 子 agent 定义
-    scripts/            # 独立 CLI 工具
     hooks/              # 事件驱动的自动化
     mcp-servers/        # MCP 服务器实现
   docs/
