@@ -1,19 +1,12 @@
 ---
 name: cdp-chrome
 description: |
-  Shared headed Chrome instance for browser automation. MANDATORY for any scenario requiring
-  a visible (GUI/headed) Chrome browser. This includes but is not limited to:
-  - Social media access: browsing X/Twitter, Reddit, Instagram, posting, reading feeds, verifying tweet dates
-  - News/article verification: checking publish dates, fetching JS-rendered pages, bypassing paywalls
-  - Websites requiring login state: any site where persistent sessions are needed
-  - Anti-bot-protected sites: sites that detect headless/automation browsers
-  - Web form interaction: filling forms, clicking buttons on real websites
-  - Visual page inspection: taking screenshots, checking layouts on live sites
-  NOT required for: headless testing of your own code, PDF generation, Playwright/Puppeteer unit tests.
-  Trigger phrases: "open browser", "check website", "scrape page", "navigate to",
-  "browser automation", "CDP Chrome", "chrome-devtools", "visit URL",
-  "check Twitter/X", "check Reddit", "verify article date", "login to site",
-  "browse", "open page", "access website", "fetch page with JS".
+  Shared headed Chrome for browser automation. Mandatory for visible GUI Chrome:
+  social media, JS-rendered pages, logged-in sites, anti-bot pages, forms,
+  screenshots, and live site inspection. Use for requests like open browser,
+  check website, scrape page, visit URL, check X/Twitter or Reddit, verify an
+  article date, or log in to a site. Not for headless tests, PDF generation, or
+  Playwright/Puppeteer unit tests of local code.
 ---
 
 # CDP Chrome: Shared Headed Browser Instance

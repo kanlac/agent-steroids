@@ -6,7 +6,7 @@
   "plugins": [
     {
       "name": "steroids",
-      "source": "./",
+      "source": "./plugins/steroids",
       "description": "Kan's agent steroids"
     }
   ]

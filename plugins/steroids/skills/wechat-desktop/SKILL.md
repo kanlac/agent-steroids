@@ -1,6 +1,6 @@
 ---
 name: wechat-desktop
-description: Read, navigate, and summarize WeChat (微信) group chat messages on macOS desktop using computer-use MCP. Trigger this skill whenever the user wants to check WeChat messages, read a specific WeChat group, summarize unread WeChat chats, reply in a WeChat group, view images shared in WeChat, or push WeChat summaries elsewhere. Also trigger when the user mentions "微信", "群消息", "未读消息", "看群", "读消息", or any WeChat desktop interaction — even short requests like "帮我看一下微信" or "check my wechat". This skill handles the full workflow: opening the app, navigating groups, scrolling through messages, OCR for accurate Chinese text reading, and producing structured summaries.
+description: Read, navigate, summarize, and reply to WeChat desktop chats on macOS using computer-use MCP. Use for 微信, 群消息, 未读消息, 看群, 读消息, checking unread chats, reading a specific group, viewing shared images, OCR-heavy messages, or pushing WeChat summaries elsewhere.
 ---
 
 # 桌面端微信操作 (WeChat Desktop)

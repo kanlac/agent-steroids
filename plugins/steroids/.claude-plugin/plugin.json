@@ -1,9 +1,9 @@
 {
   "name": "steroids",
-  "version": "1.7.0",
+  "version": "1.7.5",
   "description": "General-purpose agent enhancements with reusable skills and plugins",
   "author": {
-    "name": "kan"
+    "name": "Kan"
   },
   "license": "MIT"
 }
