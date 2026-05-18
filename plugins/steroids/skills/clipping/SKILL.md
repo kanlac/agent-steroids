@@ -11,7 +11,7 @@ description: 将网页文章（含微信公众号等 JS 渲染页面）保存为
 
 ## 获取文章内容
 
-微信公众号等 JS 渲染页面，WebFetch 会返回空内容。必须通过有头浏览器（CDP Chrome）加载页面，等待渲染完成后提取正文、标题、作者、发布日期和图片 URL。
+微信公众号等 JS 渲染页面，WebFetch 会返回空内容。必须通过当前可用的 headed browser provider（例如 `chrome` 插件的 `cdp-chrome`、Codex Chrome plugin，或 agent 原生 browser-use）加载页面，等待渲染完成后提取正文、标题、作者、发布日期和图片 URL。`clipping` 不硬依赖 `chrome` 插件；只有当前环境没有等价有头浏览器能力时，才建议安装/启用它。
 
 提取时注意区分正文内容和页面装饰元素（广告、推荐阅读、底部导航等）。
 

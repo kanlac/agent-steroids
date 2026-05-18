@@ -50,7 +50,7 @@ agent-browser 的核心卖点是 `snapshot -i`（交互元素过滤），但：
 
 ## 正确用法：evaluate_script 为主
 
-详细模式和示例见 `skills/cdp-chrome/references/page-interaction.md`。核心原则：
+详细模式和示例见 `plugins/chrome/skills/cdp-chrome/references/page-interaction.md`。核心原则：
 
 ```
 navigate_page → 到目标 URL

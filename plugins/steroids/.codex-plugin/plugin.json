@@ -1,7 +1,7 @@
 {
   "name": "steroids",
-  "version": "1.7.6",
-  "description": "General-purpose agent enhancements with reusable skills and plugins",
+  "version": "2.0.0",
+  "description": "Core Agent Steroids skills and workflow helpers",
   "author": {
     "name": "Kan"
   },
@@ -9,16 +9,17 @@
   "keywords": [
     "agent",
     "skills",
-    "automation",
-    "browser",
-    "telegram",
-    "productivity"
+    "productivity",
+    "documents",
+    "papers",
+    "webclip",
+    "workflow"
   ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Agent Steroids",
-    "shortDescription": "Reusable agent skills and workflow helpers.",
-    "longDescription": "General-purpose agent enhancements including browser automation, Telegram workflows, document extraction, EPUB reading, PDF generation, clipping, paper download, and desktop WeChat workflows.",
+    "shortDescription": "Reusable productivity, document, paper, and desktop workflow skills.",
+    "longDescription": "Core Agent Steroids plugin with document extraction, EPUB reading, HTML-to-PDF generation, web clipping, academic paper workflows, and desktop workflow guidance.",
     "developerName": "Kan",
     "category": "Productivity",
     "capabilities": [
@@ -26,9 +27,9 @@
       "Write"
     ],
     "defaultPrompt": [
-      "Use cdp-chrome to inspect a page.",
       "Convert this article or PDF export to Markdown.",
-      "Set up a Telegram agent workflow."
+      "Find papers about this topic and create an xlsx report.",
+      "Export this HTML report to a single-page PDF."
     ],
     "brandColor": "#2563EB"
   }

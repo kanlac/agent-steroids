@@ -7,7 +7,17 @@
     {
       "name": "steroids",
       "source": "./plugins/steroids",
-      "description": "Kan's agent steroids"
+      "description": "Core Agent Steroids skills and workflow helpers"
+    },
+    {
+      "name": "telegram",
+      "source": "./plugins/telegram",
+      "description": "Telegram agent operations, notification MCP, and payload guard hook"
+    },
+    {
+      "name": "chrome",
+      "source": "./plugins/chrome",
+      "description": "Optional shared headed Chrome/CDP browser provider"
     }
   ]
 }

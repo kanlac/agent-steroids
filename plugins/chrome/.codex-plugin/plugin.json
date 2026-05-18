@@ -1,0 +1,33 @@
+{
+  "name": "chrome",
+  "version": "1.0.0",
+  "description": "Shared headed Chrome provider for browser automation workflows",
+  "author": {
+    "name": "Kan"
+  },
+  "license": "MIT",
+  "keywords": [
+    "browser",
+    "chrome",
+    "cdp",
+    "automation",
+    "mcp"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Agent Steroids Chrome",
+    "shortDescription": "Shared headed Chrome/CDP browser provider.",
+    "longDescription": "Optional Chrome provider plugin for environments that need a shared headed Chrome instance with persistent login state via CDP/chrome-devtools-mcp.",
+    "developerName": "Kan",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Network"
+    ],
+    "defaultPrompt": [
+      "Set up cdp-chrome for a shared headed browser.",
+      "Use cdp-chrome to inspect a logged-in page."
+    ],
+    "brandColor": "#2563EB"
+  }
+}

@@ -24,7 +24,7 @@
 
 | 层级 | 位置 | 职责 |
 |------|------|------|
-| **通用层** `scraper` | `agent-steroids/skills/` | 采集模式选择、Session/Profile 管理、通用反检测、各平台采集方法 |
+| **通用层** `scraper` | `plugins/steroids/skills/scraper/`（如后续实现，仍归入主 `steroids` 插件） | 采集模式选择、Session/Profile 管理、通用反检测、各平台采集方法 |
 | **业务层**（各项目自定义） | 项目 `.claude/skills/` | 输出格式、入库逻辑、业务特定配置（如 JSON 输出 + SQLite 入库） |
 
 通用层包含所有平台的采集方法论（含小红书精简版），业务层只补充项目特有的需求。
@@ -32,7 +32,7 @@
 ### 目录结构
 
 ```
-agent-steroids/skills/scraper/
+plugins/steroids/skills/scraper/
 ├── SKILL.md                     # 主文档：模式选择路由 + 通用知识
 ├── scripts/
 │   └── manage-profile.sh        # Profile 克隆与管理

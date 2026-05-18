@@ -1,0 +1,9 @@
+{
+  "name": "chrome",
+  "version": "1.0.0",
+  "description": "Shared headed Chrome provider for browser automation workflows",
+  "author": {
+    "name": "Kan"
+  },
+  "license": "MIT"
+}

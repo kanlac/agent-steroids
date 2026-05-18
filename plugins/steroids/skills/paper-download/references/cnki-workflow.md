@@ -1,6 +1,6 @@
 # CNKI (知网) Workflow
 
-通过 `mcp__cdp-chrome__*` 工具操作共享 Chrome 实例。
+通过当前可用的 headed browser provider 操作共享/持久登录态浏览器。若当前环境使用 `chrome` 插件，对应工具通常是 `mcp__cdp-chrome__*`；若环境已有 Codex Chrome plugin 或原生 browser-use，则按该 provider 的等价工具执行。
 
 ## 检索
 

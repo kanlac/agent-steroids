@@ -1,17 +1,17 @@
 ---
 name: cdp-chrome
 description: |
-  Shared headed Chrome for browser automation. Mandatory for visible GUI Chrome:
-  social media, JS-rendered pages, logged-in sites, anti-bot pages, forms,
-  screenshots, and live site inspection. Use for requests like open browser,
-  check website, scrape page, visit URL, check X/Twitter or Reddit, verify an
-  article date, or log in to a site. Not for headless tests, PDF generation, or
-  Playwright/Puppeteer unit tests of local code.
+  Optional shared headed Chrome provider for browser automation. Use when an
+  environment chooses cdp-chrome for visible GUI Chrome: social media,
+  JS-rendered pages, logged-in sites, anti-bot pages, forms, screenshots, and
+  live site inspection. Not required when an equivalent provider exists (for
+  example Codex Chrome plugin or native browser-use). Not for headless tests,
+  PDF generation, or Playwright/Puppeteer unit tests of local code.
 ---
 
 # CDP Chrome: Shared Headed Browser Instance
 
-**Scope:** All headed (GUI) Chrome usage must follow this Skill. Headless testing/PDF generation is out of scope.
+**Scope:** Optional provider implementation for environments that choose shared GUI Chrome/CDP. If a task only requires the abstract `headed-browser` capability and the user already has another equivalent provider, do not force this plugin.
 
 ## Why This Exists
 
@@ -116,4 +116,4 @@ curl -s -X PUT "http://127.0.0.1:$PORT/json/close/$TAB_ID"            # close ta
 
 ## Ensuring Compliance
 
-This Skill is **mandatory**. Global agent instructions must mandate it for all browser operations. Skill/agent authors must not include Chrome launch logic — only state dependency on `steroids:cdp-chrome`. Scheduled agents should verify Chrome is reachable at task start.
+This Skill is the implementation guide for the optional `chrome` provider. Global/project instructions should require the abstract `headed-browser` capability for GUI browser tasks, not a hard dependency on this plugin. Skill/agent authors should say “requires a headed browser provider”; list `chrome` / `cdp-chrome` as one supported provider when a shared Chrome profile is desired. Scheduled agents should verify their chosen browser provider is reachable at task start.

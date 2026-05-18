@@ -1,5 +1,5 @@
 {
-  "description": "Payload size guard + Telegram time awareness injection",
+  "description": "Telegram time awareness injection + payload size guard",
   "hooks": {
     "PreToolUse": [
       {

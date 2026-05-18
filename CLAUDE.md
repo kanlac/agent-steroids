@@ -1,4 +1,4 @@
-**IMPORTANT**: After any plugin changes, update version in both `plugins/steroids/.claude-plugin/plugin.json` and `plugins/steroids/.codex-plugin/plugin.json` (SemVer: major.minor.patch).
+**IMPORTANT**: After any plugin changes, update the changed plugin's manifest version(s): `plugins/<plugin>/.claude-plugin/plugin.json` and, when present, `plugins/<plugin>/.codex-plugin/plugin.json` (SemVer: major.minor.patch).
 
 `AGENTS.md` is a symlink to this file. Keep these instructions compatible with both Claude Code and Codex unless a section explicitly names one runtime.
 
@@ -8,7 +8,9 @@ Do not commit unless user asked to.
 
 添加、删除或修改 skill、command、agent、hook、MCP server 时，同步更新 `README.md` 中对应的表格，保持项目介绍与实际内容一致。
 
-Claude Code 和 Codex 都通过 marketplace 暴露 `plugins/steroids/` 作为 `steroids` plugin。正式 runtime skills 只放在 `plugins/steroids/skills/`，不要在根目录维护第二份或用 symlink。Codex manifest 只声明跨运行时稳定可用的 skills；Claude Code 专用的 commands、agents、hooks、MCP server 可放在同一个插件根目录下，但除非确认 Codex 支持对应运行时语义，不要把 Claude Code 专用配置直接挂到 Codex manifest。
+Claude Code 和 Codex 都通过 marketplace 暴露 `plugins/*/` 下的独立插件。正式 runtime skills 只放在对应插件的 `plugins/<plugin>/skills/`，不要在根目录维护第二份或用 symlink。Codex marketplace 只声明跨运行时稳定可用的 skill 插件；Claude Code 专用的 commands、agents、hooks、MCP server 可放在对应 Claude 插件根目录下，但除非确认 Codex 支持对应运行时语义，不要把 Claude Code 专用配置直接挂到 Codex manifest。
+
+插件拆分保持简单：`steroids`、`telegram`、`chrome`。插件之间尽量用能力依赖（capability）描述，而不是强制安装某个 provider。例如需要可人工接管浏览器时写 `headed-browser`，并说明 `chrome/cdp-chrome`、Codex Chrome plugin、原生 browser-use 都可以满足；只有实现确实绑定某个 provider 时才写硬依赖。
 
 ## 用户配置文件规范
 

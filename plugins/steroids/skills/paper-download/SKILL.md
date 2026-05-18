@@ -13,9 +13,17 @@ allowed-tools: Bash, Read, Write, WebFetch
 
 学术论文检索与下载。检索和下载是两个独立阶段，用户没有明确要求下载时只做检索。
 
-## Prerequisites
+## Browser Capability (Soft Dependency)
 
-检索阶段使用 Google Scholar 和 CNKI（均为 Tier 3），开始前先 invoke `steroids:cdp-chrome` 启动共享 Chrome。
+`paper-download` 不硬依赖 `cdp-chrome` 插件。Tier 1 HTTP/API 与大部分 Tier 2 headless 流程可以独立运行；Google Scholar、CNKI、CAPTCHA/登录态下载等 Tier 3 场景只需要“可人工接管的有头浏览器能力”。
+
+可用 provider 包括但不限于：
+
+- 已安装 `chrome` 插件并配置好的 `cdp-chrome` / `mcp__cdp-chrome__*` 工具；
+- Codex 环境中的 Chrome/browser plugin；
+- 当前 agent 原生 browser-use / headed browser 工具，前提是能保留登录态并允许用户手动完成 CAPTCHA。
+
+开始检索前先检查当前会话是否已有可用 headed browser provider。只有在没有等价 provider 时，才建议用户安装/启用 `chrome` 并配置 `cdp-chrome`。
 
 ## 核心原则
 
@@ -45,7 +53,7 @@ allowed-tools: Bash, Read, Write, WebFetch
 |---|---|---|---|
 | 1 | HTTP（curl / API） | URL 已知、无 JS 渲染、无反爬 | 可并行，同域名限速 |
 | 2 | Headless 浏览器 | 需 JS 渲染或轻度反爬，不需登录态 | subagent 各起实例并行 |
-| 3 | 共享 headed Chrome（`mcp__cdp-chrome__*`） | 需登录态 / 需用户解 CAPTCHA | 串行（共享单实例），同站点批量复用会话。使用前 invoke `steroids:cdp-chrome` |
+| 3 | Headed browser provider（如 `mcp__cdp-chrome__*`、Codex Chrome plugin、原生 browser-use） | 需登录态 / 需用户解 CAPTCHA | 通常串行（同一有头会话），同站点批量复用会话。使用当前环境已有 provider；缺失时再建议安装 `chrome` |
 
 ---
 
@@ -80,7 +88,7 @@ allowed-tools: Bash, Read, Write, WebFetch
 
 ### Google Scholar（国际论文）
 
-`browser_navigate` → `https://scholar.google.com`，填入关键词/标题。
+`<当前 headed browser provider>` → `https://scholar.google.com`，填入关键词/标题。provider 可以是 `cdp-chrome`、Codex Chrome plugin 或当前 agent 的原生 browser-use；按当前环境的工具名执行同等动作。
 反爬较严，遇验证码提示用户手动完成，等用户确认后继续检索。同一会话内 reCAPTCHA 触发 3 次以上，说明代理节点 IP 信用低——停止让用户解，建议换节点/区域后重试。右侧 [PDF] 标记即 OA 直链，记录备用。
 
 ### CNKI（中文论文）
@@ -147,7 +155,7 @@ allowed-tools: Bash, Read, Write, WebFetch
 
 没有 DOI 时先用 CrossRef API 查询：`GET https://api.crossref.org/works?query.title={title}&rows=3`（取结果前必须做标题相似度校验）
 
-### Tier 3: 共享 Chrome（需登录态 / CAPTCHA，串行）
+### Tier 3: Headed browser provider（需登录态 / CAPTCHA，串行）
 
 同站点批量处理：解一次 CAPTCHA 后立即顺序处理同站点其他论文，复用会话（约 30 分钟有效）。
 
