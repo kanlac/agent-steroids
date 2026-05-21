@@ -194,6 +194,10 @@ def restart_agents(config):
         return
 
     for agent_name, agent_cfg in agents.items():
+        if agent_cfg.get("enabled") is False:
+            log.info("Skipping disabled agent=%s for restart", agent_name)
+            continue
+
         state_dir = agent_cfg.get("state_dir", "telegram")
         agent_id = agent_cfg.get("agent", "")
         work_dir = os.path.expanduser(agent_cfg.get("dir", "~"))
@@ -277,6 +281,9 @@ def main():
     pending = []
 
     for agent_name, agent_cfg in config["agents"].items():
+        if agent_cfg.get("enabled") is False:
+            continue
+
         state_dir = agent_cfg.get("state_dir")
         heartbeats = agent_cfg.get("heartbeats", [])
 

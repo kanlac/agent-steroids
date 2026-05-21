@@ -53,6 +53,7 @@ agents:
         prompt: 晚间回顾
 
   customer-bot:
+    enabled: false                 # 禁用但保留配置（跳过心跳和定时重启）
     state_dir: telegram-customer   # 面向外部用户的 bot
     agent: customer-bot
     dir: ~/projects/customer
