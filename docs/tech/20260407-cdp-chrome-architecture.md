@@ -34,10 +34,14 @@ Reddit 等平台检测 headless Chrome 特征（`navigator.webdriver=true`、Hea
 
 ### 配置结构
 
+steroids 配置文件位置：macOS/Linux 为 `~/.config/steroids.json`，Windows 为 `%APPDATA%\steroids.json`。
+
 ```
 ~/.config/cdp-chrome/
-├── port              # 端口号（一行纯文本，如 "9224"）
 └── profile/          # Chrome --user-data-dir（登录态持久化）
+
+steroids 配置文件
+└── { "cdp-chrome": { "port": 9224 } }
 ```
 
 ### 启动方式
@@ -52,12 +56,12 @@ Reddit 等平台检测 headless Chrome 特征（`navigator.webdriver=true`、Hea
 
 ### chrome-devtools-mcp 集成
 
-chrome-devtools-mcp（提供 `mcp__cdp-chrome__*` 系列工具）默认行为是自己启动一个带 `--enable-automation` 的 Chrome 实例。这会导致：
+chrome-devtools-mcp（Claude Code/Codex 中暴露为 `mcp__cdp-chrome__*` 系列工具；Hermes 使用 `mcp_<server>_<tool>` 命名）默认行为是自己启动一个带 `--enable-automation` 的 Chrome 实例。这会导致：
 - `navigator.webdriver = true`
 - X/Twitter 等平台拒绝登录
 - 无法使用持久化的登录态
 
-**解决方案**：通过 `~/.mcp.json` 配置 chrome-devtools-mcp 连接已有的共享 Chrome 实例，而非自己启动：
+**解决方案**：Chrome 插件在 Claude Code / Codex 中通过插件根目录 `.mcp.json` 提供 `cdp-chrome` MCP 配置，让 chrome-devtools-mcp 连接已有的共享 Chrome 实例，而非自己启动。Hermes 支持 MCP，但当前是 `mcp_servers` 配置驱动，不会从 plugin shim 自动加载 `.mcp.json`：
 
 ```json
 {
@@ -65,28 +69,32 @@ chrome-devtools-mcp（提供 `mcp__cdp-chrome__*` 系列工具）默认行为是
     "cdp-chrome": {
       "command": "npx",
       "args": [
+        "-y",
         "chrome-devtools-mcp@latest",
-        "--browser-url=http://127.0.0.1:9224"
+        "--browserUrl",
+        "http://127.0.0.1:9224",
+        "--no-usage-statistics"
       ]
     }
   }
 }
 ```
 
-这样所有 `mcp__cdp-chrome__*` 工具都通过共享的干净 Chrome 操作，享受同样的持久登录态。
+这样所有 `cdp-chrome` MCP 工具都通过共享的干净 Chrome 操作，享受同样的持久登录态。
 
 ### 操作方式
 
 两种等价的操作方式：
 
-**方式 1：chrome-devtools-mcp 工具**（推荐，通过 Claude Code 插件自动可用）
+**方式 1：chrome-devtools-mcp 工具**（推荐；Claude Code/Codex 通过插件自动可用，Hermes 需手动注册 `mcp_servers`）
 
-使用 `mcp__cdp-chrome__navigate_page`、`mcp__cdp-chrome__evaluate_script` 等工具操作页面。
+Claude Code/Codex 使用 `mcp__cdp-chrome__navigate_page`、`mcp__cdp-chrome__evaluate_script` 等工具操作页面；Hermes 使用其 `mcp_<server>_<tool>` 命名下的对应工具。
 
 **方式 2：直连 CDP HTTP API**（备选，用于 chrome-devtools-mcp 不可用时）
 
 ```bash
-PORT=$(cat ~/.config/cdp-chrome/port)
+CONFIG="${APPDATA:-$HOME/.config}/steroids.json"
+PORT=$(python3 -c "import json,os; print(json.load(open(os.path.expandvars('$CONFIG')))['cdp-chrome']['port'])")
 
 # 创建 tab（Chrome 146+ 需要 PUT）
 curl -s -X PUT "http://127.0.0.1:$PORT/json/new"
@@ -107,9 +115,9 @@ curl -s -X PUT "http://127.0.0.1:$PORT/json/close/$TARGET_ID"
 
 ## 实施步骤
 
-1. [x] 创建配置目录和 port 文件（`~/.config/cdp-chrome/`）
+1. [x] 创建配置目录和 steroids 配置项（`~/.config/cdp-chrome/` + steroids 配置文件）
 2. [x] 编写启动脚本 `~/.config/cdp-chrome/start.sh`（读配置、检查运行状态、按需启动，不带 `--enable-automation`）
-3. [x] 配置 `~/.mcp.json`，让 chrome-devtools-mcp 通过 `--browser-url` 连接共享实例（而非自己启动带 automation 标志的 Chrome）
+3. [x] 在 Chrome 插件中内置 `.mcp.json`，让 chrome-devtools-mcp 通过 `--browserUrl` 连接共享实例（而非自己启动带 automation 标志的 Chrome）
 4. [x] 首次使用时 GUI 模式启动，手动登录所需站点，cookie 持久化在 profile 中
 5. [ ] 各 skill/agent 的 Chrome 启动逻辑改为调用共享启动脚本或直接读配置
 

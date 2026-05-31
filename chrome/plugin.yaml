@@ -1,6 +1,6 @@
 manifest_version: 1
 name: chrome
-version: 1.0.0
+version: 1.1.0
 description: Shared headed Chrome/CDP browser provider skill for Hermes.
 author: Kan
 kind: standalone

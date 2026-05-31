@@ -6,7 +6,7 @@
 # Key: does NOT use --enable-automation, so navigator.webdriver stays false.
 
 CONFIG="${APPDATA:-$HOME/.config}/steroids.json"
-PORT=$(python3 -c "import json; print(json.load(open('$CONFIG'))['cdp-chrome']['port'])" 2>/dev/null || echo 9222)
+PORT=$(python3 -c "import json; print(json.load(open('$CONFIG'))['cdp-chrome']['port'])" 2>/dev/null || echo 9224)
 PROFILE="$HOME/.config/cdp-chrome/profile"
 
 # Check if already running (try IPv4, then IPv6 on macOS)

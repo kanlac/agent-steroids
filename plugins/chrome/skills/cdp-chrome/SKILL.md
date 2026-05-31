@@ -44,19 +44,27 @@ Key properties: GUI mode, no `--enable-automation`, persistent profile, single p
 
 2. Deploy `scripts/start.sh` from this Skill to `~/.config/cdp-chrome/start.sh`. Make executable.
 
-3. Register MCP — name must be `cdp-chrome`. This is **additive**: do not remove or modify any existing Chrome/browser MCPs the user may already have.
+3. MCP registration:
 
-   ```bash
-   # Claude Code
-   claude mcp add cdp-chrome -s user -- npx chrome-devtools-mcp@latest --browserUrl=http://127.0.0.1:9224
+   - Claude Code and Codex: installing the `chrome` plugin provides `cdp-chrome` via the plugin's bundled `.mcp.json`. Start a new session or reload plugins after install/update.
+   - Hermes: MCP is supported through `mcp_servers` in `~/.hermes/config.yaml` or `hermes mcp add`, but Hermes plugins do not currently auto-load plugin-local MCP config. Register the server manually. Name must be `cdp-chrome`.
+   - Other runtimes: use the runtime's MCP config mechanism with the same command and args. This is **additive**: do not remove or modify any existing Chrome/browser MCPs the user may already have.
 
-   # Hermes
-   hermes mcp add cdp-chrome --command npx --args chrome-devtools-mcp@latest --browserUrl=http://127.0.0.1:9224
+   ```yaml
+   mcp_servers:
+     cdp-chrome:
+       command: "npx"
+       args:
+         - "-y"
+         - "chrome-devtools-mcp@latest"
+         - "--browserUrl"
+         - "http://127.0.0.1:9224"
+         - "--no-usage-statistics"
    ```
 
    其他 agent 用各自的 MCP 配置方式注册同一个 server，关键参数相同：server 为 `chrome-devtools-mcp`，名称为 `cdp-chrome`，必须带 `--browserUrl` 指向共享实例。不带 `--browserUrl` 会自行启动 Chrome，违反共享原则。
 
-   Do NOT create project-level `./.mcp.json` for this.
+   Do NOT create project-level `./.mcp.json` for this. Claude Code/Codex plugin installs already carry the plugin-local `.mcp.json`; adding a duplicate user/project MCP can create conflicting `cdp-chrome` servers.
 
 4. Run start script, manually log in to needed sites. Sessions persist in profile.
 
@@ -70,16 +78,15 @@ Key properties: GUI mode, no `--enable-automation`, persistent profile, single p
 
 Do not start a new Chrome process. Do not use Puppeteer's `launch()` or Playwright's `chromium.launch()`.
 
-### 2. Use ONLY `mcp__cdp-chrome__*` — no other Chrome MCP
+### 2. Use ONLY the `cdp-chrome` MCP tools — no other Chrome MCP
 
-**Exclusively use `mcp__cdp-chrome__*` tools.** If you see other Chrome/browser MCP tools in your tool list — such as `mcp__chrome-devtools__*`, `mcp__playwright__*`, `mcp__puppeteer__*`, or any other name — **do NOT use them**. They launch a separate Chrome instance with `--enable-automation` and `--remote-debugging-pipe`, setting `navigator.webdriver = true` and triggering bot detection. The whole point of this Skill is to avoid exactly that.
+**Exclusively use tools from the MCP server named `cdp-chrome`.** Claude Code and Codex expose them as `mcp__cdp-chrome__*`; Hermes uses its `mcp_<server>_<tool>` naming, so expect `mcp_cdp_chrome_*`. If you see other Chrome/browser MCP tools in your tool list — such as `mcp__chrome-devtools__*`, `mcp__playwright__*`, `mcp__puppeteer__*`, or any other name — **do NOT use them**. They launch a separate Chrome instance with `--enable-automation` and `--remote-debugging-pipe`, setting `navigator.webdriver = true` and triggering bot detection. The whole point of this Skill is to avoid exactly that.
 
-If `mcp__cdp-chrome__*` tools are not available in your session, **do not fall back to other browser tools**. Instead:
-1. Run the setup command to register the MCP:
-   - Claude Code: `claude mcp add cdp-chrome -s user -- npx chrome-devtools-mcp@latest --browserUrl=http://127.0.0.1:9224`
-   - Hermes: `hermes mcp add cdp-chrome --command npx --args chrome-devtools-mcp@latest --browserUrl=http://127.0.0.1:9224`
-2. Tell the user: "MCP 已注册，请在新会话中重新打开以加载工具。"
-3. Stop — do not attempt the browser task in the current session.
+If the runtime's `cdp-chrome` MCP tools are not available in your session, **do not fall back to other browser tools**. Instead:
+1. Confirm the `chrome` plugin is installed and enabled. In Claude Code, inspect `/plugin` or `claude plugin details chrome`; in Codex, inspect the plugin directory or `codex plugin list`.
+2. For Claude Code/Codex, start a new session or reload plugins so the bundled `.mcp.json` is loaded.
+3. For Hermes or another runtime without plugin-bundled MCP support, register `cdp-chrome` manually as described in Setup, then restart or reload MCP.
+4. Stop — do not attempt the browser task in the current session.
 
 ### 3. Parallel safety
 
@@ -105,7 +112,7 @@ Check: `curl http://127.0.0.1:<port>/json/version` and `/json/list`.
 
 Red flags (wrong browser): `--enable-automation` in process args, `--remote-debugging-pipe`, temp `user-data-dir` like `puppeteer_dev_chrome_profile-*`, unexpected logouts. Stop and fix MCP registration if any appear.
 
-Common misconfiguration: MCP registered as `chrome-devtools` instead of `cdp-chrome`, or missing `--browserUrl` → launches its own Chrome silently.
+Common misconfiguration: MCP registered as `chrome-devtools` instead of `cdp-chrome`, missing `--browserUrl`, or plugin/user MCP duplicates with different ports → launches its own Chrome silently or connects to the wrong instance.
 
 ### 8. MCP config changes require session restart
 
