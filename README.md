@@ -1,37 +1,16 @@
 # agent-steroids
 
-Claude Code / Codex 通用增强插件集合。插件只保留三类，方便在不同环境中按需启用：
+Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容三种 agent runtime，但各插件的 runtime 覆盖不同。插件只保留三类，方便在不同环境中按需启用：
 
 - `steroids`：主体 Skills 和通用 workflow。
-- `telegram`：Telegram agent 运维、通知 MCP、Telegram hook，并包含 `guard-payload-size`。
+- `telegram`：Claude Code 专用的 Telegram agent 运维、通知 MCP、Telegram hook，并包含 `guard-payload-size`。
 - `chrome`：可选的共享有头 Chrome provider。
+
+`steroids` 和 `chrome` 的 canonical skills 位于 `plugins/<plugin>/skills/` 并可跨 runtime 复用；Claude Code / Codex 通过各自 marketplace 安装，Hermes 通过根目录 shim 仅暴露 `steroids` 与 `chrome`。`telegram` 保持 Claude Code 专用，不提供 Hermes shim。
 
 ## 安装
 
-### Claude Code
-
-先添加 marketplace：
-
-```bash
-claude plugin marketplace add kanlac/agent-steroids
-```
-
-然后按需安装：
-
-```bash
-claude plugin install steroids@agent-steroids  # 主体 skills：文档、书籍、PDF、网页剪藏、论文、微信桌面 workflow
-claude plugin install telegram@agent-steroids  # Telegram agent 运维 + payload size guard
-claude plugin install chrome@agent-steroids    # 可选：共享有头 Chrome provider
-```
-
-### Codex
-
-仓库根目录包含 `.agents/plugins/marketplace.json`；Codex marketplace 只暴露跨运行时稳定可用的 skill 插件：
-
-- `steroids`
-- `chrome`
-
-Telegram commands、hooks 和 MCP server 保留在 Claude Code 插件中，避免在 Codex 中加载 Claude 专用运行时语义。
+安装、升级、启用流程统一见 [`INSTALL.md`](INSTALL.md)。如果让 agent 帮你安装，直接让它先读取这份安装手册即可。
 
 ## 插件拆分与依赖
 
@@ -39,9 +18,9 @@ Telegram commands、hooks 和 MCP server 保留在 Claude Code 插件中，避�
 
 | Plugin | Runtime | 包含内容 | 硬依赖 | 可选 / capability 依赖 |
 |---|---|---|---|---|
-| [`steroids`](plugins/steroids/) | Claude + Codex | 主体 Skills：文档处理、书籍阅读、PDF 导出、网页剪藏、论文下载、微信桌面 workflow，以及 `/song` | 无 | `paper-download` / `clipping` 的登录态或 CAPTCHA 场景需要 `headed-browser`；`wechat-desktop` 需要 macOS + computer-use MCP |
-| [`telegram`](plugins/telegram/) | Claude | `telegram-agents`、`/tg-*`、`/check-release`、`telegram-notify` MCP、Telegram time hook、`guard-payload-size` hook | Claude Code + official Telegram plugin；心跳 workflow 需 Telethon/tmux/launchd | 无 |
-| [`chrome`](plugins/chrome/) | Claude + Codex | `cdp-chrome` 共享有头 Chrome provider | Chrome、`npx`；Claude 使用时需 MCP 注册 | 提供 `headed-browser`，可被 Codex Chrome plugin / 原生 browser-use 替代 |
+| [`steroids`](plugins/steroids/) | Claude + Codex + Hermes | 主体 Skills：文档处理、书籍阅读、PDF 导出、网页剪藏、论文下载、微信桌面 workflow，以及 `/song` | 无 | `paper-download` / `clipping` 的登录态或 CAPTCHA 场景需要 `headed-browser`；`wechat-desktop` 需要 macOS + computer-use MCP |
+| [`telegram`](plugins/telegram/) | Claude Code only | `telegram-agents`、`/tg-*`、`/check-release`、`telegram-notify` MCP、Telegram time hook、`guard-payload-size` hook | Claude Code + official Telegram plugin；心跳 workflow 需 Telethon/tmux/launchd | 无 |
+| [`chrome`](plugins/chrome/) | Claude + Codex + Hermes | `cdp-chrome` 共享有头 Chrome provider | Chrome、`npx`；Claude/Hermes 使用时需 MCP 注册 | 提供 `headed-browser`，可被 Codex Chrome plugin / 原生 browser-use 替代 |
 
 ## Skills
 
@@ -91,8 +70,11 @@ Telegram commands、hooks 和 MCP server 保留在 Claude Code 插件中，避�
 
 ```
 agent-steroids/
+  INSTALL.md            # 唯一安装手册：给 human/agent 安装时读取
   .agents/plugins/      # Codex marketplace 配置（只列跨运行时 skill 插件）
   .claude-plugin/       # Claude marketplace 配置（列三个插件）
+  steroids/             # Hermes shim：agent-steroids/steroids
+  chrome/               # Hermes shim：agent-steroids/chrome
   scripts/              # 独立 CLI 工具
   plugins/
     steroids/           # 主体 skills 和通用 commands

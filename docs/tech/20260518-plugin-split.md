@@ -13,15 +13,16 @@
 1. **不要过度拆分**：paper、web clipping、WeChat 等 workflow 都留在 `steroids`。
 2. **浏览器依赖写 capability，不写死 provider**：需要人工接管/登录态/CAPTCHA 时写 `headed-browser`。`chrome/cdp-chrome` 是一个 provider；Codex Chrome plugin 或原生 browser-use 也可以满足。
 3. **Telegram 相关能力集中**：Telegram commands、MCP server、time hook、payload guard hook 都在 `telegram`，避免再单独维护 guard 插件。
-4. **Codex marketplace 只暴露跨运行时 skill 插件**：当前为 `steroids` 和 `chrome`。`telegram` 保持 Claude Code 专用。
+4. **Codex marketplace 只暴露跨运行时 skill 插件**：当前为 `steroids` 和 `chrome`。`telegram` 保持 Claude Code 专用 marketplace。
+5. **Hermes 用根目录 shim 只暴露跨运行时插件**：`agent-steroids/steroids`、`agent-steroids/chrome` 可分别 enable/disable；skill 加载命名空间保持 `steroids:*`、`chrome:*`。`telegram` 是 Claude Code 专用插件，不提供 Hermes shim。
 
 ## Plugin Matrix
 
 | Plugin | Runtime | Contents | Hard Dependencies | Soft / Capability Dependencies |
 |---|---|---|---|---|
-| `steroids` | Claude + Codex | `extract-to-md`, `read-book`, `html-to-pdf`, `clipping`, `paper-download`, `wechat-desktop`, `/song` | None | `paper-download` / `clipping` may need `headed-browser`; `wechat-desktop` needs macOS + computer-use MCP |
-| `telegram` | Claude | `telegram-agents`, `/tg-*`, `/check-release`, `telegram-notify` MCP, Telegram time hook, `guard-payload-size` hook | Claude Code + official Telegram plugin for channel sessions; Telethon/tmux/launchd for heartbeat workflows | None |
-| `chrome` | Claude + Codex | `cdp-chrome` shared headed Chrome provider | Chrome, `npx`; MCP registration when used from Claude Code | Provides `headed-browser`; optional replacement for Codex Chrome plugin/native browser-use |
+| `steroids` | Claude + Codex + Hermes | `extract-to-md`, `read-book`, `html-to-pdf`, `clipping`, `paper-download`, `wechat-desktop`, `/song` | None | `paper-download` / `clipping` may need `headed-browser`; `wechat-desktop` needs macOS + computer-use MCP |
+| `telegram` | Claude Code only | `telegram-agents`, `/tg-*`, `/check-release`, `telegram-notify` MCP, Telegram time hook, `guard-payload-size` hook | Claude Code + official Telegram plugin for channel sessions; Telethon/tmux/launchd for heartbeat workflows | None |
+| `chrome` | Claude + Codex + Hermes | `cdp-chrome` shared headed Chrome provider | Chrome, `npx`; MCP registration when used from Claude Code or Hermes | Provides `headed-browser`; optional replacement for Codex Chrome plugin/native browser-use |
 
 ## Capability Map
 
@@ -61,40 +62,14 @@ JS-rendered article pages need a headed browser, but `clipping` should not force
 
 The guard hook is especially useful for long-running Claude Code / Telegram / computer-use sessions, and the user requested not to keep it as a separate plugin. It is configured through `plugins/telegram/hooks/hooks.json` together with Telegram time awareness.
 
-## Install Examples
+## Installation Manual
 
-### Minimal document workflow
-
-```bash
-claude plugin install steroids@agent-steroids
-```
-
-### Paper workflow with existing Codex/Chrome browser provider
-
-Install only the main plugin. Do not install `chrome` unless the environment lacks a headed browser provider.
-
-```bash
-claude plugin install steroids@agent-steroids
-```
-
-### Paper workflow on a fresh Claude Code machine
-
-```bash
-claude plugin install steroids@agent-steroids
-claude plugin install chrome@agent-steroids
-```
-
-Then configure `cdp-chrome` following `plugins/chrome/skills/cdp-chrome/SKILL.md`.
-
-### Telegram workflows with payload guard
-
-```bash
-claude plugin install telegram@agent-steroids
-```
+All concrete install commands live in the root [`INSTALL.md`](../../INSTALL.md). Keep this design note focused on plugin boundaries and dependency decisions; do not duplicate install commands here.
 
 ## Maintenance Checklist
 
-- Keep root marketplaces to these plugin names unless the user explicitly asks for another split: `steroids`, `telegram`, `chrome`.
-- Update every changed plugin manifest version.
-- Keep README tables grouped by these three plugins.
+- Keep the Claude marketplace grouped by these plugin names unless the user explicitly asks for another split: `steroids`, `telegram`, `chrome`.
+- Keep Codex marketplace and Hermes root shim directories limited to cross-runtime plugins: `steroids`, `chrome`. Do not add `telegram` to Codex/Hermes unless Telegram support is deliberately redesigned for those runtimes.
+- Update every changed plugin manifest version, including Hermes `plugin.yaml` shim manifests when their exposed skill set changes.
+- Keep README tables grouped by the three canonical plugin directories, while marking runtime coverage accurately.
 - Avoid hard dependencies on provider plugins when a capability can be satisfied by another environment.
