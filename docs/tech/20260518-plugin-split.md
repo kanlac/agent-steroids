@@ -22,7 +22,7 @@
 |---|---|---|---|---|
 | `steroids` | Claude + Codex + Hermes | `extract-to-md`, `read-book`, `html-to-pdf`, `clipping`, `paper-download`, `wechat-desktop`, `/song` | None | `paper-download` / `clipping` may need `headed-browser`; `wechat-desktop` needs macOS + computer-use MCP |
 | `telegram` | Claude Code only | `telegram-agents`, `/tg-*`, `/check-release`, `telegram-notify` MCP, Telegram time hook, `guard-payload-size` hook | Claude Code + official Telegram plugin for channel sessions; Telethon/tmux/launchd for heartbeat workflows | None |
-| `chrome` | Claude + Codex + Hermes | `cdp-chrome` shared headed Chrome provider; bundled `cdp-chrome` MCP config for Claude Code/Codex; Hermes uses config-driven MCP registration | Chrome, `npx`; `mcp_servers` registration for Hermes | Provides `headed-browser`; optional replacement for Codex Chrome plugin/native browser-use |
+| `chrome` | Claude + Codex + Hermes | `cdp-chrome` per-OS-user headed Chrome provider; bundled MCP wrapper for Claude Code/Codex reads current-user config; Hermes uses config-driven MCP registration | Chrome, `npx`; `mcp_servers` registration for Hermes | Provides `headed-browser`; optional replacement for Codex Chrome plugin/native browser-use |
 
 ## Capability Map
 
