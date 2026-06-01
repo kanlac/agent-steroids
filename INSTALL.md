@@ -98,5 +98,5 @@ hermes -s chrome:cdp-chrome
 
 1. 目标 runtime 的插件列表里能看到刚安装的插件。
 2. 只安装了该 runtime 支持的插件；尤其是 Codex/Hermes 中不应出现 `telegram`。
-3. 如安装 `chrome`，Claude Code / Codex 会随插件加载 `cdp-chrome` MCP；继续根据 `plugins/chrome/skills/cdp-chrome/SKILL.md` 完成共享 Chrome 配置与启动。Hermes 支持 MCP，但需按该 skill 在 `mcp_servers` 中手动注册。
+3. 如安装 `chrome`，Claude Code / Codex 会随插件加载 `cdp-chrome` MCP wrapper；继续根据 `plugins/chrome/skills/cdp-chrome/SKILL.md` 在 steroids 配置文件（macOS/Linux: `~/.config/steroids.json`；Windows: `%APPDATA%\steroids.json`）设置当前 OS 用户专属的 `cdp-chrome.port/profile_dir`，运行 `plugins/chrome/skills/cdp-chrome/scripts/doctor.sh` 验证，再用 `start.sh` 启动。Hermes 支持 MCP，但需按该 skill 在 `mcp_servers` 中手动注册。
 4. 如安装 Claude Code 的 `telegram`，继续根据 `plugins/telegram/skills/telegram-agents/SKILL.md` 完成 Telegram agent 配置。

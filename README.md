@@ -4,7 +4,7 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 
 - `steroids`：主体 Skills 和通用 workflow。
 - `telegram`：Claude Code 专用的 Telegram agent 运维、通知 MCP、Telegram hook，并包含 `guard-payload-size`。
-- `chrome`：可选的共享有头 Chrome provider；Claude Code / Codex 安装后随插件提供 `cdp-chrome` MCP 配置。
+- `chrome`：可选的每 OS 用户一个进程的共享有头 Chrome provider；Claude Code / Codex 安装后随插件提供 `cdp-chrome` MCP 启动器。
 
 `steroids` 和 `chrome` 的 canonical skills 位于 `plugins/<plugin>/skills/` 并可跨 runtime 复用；Claude Code / Codex 通过各自 marketplace 安装，Hermes 通过根目录 shim 仅暴露 `steroids` 与 `chrome`。`telegram` 保持 Claude Code 专用，不提供 Hermes shim。
 
@@ -20,7 +20,7 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 |---|---|---|---|---|
 | [`steroids`](plugins/steroids/) | Claude + Codex + Hermes | 主体 Skills：文档处理、书籍阅读、PDF 导出、网页剪藏、论文下载、微信桌面 workflow，以及 `/song` | 无 | `paper-download` / `clipping` 的登录态或 CAPTCHA 场景需要 `headed-browser`；`wechat-desktop` 需要 macOS + computer-use MCP |
 | [`telegram`](plugins/telegram/) | Claude Code only | `telegram-agents`、`/tg-*`、`/check-release`、`telegram-notify` MCP、Telegram time hook、`guard-payload-size` hook | Claude Code + official Telegram plugin；心跳 workflow 需 Telethon/tmux/launchd | 无 |
-| [`chrome`](plugins/chrome/) | Claude + Codex + Hermes | `cdp-chrome` 共享有头 Chrome provider；Claude/Codex 内置 `cdp-chrome` MCP 配置 | Chrome、`npx`；Hermes 使用时需在 `mcp_servers` 注册 | 提供 `headed-browser`，可被 Codex Chrome plugin / 原生 browser-use 替代 |
+| [`chrome`](plugins/chrome/) | Claude + Codex + Hermes | `cdp-chrome` 每 OS 用户一个进程的共享有头 Chrome provider；Claude/Codex 内置 `cdp-chrome` MCP 启动器，会读取当前用户 steroids 配置 | Chrome、`npx`；Hermes 使用时需在 `mcp_servers` 注册 | 提供 `headed-browser`，可被 Codex Chrome plugin / 原生 browser-use 替代 |
 
 ## Skills
 
@@ -57,7 +57,7 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 
 | Server | Plugin | Runtime | 说明 |
 |--------|--------|---------|------|
-| `cdp-chrome` | `chrome` | Claude + Codex bundled；Hermes config-driven | Claude/Codex 通过插件根目录 [`.mcp.json`](plugins/chrome/.mcp.json) 启动；Hermes 通过 `mcp_servers.cdp-chrome` 手动注册。两者都连接共享 Chrome 实例。 |
+| `cdp-chrome` | `chrome` | Claude + Codex bundled；Hermes config-driven | Claude/Codex 通过插件根目录 [`.mcp.json`](plugins/chrome/.mcp.json) 启动插件本地 wrapper，读取当前用户 `cdp-chrome.port/profile_dir` 并校验监听者；Hermes 通过 `mcp_servers.cdp-chrome` 手动注册。每个 OS 用户应使用自己的端口和 profile，并运行 `doctor.sh` 验证。 |
 | [`telegram-notify`](plugins/telegram/mcp-servers/telegram-notify/) | `telegram` | Claude Code only | 轻量级 Telegram 通知服务，供 agent 发送消息。 |
 
 ## Scripts
@@ -80,7 +80,7 @@ agent-steroids/
   plugins/
     steroids/           # 主体 skills 和通用 commands
     telegram/           # Telegram skill/commands/MCP/hooks（含 guard-payload-size）
-    chrome/             # cdp-chrome provider（含 Claude/Codex MCP 配置）
+    chrome/             # cdp-chrome provider（含 Claude/Codex MCP wrapper 配置）
   docs/
     tech/               # 技术方案和架构设计
     research/           # 调研、对比分析
