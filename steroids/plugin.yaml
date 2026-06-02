@@ -1,6 +1,6 @@
 manifest_version: 1
 name: steroids
-version: 2.1.0
+version: 2.1.1
 description: Core Agent Steroids skills and workflow helpers for Hermes.
 author: Kan
 kind: standalone

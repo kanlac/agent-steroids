@@ -1,6 +1,6 @@
 {
   "name": "steroids",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Core Agent Steroids skills and workflow helpers",
   "author": {
     "name": "Kan"
@@ -18,8 +18,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Agent Steroids",
-    "shortDescription": "Reusable productivity, document, paper, and desktop workflow skills.",
-    "longDescription": "Core Agent Steroids plugin with document extraction, EPUB reading, HTML-to-PDF generation, web clipping, academic paper workflows, and desktop workflow guidance.",
+    "shortDescription": "Reusable productivity, document, paper, desktop workflow, and skill-learning guidance.",
+    "longDescription": "Core Agent Steroids plugin with document extraction, EPUB reading, HTML-to-PDF generation, web clipping, academic paper workflows, desktop workflow guidance, and meta-learning for improving skills from feedback.",
     "developerName": "Kan",
     "category": "Productivity",
     "capabilities": [
@@ -29,7 +29,8 @@
     "defaultPrompt": [
       "Convert this article or PDF export to Markdown.",
       "Find papers about this topic and create an xlsx report.",
-      "Export this HTML report to a single-page PDF."
+      "Export this HTML report to a single-page PDF.",
+      "Learn from this correction and update the relevant skill without adding noise."
     ],
     "brandColor": "#2563EB"
   }
