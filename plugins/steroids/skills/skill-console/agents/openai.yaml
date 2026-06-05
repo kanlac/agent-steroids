@@ -1,0 +1,5 @@
+interface:
+  display_name: "Skill Console"
+  short_description: "Audit Skill inventories and token budgets."
+  brand_color: "#0F766E"
+  default_prompt: "Use $skill-console to generate a local Skill inventory dashboard and export selected Skill paths."

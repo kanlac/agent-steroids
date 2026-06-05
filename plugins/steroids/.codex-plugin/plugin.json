@@ -1,7 +1,7 @@
 {
   "name": "steroids",
   "version": "2.1.2",
-  "description": "Core Agent Steroids skills and workflow helpers",
+  "description": "Core Agent Steroids skills and workflow helpers, including Skill inventory auditing",
   "author": {
     "name": "Kan"
   },
@@ -18,8 +18,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Agent Steroids",
-    "shortDescription": "Reusable productivity, document, paper, desktop workflow, and skill-learning guidance.",
-    "longDescription": "Core Agent Steroids plugin with document extraction, EPUB reading, HTML-to-PDF generation, web clipping, academic paper workflows, desktop workflow guidance, and meta-learning for improving skills from feedback.",
+    "shortDescription": "Reusable productivity, document, paper, Skill audit, desktop workflow, and skill-learning guidance.",
+    "longDescription": "Core Agent Steroids plugin with document extraction, EPUB reading, HTML-to-PDF generation, web clipping, academic paper workflows, Skill inventory auditing, desktop workflow guidance, and meta-learning for improving skills from feedback.",
     "developerName": "Kan",
     "category": "Productivity",
     "capabilities": [
@@ -30,7 +30,8 @@
       "Convert this article or PDF export to Markdown.",
       "Find papers about this topic and create an xlsx report.",
       "Export this HTML report to a single-page PDF.",
-      "Learn from this correction and update the relevant skill without adding noise."
+      "Learn from this correction and update the relevant skill without adding noise.",
+      "Generate a Skill inventory dashboard and export selected Skill paths."
     ],
     "brandColor": "#2563EB"
   }
