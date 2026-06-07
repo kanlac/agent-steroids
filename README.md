@@ -60,7 +60,7 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 
 | Server | Plugin | Runtime | 说明 |
 |--------|--------|---------|------|
-| `cdp-chrome` | `chrome` | Claude + Codex bundled；Hermes config-driven | Claude/Codex 通过插件根目录 [`.mcp.json`](plugins/chrome/.mcp.json) 启动插件本地 wrapper，读取当前用户 `cdp-chrome.port/profile_dir` 并校验监听者；Hermes 通过 `mcp_servers.cdp-chrome` 手动注册。每个 OS 用户应使用自己的端口和 profile，并运行 `doctor.sh` 验证。 |
+| `cdp-chrome` | `chrome` | Claude + Codex bundled；Hermes config-driven | Claude/Codex 通过插件本地 MCP 配置启动 launcher，读取当前用户 `cdp-chrome.port/profile_dir` 并校验监听者；Hermes 通过 `mcp_servers.cdp-chrome` 手动注册。每个 OS 用户应使用自己的端口和 profile，并运行 `doctor.sh` 验证。 |
 | [`telegram-notify`](plugins/telegram/mcp-servers/telegram-notify/) | `telegram` | Claude Code only | 轻量级 Telegram 通知服务，供 agent 发送消息。 |
 
 ## Scripts
@@ -83,7 +83,7 @@ agent-steroids/
   plugins/
     steroids/           # 主体 skills 和通用 commands
     telegram/           # Telegram skill/commands/MCP/hooks（含 guard-payload-size）
-    chrome/             # cdp-chrome provider（含 Claude/Codex MCP wrapper 配置）
+    chrome/             # cdp-chrome provider（含 Claude/Codex MCP launcher 配置）
   docs/
     tech/               # 技术方案和架构设计
     research/           # 调研、对比分析

@@ -44,7 +44,7 @@ fi
 
 echo "Starting CDP Chrome on port $CDP_PORT with profile $CDP_PROFILE_DIR..."
 
-"$CHROME_BIN" \
+nohup "$CHROME_BIN" \
   --remote-debugging-port="$CDP_PORT" \
   --user-data-dir="$CDP_PROFILE_DIR" \
   --remote-allow-origins=* \

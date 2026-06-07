@@ -1,10 +1,11 @@
 {
   "mcpServers": {
     "cdp-chrome": {
+      "cwd": ".",
       "command": "bash",
       "args": [
         "-c",
-        "PLUGIN_ROOT=\"${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT:-}}\"; if [ -z \"$PLUGIN_ROOT\" ] && [ -x \"./skills/cdp-chrome/scripts/mcp-launcher.sh\" ]; then PLUGIN_ROOT=\"$PWD\"; fi; if [ -z \"$PLUGIN_ROOT\" ]; then echo 'ERROR: plugin root not found for cdp-chrome MCP launcher' >&2; exit 1; fi; exec \"$PLUGIN_ROOT/skills/cdp-chrome/scripts/mcp-launcher.sh\""
+        "if [ -n \"$CLAUDE_PLUGIN_ROOT\" ]; then plugin_root=\"$CLAUDE_PLUGIN_ROOT\"; else plugin_root=\"$PWD\"; fi; exec \"$plugin_root/skills/cdp-chrome/scripts/mcp-launcher.sh\""
       ]
     }
   }

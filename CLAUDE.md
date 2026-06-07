@@ -1,4 +1,11 @@
-**IMPORTANT**: After any plugin changes, update the changed plugin's manifest version(s): `plugins/<plugin>/.claude-plugin/plugin.json`, `plugins/<plugin>/.codex-plugin/plugin.json` when present, and the corresponding Hermes shim `plugin.yaml` when that plugin is Hermes-exposed and its skill set or description changes (SemVer: major.minor.patch).
+**IMPORTANT**: After any plugin change, update the changed plugin's runtime manifest version(s):
+- Claude Code: `plugins/<plugin>/.claude-plugin/plugin.json` when present
+- Codex: `plugins/<plugin>/.codex-plugin/plugin.json` when present
+- Hermes: the corresponding `plugin.yaml` only when that plugin is Hermes-exposed and its skill set, description, or runtime surface changes
+
+Do not treat README/INSTALL as mandatory for every plugin version bump. Update README/INSTALL only when the user-facing feature list, setup flow, command list, skill list, hook list, MCP server list, or compatibility story changes.
+
+If a plugin's MCP config is shared through `mcpServers: "./.mcp.json"`, keep the server definition in that shared `.mcp.json` and bump every runtime manifest that packages it. Do not duplicate divergent MCP server definitions across Claude Code and Codex manifests.
 
 `AGENTS.md` is a symlink to this file. Keep these instructions compatible with Claude Code, Codex, and Hermes unless a section explicitly names one runtime.
 

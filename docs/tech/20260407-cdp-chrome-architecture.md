@@ -31,7 +31,7 @@ Reddit 等平台检测 headless Chrome 特征（`navigator.webdriver=true`、Hea
 2. **端口和 profile 不硬编码**——统一从当前用户的 steroids 配置文件读取；多用户机器上每个 OS 用户必须选择自己的 `port` 和 `profile_dir`
 3. **GUI 模式**——避免平台 bot 检测
 4. **独立 profile**——与用户日常 Chrome 隔离，不影响日常浏览
-5. **失败优先于误连**——启动脚本和 MCP wrapper 会尽量用 `lsof`/`ps` 校验监听者属于当前 OS 用户，且 Chrome 命令行中的 `--user-data-dir` 与配置一致；macOS 上无法确认时拒绝继续
+5. **失败优先于误连**——启动脚本和 MCP launcher 会尽量用 `lsof`/`ps` 校验监听者属于当前 OS 用户，且 Chrome 命令行中的 `--user-data-dir` 与配置一致；macOS 上无法确认时拒绝继续
 
 ### 配置结构
 
@@ -72,16 +72,19 @@ chrome-devtools-mcp（Claude Code/Codex 中暴露为 `mcp__cdp-chrome__*` 系列
 - X/Twitter 等平台拒绝登录
 - 无法使用持久化的登录态
 
-**解决方案**：Chrome 插件在 Claude Code / Codex 中通过插件根目录 `.mcp.json` 提供 `cdp-chrome` MCP wrapper，让 wrapper 读取当前用户配置、验证监听者，然后让 chrome-devtools-mcp 连接已有的本用户 Chrome 实例，而非自己启动。Hermes 支持 MCP，但当前是 `mcp_servers` 配置驱动，不会从 plugin shim 自动加载 `.mcp.json`：
+**解决方案**：Chrome 插件在 Claude Code / Codex 中通过插件根目录 `.mcp.json` 提供 `cdp-chrome` MCP launcher，让 launcher 读取当前用户配置、验证监听者，然后让 chrome-devtools-mcp 连接已有的本用户 Chrome 实例，而非自己启动。Hermes 支持 MCP，但当前是 `mcp_servers` 配置驱动，不会从 plugin shim 自动加载 `.mcp.json`。
+
+Claude Code 官方文档明确支持 `CLAUDE_PLUGIN_ROOT` 指向已安装插件根目录。Codex 官方文档明确说明 plugin manifest 里的 `mcpServers` 路径相对插件根目录，但没有明确写 MCP server entry 内部 `cwd: "."` 的语义；当前 Codex 实测会把插件本地 MCP 配置的 `cwd: "."` 解析到已安装插件根目录。因此共享 `.mcp.json` 在 shell 运行时读取 Claude 官方环境变量 `$CLAUDE_PLUGIN_ROOT`，否则 fallback 到 `$PWD`；不要在 JSON 字符串里写 `${CLAUDE_PLUGIN_ROOT:-...}`，否则 Claude Code 会先做配置变量展开：
 
 ```json
 {
 	  "mcpServers": {
 	    "cdp-chrome": {
+	      "cwd": ".",
 	      "command": "bash",
 	      "args": [
 	        "-c",
-	        "PLUGIN_ROOT=\"${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT:-}}\"; if [ -z \"$PLUGIN_ROOT\" ] && [ -x \"./skills/cdp-chrome/scripts/mcp-launcher.sh\" ]; then PLUGIN_ROOT=\"$PWD\"; fi; if [ -z \"$PLUGIN_ROOT\" ]; then echo 'ERROR: plugin root not found for cdp-chrome MCP launcher' >&2; exit 1; fi; exec \"$PLUGIN_ROOT/skills/cdp-chrome/scripts/mcp-launcher.sh\""
+	        "if [ -n \"$CLAUDE_PLUGIN_ROOT\" ]; then plugin_root=\"$CLAUDE_PLUGIN_ROOT\"; else plugin_root=\"$PWD\"; fi; exec \"$plugin_root/skills/cdp-chrome/scripts/mcp-launcher.sh\""
 	      ]
 	    }
 	  }
@@ -125,7 +128,7 @@ curl -s -X PUT "http://127.0.0.1:$PORT/json/close/$TARGET_ID"
 
 1. [x] 创建配置目录和 steroids 配置项（`port` + `profile_dir`，兼容仅配置 `port` 的历史配置）
 2. [x] 编写启动脚本 `scripts/start.sh`（读配置、检查 owner/profile、按需启动，不带 `--enable-automation`）
-3. [x] 在 Chrome 插件中内置 `.mcp.json`，让 plugin-local wrapper 校验后通过 `--browserUrl` 连接当前 OS 用户实例（而非自己启动带 automation 标志的 Chrome）
+3. [x] 在 Chrome 插件中内置 plugin-local MCP 配置，让 launcher 校验后通过 `--browserUrl` 连接当前 OS 用户实例（而非自己启动带 automation 标志的 Chrome）
 4. [x] 增加 `scripts/doctor.sh`，用于 setup/runtime 验证和 remediation 提示
 5. [x] 首次使用时 GUI 模式启动，手动登录所需站点，cookie 持久化在 profile 中
 6. [ ] 各 skill/agent 的 Chrome 启动逻辑改为调用共享启动脚本或直接读配置
@@ -135,7 +138,7 @@ curl -s -X PUT "http://127.0.0.1:$PORT/json/close/$TARGET_ID"
 1. 为当前 OS 用户选择唯一 `cdp-chrome.port/profile_dir`，运行 `doctor.sh` 验证
 2. 运行 `scripts/start.sh` 启动共享 Chrome（或设为 login item 开机自启）
 3. 首次需要手动在 Chrome 窗口中登录 X/Twitter、Reddit 等站点
-4. 启动 Claude Code/Codex 会话，chrome-devtools-mcp 通过 wrapper 自动连接当前用户实例
+4. 启动 Claude Code/Codex 会话，chrome-devtools-mcp 通过 launcher 自动连接当前用户实例
 5. 后续会话复用同一 Chrome 进程和登录态
 
 ## 开放问题

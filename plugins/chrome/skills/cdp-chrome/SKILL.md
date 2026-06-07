@@ -55,7 +55,7 @@ Existing configs with only `port` still work; `profile_dir` defaults to `~/.conf
 
 ## MCP Registration
 
-Claude Code and Codex: installing the `chrome` plugin provides `cdp-chrome` through plugin-local `.mcp.json`. It runs a shell wrapper that resolves the plugin root from plugin-root environment variables or plugin-root cwd, then calls `skills/cdp-chrome/scripts/mcp-launcher.sh`; that launcher reads the current user's config, validates an existing listener when possible, then execs:
+Claude Code and Codex: installing the `chrome` plugin provides `cdp-chrome` through plugin-local `.mcp.json`. Claude Code documents `${CLAUDE_PLUGIN_ROOT}` for plugin MCP paths; current Codex plugin loading has been verified to start plugin MCP entries with `cwd: "."` at the installed plugin root. The shared `.mcp.json` uses a small shell launcher to support both cases, then runs `skills/cdp-chrome/scripts/mcp-launcher.sh`; that launcher reads the current user's config, validates an existing listener when possible, then execs:
 
 ```bash
 npx -y chrome-devtools-mcp@latest --browserUrl http://127.0.0.1:<port> --no-usage-statistics
