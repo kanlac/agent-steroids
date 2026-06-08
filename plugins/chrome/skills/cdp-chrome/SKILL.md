@@ -65,9 +65,21 @@ Hermes: plugin-local MCP config is not auto-loaded. Register an equivalent `mcp_
 
 Do not create a duplicate project-level `./.mcp.json` for the same server; duplicate MCP definitions can connect to different ports.
 
+## Target Binding
+
+This skill is only satisfied when the agent is operating on the configured shared CDP endpoint. Similar-looking tools such as `mcp__chrome_devtools__*`, Playwright, Puppeteer, or browser-use are not substitutes unless they are explicitly registered as the `cdp-chrome` server for this plugin and proven to use the configured `http://127.0.0.1:<port>` endpoint. They can silently attach to a different browser or target, even when their API is based on Chrome DevTools.
+
+If the expected `cdp-chrome` MCP namespace is not exposed, do not guess with another browser tool. First run `doctor.sh`, then use the configured endpoint directly:
+
+```bash
+curl -s "http://127.0.0.1:<port>/json/list"
+```
+
+Pick the intended target from `/json/list` and operate through its `webSocketDebuggerUrl`, or report that the `cdp-chrome` MCP namespace is missing. A page list from any other tool is not proof that this skill is attached to the shared Chrome.
+
 ## Agent Rules
 
-1. Use only MCP tools from server name `cdp-chrome` (`mcp__cdp-chrome__*` in Claude/Codex, `mcp_cdp_chrome_*` style in Hermes). Do not fall back to other Chrome/Playwright/Puppeteer MCP tools; they may launch automated Chrome.
+1. Use only MCP tools from server name `cdp-chrome` (`mcp__cdp-chrome__*` in Claude/Codex, `mcp_cdp_chrome_*` style in Hermes), or the direct configured CDP endpoint fallback above. Do not fall back to other Chrome/Playwright/Puppeteer MCP tools; they may launch automated Chrome or attach to a different Chrome target.
 2. Never launch your own Chrome. Use `start.sh` if the configured instance is not running.
 3. Before browser work, run `doctor.sh` when setup changed or when connection errors occur.
 4. Open tabs for your task and close them when done. Do not touch other agents' tabs.
