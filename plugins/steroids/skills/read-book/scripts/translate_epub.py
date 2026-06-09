@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Translate an English epub to bilingual (EN-ZH) format using Claude CLI (Opus).
+Translate an English epub to bilingual (EN-ZH) format.
 
 Features:
   - Context-aware translation (preceding paragraphs sent as context)
@@ -22,6 +22,7 @@ import subprocess
 import sys
 import tempfile
 import zipfile
+from typing import Optional
 from pathlib import Path
 
 from lxml import etree
@@ -32,7 +33,29 @@ TRANSLATABLE_TAGS = {f"{{{XHTML_NS}}}{t}" for t in ("p", "li", "td", "h1", "h2",
 MIN_TEXT_LEN = 4
 MIN_ALPHA_CHARS = 3
 CONTEXT_BEFORE = 5
-BATCH_SIZE = 12
+BATCH_SIZE = 24
+CODER_TIMEOUT = 900
+DEFAULT_CLAUDE_MODEL = "sonnet"
+DEFAULT_CODEX_MODEL = None
+DEFAULT_CODEX_EFFORT = "low"
+AUTO_RETRY_ROUNDS = 2
+AUTO_RETRY_CONTEXT = 8
+FORBIDDEN_TRANSLATION_PREFIXES = (
+    "我会先",
+    "我会",
+    "以下是",
+    "以下是第",
+    "这是我的",
+    "1.",
+    "1)",
+    "first",
+    "i will",
+    "i can't",
+    "cannot",
+    "unable",
+    "can't",
+    "image",
+)
 
 ZH_STYLE = """
 [lang="zh"] {
@@ -124,7 +147,7 @@ def get_reading_order(extracted_dir):
     return ordered if ordered else sorted(extracted_dir.rglob("*.xhtml"))
 
 
-def call_claude_translate(context_texts, batch_texts):
+def build_prompt(context_texts, batch_texts):
     parts = []
     if context_texts:
         parts.append("=== 以下是前文（仅供理解上下文，不需要翻译）===")
@@ -137,21 +160,18 @@ def call_claude_translate(context_texts, batch_texts):
 
     text_block = "\n\n".join(parts)
 
-    prompt = f"""你是一位优秀的英中文学翻译。请将标记了编号的段落翻译为自然、流畅、优雅的中文。
+    return f"""你是一位英文学术翻译专家。请将标记了编号的段落翻译为中文。\n\n\
+要求：\n1. 只翻译带 [N] 编号的段落，不输出原文\n2. 每段严格使用 "[N]" 开头输出译文，和编号一一对应\n3. 译文自然流畅，避免生硬的中式表达\n\n\
+以下是你**不能**输出的内容示例（不要输出）：\n- 我会先翻译第...段\n- 这是我的翻译指令\n- 1. 首先 ...\n\n{text_block}"""
 
-要求：
-1. 上方「前文」部分帮助你理解语境和行文脉络，不需要翻译
-2. 只翻译带 [N] 编号的段落
-3. 输出格式：每段以 [N] 开头，后跟中文翻译
-4. 译文要通顺自然，符合中文表达习惯，避免翻译腔
-5. 注意前后文的衔接——如果一段话承接上文，翻译时也要体现这种衔接关系
-6. 人名、地名首次出现时保留英文原名
 
-{text_block}"""
+def call_claude_translate(context_texts, batch_texts, model: Optional[str] = None):
+    model = model or DEFAULT_CLAUDE_MODEL
+    prompt = build_prompt(context_texts, batch_texts)
 
     try:
         result = subprocess.run(
-            ["claude", "-p", "--model", "opus"],
+            ["claude", "-p", "--model", model],
             input=prompt,
             capture_output=True,
             text=True,
@@ -162,7 +182,77 @@ def call_claude_translate(context_texts, batch_texts):
             return None
         return parse_translations(result.stdout, len(batch_texts))
     except subprocess.TimeoutExpired:
-        print("  [ERROR] Claude CLI timed out", file=sys.stderr, flush=True)
+            print("  [ERROR] Claude CLI timed out", file=sys.stderr, flush=True)
+            return None
+
+
+def call_codex_translate(context_texts, batch_texts, model: Optional[str] = None, effort: Optional[str] = None):
+    prompt = build_prompt(context_texts, batch_texts)
+    model = model or DEFAULT_CODEX_MODEL
+    if model and str(model).strip().lower() == "latest":
+        model = DEFAULT_CODEX_MODEL
+    effort = effort or DEFAULT_CODEX_EFFORT
+
+    def run_with_options(out_file, extra_args):
+        cmd = ["codex", "exec", "--skip-git-repo-check", "--output-last-message", str(out_file)] + extra_args
+        if model:
+            cmd = cmd + ["-m", model]
+        return subprocess.run(cmd, input=prompt, capture_output=True, text=True, timeout=CODER_TIMEOUT)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        out_file = Path(tmpdir) / "codex_last_message.txt"
+        attempt_cmds = []
+        if effort:
+            attempt_cmds.append(["-c", f'model.reasoning_effort="{effort}"'])
+        attempt_cmds.append([])
+
+        try:
+            result = None
+            for idx, extra_args in enumerate(attempt_cmds):
+                if idx > 0:
+                    print("  [WARN] Codex first attempt with effort override failed, retrying without override", file=sys.stderr, flush=True)
+                result = run_with_options(out_file, extra_args)
+
+                if result.returncode == 0 and out_file.exists():
+                    return parse_translations(out_file.read_text(encoding="utf-8"), len(batch_texts))
+
+                err_hint = (result.stderr or result.stdout or "").strip().lower()
+                if model and (
+                    "invalid model" in err_hint or "unknown" in err_hint or "unsupported" in err_hint
+                ):
+                    print("  [WARN] Invalid custom model, retrying with default GPT model", file=sys.stderr, flush=True)
+                    model = DEFAULT_CODEX_MODEL
+                    result = run_with_options(out_file, [])
+                    if result.returncode == 0 and out_file.exists():
+                        return parse_translations(out_file.read_text(encoding="utf-8"), len(batch_texts))
+
+            preview = (result.stderr or result.stdout or "").strip().replace("\n", " ")[:300]
+            print(f"  [ERROR] Codex CLI failed: {preview}", file=sys.stderr, flush=True)
+            return None
+        except subprocess.TimeoutExpired:
+            print("  [ERROR] Codex CLI timed out", file=sys.stderr, flush=True)
+            return None
+
+
+def call_custom_translate(context_texts, batch_texts, cmd: str):
+    prompt = build_prompt(context_texts, batch_texts)
+
+    try:
+        result = subprocess.run(
+            cmd,
+            input=prompt,
+            shell=True,
+            capture_output=True,
+            text=True,
+            timeout=CODER_TIMEOUT,
+        )
+        if result.returncode != 0:
+            preview = (result.stderr or result.stdout or "").strip().replace("\n", " ")[:300]
+            print(f"  [ERROR] Custom translator failed: {preview}", file=sys.stderr, flush=True)
+            return None
+        return parse_translations(result.stdout, len(batch_texts))
+    except subprocess.TimeoutExpired:
+        print("  [ERROR] Custom translator timed out", file=sys.stderr, flush=True)
         return None
 
 
@@ -180,6 +270,29 @@ def parse_translations(output, expected_count):
     if found < expected_count:
         print(f"  [WARN] Only parsed {found}/{expected_count} translations", flush=True)
     return result
+
+
+def is_invalid_translation(text):
+    if not text or not text.strip():
+        return True
+    normalized = text.strip().lower()
+    return any(normalized.startswith(prefix) for prefix in FORBIDDEN_TRANSLATION_PREFIXES)
+
+
+def translate_single_paragraph(context_texts, single_text, translator, translator_cmd=None, translator_model=None):
+    if translator == "claude":
+        return call_claude_translate(context_texts, [single_text], model=translator_model)
+    if translator == "codex":
+        return call_codex_translate(context_texts, [single_text], model=translator_model)
+    return call_custom_translate(context_texts, [single_text], translator_cmd)
+
+
+def find_missing_indexes(translations):
+    missing = []
+    for idx, text in enumerate(translations):
+        if is_invalid_translation(text):
+            missing.append(idx)
+    return missing
 
 
 def add_zh_style(tree):
@@ -201,8 +314,8 @@ def create_zh_element(original_elem, zh_text):
     return zh_elem
 
 
-def process_file(filepath, base_dir):
-    relpath = filepath.relative_to(base_dir)
+def process_file(filepath, base_dir, translator, translator_cmd=None, translator_model=None, translator_effort=None):
+    relpath = filepath.resolve().relative_to(base_dir.resolve())
     print(f"\n{'='*60}", flush=True)
     print(f"Processing: {relpath}", flush=True)
 
@@ -215,7 +328,7 @@ def process_file(filepath, base_dir):
 
     if not elements:
         print("  No translatable content, skipping.", flush=True)
-        return 0
+        return 0, 0, 0
 
     print(f"  Found {len(texts)} paragraphs to translate", flush=True)
     add_zh_style(tree)
@@ -231,16 +344,60 @@ def process_file(filepath, base_dir):
         print(f"  Translating batch {batch_start}-{batch_end-1} "
               f"({len(batch_texts)} paragraphs, {len(context_texts)} context)...", flush=True)
 
-        translations = call_claude_translate(context_texts, batch_texts)
+        if translator == "claude":
+            translations = call_claude_translate(context_texts, batch_texts, model=translator_model)
+        elif translator == "codex":
+            translations = call_codex_translate(context_texts, batch_texts, model=translator_model, effort=translator_effort)
+        else:
+            translations = call_custom_translate(context_texts, batch_texts, translator_cmd)
         if translations is None:
             print(f"  [WARN] Batch failed, filling with empty", flush=True)
             translations = [""] * len(batch_texts)
+
+        missing = find_missing_indexes(translations)
+        if missing:
+            print(f"  [WARN] Missing {len(missing)}/{len(batch_texts)} in batch, auto-retrying...", flush=True)
+            for retry_round in range(1, AUTO_RETRY_ROUNDS + 1):
+                if not missing:
+                    break
+                print(f"  [WARN] Retry round {retry_round}/{AUTO_RETRY_ROUNDS}", flush=True)
+
+                for idx in list(missing):
+                    global_idx = batch_start + idx
+                    single_ctx_start = max(0, global_idx - AUTO_RETRY_CONTEXT)
+                    single_ctx_end = global_idx
+                    single_context = texts[single_ctx_start:single_ctx_end]
+
+                    single_trans = translate_single_paragraph(
+                        single_context,
+                        batch_texts[idx],
+                        translator,
+                        translator_cmd=translator_cmd,
+                        translator_model=translator_model,
+                    )
+                    if not single_trans or is_invalid_translation(single_trans[0] if single_trans else ""):
+                        continue
+                    translations[idx] = single_trans[0]
+
+                new_missing = find_missing_indexes(translations)
+                if len(new_missing) >= len(missing):
+                    print(f"  [WARN] Retry round {retry_round} no new gains", flush=True)
+                missing = new_missing
+                if missing:
+                    print(f"  [WARN] Retry {retry_round}: still missing {len(missing)}", flush=True)
+
+        if missing:
+            print(f"  [WARN] Batch still has unresolved items: {len(missing)}", flush=True)
+
         all_translations.extend(translations)
 
     total = 0
+    unresolved = 0
     td_tag = f"{{{XHTML_NS}}}td"
     for elem, zh_text in reversed(list(zip(elements, all_translations))):
-        if not zh_text:
+        if not zh_text or is_invalid_translation(zh_text):
+            if is_invalid_translation(zh_text):
+                unresolved += 1
             continue
         parent = elem.getparent()
         if parent is None:
@@ -258,8 +415,9 @@ def process_file(filepath, base_dir):
         total += 1
 
     tree.write(str(filepath), xml_declaration=True, encoding="utf-8", method="xml")
-    print(f"  Done: {total} paragraphs translated", flush=True)
-    return total
+    translated = total
+    print(f"  Done: {translated} / {len(elements)} paragraphs translated, {unresolved} unresolved", flush=True)
+    return translated, len(elements), unresolved
 
 
 def create_epub(src_dir, output_path):
@@ -292,7 +450,25 @@ def main():
     parser.add_argument("-o", "--output", help="Output epub file path (default: input_bilingual.epub)")
     parser.add_argument("--max-files", type=int, default=0,
                         help="Only translate the first N content files (0 = all)")
+    parser.add_argument("--translator", choices=["claude", "codex", "custom"], default=os.environ.get("READ_BOOK_TRANSLATOR", "claude"),
+                        help="Translation backend. default: claude (can also set READ_BOOK_TRANSLATOR env var)")
+    parser.add_argument("--translator-cmd",
+                        help="Shell command for custom translator (required when --translator custom)")
+    parser.add_argument("--translator-model",
+                        default=os.environ.get("READ_BOOK_TRANSLATOR_MODEL"),
+                        help="Model for codex/claude if needed (optional). Use 'latest' for the newest GPT default.")
+    parser.add_argument("--translator-effort",
+                        default=os.environ.get("READ_BOOK_TRANSLATOR_EFFORT", DEFAULT_CODEX_EFFORT),
+                        help="Effort level for GPT/CodeX backends, e.g. low/medium/high")
     args = parser.parse_args()
+
+    translator = args.translator
+    translator_cmd = args.translator_cmd or os.environ.get("READ_BOOK_TRANSLATOR_CMD")
+    translator_model = args.translator_model
+
+    if translator == "custom" and not translator_cmd:
+        print("Error: --translator custom requires --translator-cmd or READ_BOOK_TRANSLATOR_CMD.", file=sys.stderr)
+        sys.exit(1)
 
     input_path = Path(args.input).resolve()
     if not input_path.exists():
@@ -321,12 +497,27 @@ def main():
 
         print(f"Found {len(ordered_files)} content files to process", flush=True)
 
-        total = 0
+        total_translated = 0
+        total_paragraphs = 0
+        total_unresolved = 0
         for fp in ordered_files:
-            total += process_file(fp, extracted)
+            translated, expected, unresolved = process_file(
+                fp,
+                extracted,
+                translator,
+                translator_cmd,
+                translator_model,
+                args.translator_effort if translator == "codex" else None,
+            )
+            total_translated += translated
+            total_paragraphs += expected
+            total_unresolved += unresolved
 
         print(f"\n{'='*60}", flush=True)
-        print(f"Total paragraphs translated: {total}", flush=True)
+        print(f"Total paragraphs translated: {total_translated}/{total_paragraphs}", flush=True)
+        if total_unresolved:
+            print(f"  [WARN] Unresolved paragraphs after auto-retry: {total_unresolved}", flush=True)
+            print("  [INFO] Output still generated for review/inspection.", flush=True)
 
         create_epub(extracted, output_path)
         print("Done!", flush=True)
