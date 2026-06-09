@@ -58,7 +58,8 @@ Existing configs with only `port` still work; `profile_dir` defaults to `~/.conf
 Claude Code and Codex: installing the `chrome` plugin provides `cdp-chrome` through plugin-local `.mcp.json`. Claude Code documents `${CLAUDE_PLUGIN_ROOT}` for plugin MCP paths; current Codex plugin loading has been verified to start plugin MCP entries with `cwd: "."` at the installed plugin root. The shared `.mcp.json` uses a small shell launcher to support both cases, then runs `skills/cdp-chrome/scripts/mcp-launcher.sh`; that launcher reads the current user's config, validates an existing listener when possible, then execs:
 
 ```bash
-npx -y chrome-devtools-mcp@latest --browserUrl http://127.0.0.1:<port> --no-usage-statistics
+npx -y chrome-devtools-mcp@latest --browserUrl http://127.0.0.1:<port> --no-usage-statistics \
+  --no-category-performance --no-category-emulation --no-category-network
 ```
 
 Hermes: plugin-local MCP config is not auto-loaded. Register an equivalent `mcp_servers.cdp-chrome` manually and point it at this plugin's `mcp-launcher.sh` or at the same `chrome-devtools-mcp` command with your configured port. Restart/reload MCP after config changes.
@@ -85,6 +86,9 @@ Pick the intended target from `/json/list` and operate through its `webSocketDeb
 4. Open tabs for your task and close them when done. Do not touch other agents' tabs.
 5. Do not clear cookies, change profile settings, install extensions, or modify the browser profile.
 6. Parallel agents should run in separate agent processes. A single MCP process can have global selected-page state even though Chrome tabs have independent CDP target IDs.
+7. **Understand pages visually first.** Before interacting with a complex or unknown page, call `take_screenshot` (~800–1,600 vision tokens) to see the layout. Do NOT call `take_snapshot` for this purpose — its A11Y text tree costs 10K–540K chars (2.5K–135K text tokens) on complex pages and often exceeds tool limits. After the screenshot gives you spatial understanding, use `evaluate_script` for precise extraction/action.
+8. **Reserve `take_snapshot` for simple pages only.** Login forms, settings panels, confirmation dialogs — pages where the A11Y tree is expected to be < 5K chars. For anything else, screenshot + evaluate_script is both cheaper and more effective.
+9. **Cap `evaluate_script` results.** When writing extraction JS, truncate or paginate output in-script (e.g. `.slice(0, 100)` for arrays, `.slice(0, 8000)` for text). Do not return unbounded DOM content or full page text.
 
 ## Quick Checks
 
@@ -106,4 +110,13 @@ Red flags: another OS user owns the port, process args lack the configured `--us
 
 ## Page Interaction
 
-Prefer `evaluate_script` for precise extraction/actions. Avoid relying on full accessibility snapshots for complex pages; they can exceed tool limits. See `references/page-interaction.md`.
+See `references/page-interaction.md` for detailed patterns and examples.
+
+**Tool selection guide:**
+
+| 目的 | 工具 | Token 成本 | 说明 |
+|------|------|-----------|------|
+| 看懂页面布局 | `take_screenshot` | ~800–1,600 vision tokens | 复杂/未知页面首选 |
+| 精准提取/操作 | `evaluate_script` | ~650 text tokens（可控） | 主力工具 |
+| 获取元素 UID | `take_snapshot` | 2.5K–135K text tokens | 仅限简单页面 |
+| 导航 | `navigate_page` | ~190 text tokens | — |

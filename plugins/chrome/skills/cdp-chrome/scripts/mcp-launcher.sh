@@ -24,4 +24,7 @@ fi
 
 exec npx -y chrome-devtools-mcp@latest \
   --browserUrl "http://127.0.0.1:$CDP_PORT" \
-  --no-usage-statistics
+  --no-usage-statistics \
+  --no-category-performance \
+  --no-category-emulation \
+  --no-category-network
