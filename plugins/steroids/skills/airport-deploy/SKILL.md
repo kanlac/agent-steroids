@@ -57,6 +57,8 @@ Cloudflare 只做 DNS 时必须灰云。ACME 申请前先确认权威解析和�
 
 封锁归属读一手、别猜：KiwiVM `getLiveServiceInfo` 的 `ip_nullroutes` 空 + `policy_violation` false + `suspended` false = 机房没动它，是 GFW 干的（机房侧空路由/滥用停机是另一套处理）。确认 GFW 侧才换 IP：KiwiVM「迁移到另一机房」是免费换 IP（只计流量），保 CN2 GIA 就迁到另一个 CN2GIA 机房；回收 IP 可能仍脏，需重试几次；迁移后端偶发「对本 VPS 暂不可用」是机房侧暂时状态，重试即可。换完更新 DNS 和服务端记录，订阅链接用域名时可保持不变。诊断命令与 API 字段见 `references/3x-ui-reality.md`。
 
+**迁移后端长时间 `734152`（对本 VPS 不可用）可能数小时不恢复，或你想让被墙 IP 也能用 → Cloudflare CDN 旁路**：同机加一个 VLESS+WS+TLS 入站（用 Cloudflare 可代理的 HTTPS 端口，非 443），域名转 CF 橙云，客户端经 CF 边缘连入，把被墙的源 IP 藏在背后；订阅端口同样走 CF 可代理端口 + 橙云，墙内才下载得到。直连与 CDN 两节点用 url-test 自动选。可代理端口、`523 = 防火墙没放行回源端口`、渲染器实现坑见 `references/3x-ui-reality.md`。
+
 **预防**：别在 Reality 同一个 IP 上再开明文 HTTP 代理给人用——明文代理是被墙高危行为，会把整个 IP 连坐黑洞，443 上干净的 Reality 一起陪葬。对外只分发 HTTPS 订阅和 Reality/代理入站，不开裸 HTTP 兼容端口；临时 HTTP 迁移窗口结束后必须关开关、重启服务，并用 `ss -lntp` 确认公网地址不再监听，只允许必要的本地回环端口。
 
 ## 速度判断

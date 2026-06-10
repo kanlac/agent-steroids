@@ -30,7 +30,7 @@
 - `expiryTime`: 到期时间；续期只改这个字段。
 - `enable`: 停用用户时优先关 enable 或删除该 client。
 
-3X-UI 的持久化模型会随版本演进，遇到「面板有用户但生成的 Xray config 里 `clients` 为空」之类问题，先确认当前版本源码和数据库关系，而不是直接改生成文件。以 3X-UI v3.2.x 为例，client 与 inbound 的关系由 `client_inbounds` 表维护，生成 Xray config 时再从该表关联 client；只改 `inbounds.settings` 可能会被重生成覆盖。修复顺序应是停服务、备份数据库、补齐权威关系表、重启后验证生成 config 和实际端口。
+3X-UI 的持久化模型会随版本演进，遇到「面板有用户但生成的 Xray config 里 `clients` 为空」之类问题，先确认当前版本源码和数据库关系，而不是直接改生成文件。以 3X-UI v3.2.x 为例，client 与 inbound 的关系由 `client_inbounds` 表维护，生成 Xray config 时再从该表关联 client；只改 `inbounds.settings` 可能会被重生成覆盖。修复顺序应是停服务、备份数据库、补齐权威关系表、重启后验证生成 config 和实际端口。更稳的做法：有面板 API Token 时直接用 API（`Authorization: Bearer <token>` 调 `/<webBasePath>/panel/api/inbounds/*`）建 inbound/client，由面板维护全部关系表，避免手搓漏表；v3.3.x 进一步把 client 拆进独立 `clients` 表，手改更易出错。
 
 ## 订阅服务
 
@@ -109,6 +109,24 @@ Clash/Mihomo 常用方向：
 - 迁移只计流量、几分钟完成；`migrate/start` 偶发 `error 734152`（对本 VPS 暂不可用）是机房侧暂时状态，间隔几分钟重试即可。
 - 回收 IP 可能仍被墙，迁完务必复测墙内可达性；脏了再迁，设重试上限避免空耗流量。
 - 迁移后 IPv4 变化：同步更新 DNS A 记录、服务端节点 server 字段、面板/订阅访问入口；订阅链接用域名时链接本身不变。
+
+## Cloudflare CDN 旁路（源 IP 被墙、又拿不到干净 IP 时的兜底）
+
+迁移/换 IP 拿不到干净 IP，或想让"被墙也能用"，就把源 IP 藏到 Cloudflare 后面：
+
+- **架构**：同机保留 Reality/443（直连）+ 新增一个 VLESS+WS+TLS 入站（CDN）；域名转 Cloudflare 橙云；客户端 CDN 节点连 `域名:<CDN端口>`，经 CF 边缘转发到源站。CF 边缘 IP 没被墙，等于把被墙的源 IP 藏起来。
+- **端口必须是 Cloudflare 可代理的 HTTPS 端口**：`443 / 2053 / 2083 / 2087 / 2096 / 8443`。443 给 Reality，CDN 入站和订阅服务各从剩下的里挑一个空闲端口（端口号无所谓，可代理且空闲即可）。
+- **订阅端口也要走 CF 橙云**：否则订阅域名仍解析到被墙源 IP，墙内下载不到订阅。
+- **523 Origin Unreachable = 源站防火墙没放行 CDN/WS 端口给 Cloudflare**。CF 边缘可达（TLS 握手能成）不代表 CF 够得到源站；务必在源站防火墙（firewalld/ufw/iptables）开放该端口。判据：墙内对该端口经 CF 返回 523 而非超时，就去查防火墙；`nc` 从外部测通只证明 CF 边缘、不证明回源。
+- 订阅里直连 + CDN 两节点放进 url-test 自动选：源 IP 通时走直连（延迟低），被墙时直连超时、自动切 CDN。
+- 证书：CDN 入站和订阅服务用源站真实证书。新机签证书可 acme.sh standalone HTTP-01——先让域名**灰云**解析到源站、放行 80 签发，再转橙云；橙云后续续期改 DNS 模式或临时灰云。
+
+## 渲染器（自建订阅服务）实现坑
+
+- **响应头里的 emoji/中文会让 Python `http.server` 崩**：它按 latin-1 编码头部，非 latin-1 字符抛异常、整条订阅返回空。`Profile-Title` 等值用 `value.encode("utf-8").decode("latin-1")` 把 UTF-8 字节偷渡过去（客户端按 UTF-8 解）；`Content-Disposition` 的 filename 保持纯 ASCII（空格/emoji 会破坏头部解析）。
+- **渲染器调外部 API 用 `curl`，别用 `urllib`**：Python urllib 的 HTTPS 证书校验在不少机器上失败（CA bundle 与系统不一致），curl 用系统 CA 正常。`subprocess.run(["curl","-s",url])` 更稳；外部 API 结果加几分钟缓存，避免每次订阅请求都打。
+- **信息展示节点（到期/用量）**：想在订阅里显示到期时间、个人/服务器用量，做成"节点"放进选择组列表里——本质是工作节点（CDN）的克隆，测速显示真实延迟、不超时、不产生多余的组卡片。Clash 没有"同一个组用多个名字露出"的机制，二选一：节点（无卡片、静态克隆某条线路）或组（反映 url-test 但每个都是一张卡片）。
+- **用量数据源**：个人用量 = `client_traffics` 里该用户跨入站的 email（含 CDN 入站的 email 变体）up+down 合计；服务器总用量优先用机房 API（Bandwagon 用 KiwiVM `data_counter`/`plan_monthly_data`，精确），无机房 API 时退用 `vnstat`（只从安装时刻起计，会少算本月已用）。
 
 ## 验收清单
 
