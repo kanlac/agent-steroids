@@ -12,7 +12,7 @@ description: 自建机场（代理服务端）搭建与运维。涵盖 VPS 初�
 ## 分层心智模型（服务端）
 
 - **VPS/系统层**：SSH 改非默认端口、公钥登录、防火墙只放行必要端口、BBR、服务状态、本机对公网测速。
-- **Xray/3X-UI 层**：一台机器一个 VLESS Reality+Vision 入站，所有用户共用入站和 Reality 密钥，每人独立 UUID、subId、到期时间、启用状态。面板优先只监听 `127.0.0.1`，走 SSH 隧道访问；只有订阅端口和 Reality 端口需要公网可达。
+- **Xray/3X-UI 层**：一台机器一个 VLESS Reality+Vision 入站，所有用户共用入站和 Reality 密钥，每人独立 UUID、subId、到期时间、启用状态。面板优先只监听 `127.0.0.1`，走 SSH 隧道访问；只有订阅端口和 Reality 端口需要公网可达。3X-UI 版本差异会改变数据库关系，改库前先查当前版本源码/表结构，别把生成出的 Xray config 当作唯一事实源。
 - **域名/证书层**：DNS 解析、Cloudflare 只做解析必须灰云、权威解析是否生效、ACME 证书只服务面板和订阅，不参与 Reality 握手。
 - **订阅渲染层**：3X-UI 原生订阅常是 base64 裸节点；客户端要远程 YAML 时需服务端渲染成 Clash/Mihomo YAML，并用响应头控制显示名与到期。
 - **运营层**：独立订阅链接、到期/续期、泄露换 subId、IP 被墙判断、测速口径、备份恢复。
@@ -20,6 +20,8 @@ description: 自建机场（代理服务端）搭建与运维。涵盖 VPS 初�
 ## 自建 3X-UI + Reality 的落地判断
 
 Reality 直连优先保持简单：借真实大站握手，本身不需要自有域名证书。域名只用于面板后台 HTTPS 和订阅链接 HTTPS（订阅里含 UUID/subId，走 HTTPS 避免被旁路看到）。DNS 或证书暂不可用时可临时用 `http://<SERVER_IP>:<sub-port>/...` 测试，但不要当长期分发方案。
+
+借站域名（`serverNames`/`dest`）的选择判据是「GFW 见到这个 SNI 会不会发 RST」，不是「这站墙内能不能打开」。主动探测器是穿过你这台墙外 VPS 去够借站的，所以借站墙内可不可达与抗探测无关；真正会咬你的是被动 SNI 过滤——若借站 SNI 在 GFW 重置名单上，你自己带这个 SNI 的 Reality 流量会被无差别 RST（与是否识破 Reality 无关）。因此避开 `www.google.com`/`youtube.com` 这类强 SNI 重置域名；`dl.google.com` 属边界可用但不够稳；优先外国、TLS 1.3、明确不被重置的下载/CDN 域名。换 SNI 或上新 IP 后实测确认：对该 IP 发一次该 SNI 的 TLS 握手，能完成 = 没被重置。
 
 Cloudflare 只做 DNS 时必须灰云。ACME 申请前先确认权威解析和公网解析都指向 VPS；zone 未激活、注册商验证未完成、NS 未切换完成时，在面板里反复点申请证书没有意义。
 
@@ -32,7 +34,7 @@ Cloudflare 只做 DNS 时必须灰云。ACME 申请前先确认权威解析和�
 客户端入口期待远程 YAML 时，自建一个小 HTTP 服务监听订阅端口：按 subId 查用户 → 渲染 Clash/Mihomo YAML → 用响应头控制展示。渲染要同时管好三件事：
 
 - **节点字段完整**：`type: vless`、`tls: true`、`flow: xtls-rprx-vision`、Reality `public-key`/`short-id`/SNI/fingerprint 必须与入站一致。
-- **规则和 DNS 集中维护**：把 `dns`/`proxy-groups`/`rules` 写进订阅模板，或让客户端全局 Merge/Script 统一叠加，改一次全员刷新生效。
+- **规则和 DNS 集中维护**：把 `dns`/`proxy-groups`/`rules` 写进订阅模板，或让客户端全局 Merge/Script 统一叠加，改一次全员刷新生效。跨客户端下发（如 Stash、Clash Verge、mihomo）前先读目标客户端官方文档；同名字段的出口语义可能不同，不要把一个客户端的 `#PROXY`/DoH 写法直接搬给另一个。
 - **显示名和到期都靠响应头，不是 URL**，这是最容易翻车的地方：
 
 **Profile 显示名** = `Profile-Title: <名>` + `Content-Disposition: attachment; filename=<名>`。
@@ -42,10 +44,21 @@ Cloudflare 只做 DNS 时必须灰云。ACME 申请前先确认权威解析和�
 
 **到期时间 / 剩余天数** = `Subscription-Userinfo: upload=0; download=0; total=<字节>; expire=<unix 秒>`。expire 由 3X-UI 的 `expiryTime`(毫秒) / 1000 得到；`totalGB=0`（不限量）时省略 `total`，避免客户端算出 0/0 的流量环。Clash Verge 会自动在 profile 卡片上显示到期日期和剩余天数，**完全不用动节点名**。
 
-元方法论：遇到显示名/格式不对，先查一手响应头、看现成可用订阅是怎么配的，不要凭 URL 路径臆测去加 `.yaml` 后缀兼容这类改动——那是把因果搞反，越改越偏。
+元方法论：遇到显示名、DNS、节点测试或格式不对，先查一手响应头、目标客户端官方文档和客户端日志，再改模板；不要凭 URL 路径臆测去加 `.yaml` 后缀、照搬别的客户端字段，或在没有日志证据时改 Xray 入站参数——那是把因果搞反，越改越偏。
 
-## 速度与 IP 风险判断
+## 连不上的分层诊断：IP 被墙 vs 协议问题
+
+连不上时最贵的错误是直接去调 Xray 版本 / Reality 参数——那是协议层，而死因常在更下面的 IP/链路层。**先分清 TCP 到没到服务器，再决定查哪一层。**
+
+- **墙内 vs 墙外对照**：墙内对 `<ip>:443` 和一个对照端口（SSH）做 TCP 连接测试，同一时刻从墙外（另一条已有代理）测同一地址。墙内全超时 + 墙外通 = IP/端口被封，立即停手，别再碰协议。
+- **服务端看入站**：墙内发起时，服务器上 443 若一条入站连接都没有，说明包根本没到，问题在链路不在 Xray。
+- **黑洞 vs SNI 过滤要分清**：IP 被黑洞时 ICMP/SSH/443 全死，traceroute 在国际出口（电信 CN2 `59.43.x.x`）之后全 `*`；SNI 过滤只让 TCP 连上、ClientHello 后才 RST，且不影响 ICMP/SSH。两者排查方向完全不同。
+- **假阳性陷阱**：做「直连可达」对照时，先确认测试机自己没走代理/TUN，否则流量从代理出口出去，会把「不通」测成「通」。
+
+封锁归属读一手、别猜：KiwiVM `getLiveServiceInfo` 的 `ip_nullroutes` 空 + `policy_violation` false + `suspended` false = 机房没动它，是 GFW 干的（机房侧空路由/滥用停机是另一套处理）。确认 GFW 侧才换 IP：KiwiVM「迁移到另一机房」是免费换 IP（只计流量），保 CN2 GIA 就迁到另一个 CN2GIA 机房；回收 IP 可能仍脏，需重试几次；迁移后端偶发「对本 VPS 暂不可用」是机房侧暂时状态，重试即可。换完更新 DNS 和服务端记录，订阅链接用域名时可保持不变。诊断命令与 API 字段见 `references/3x-ui-reality.md`。
+
+**预防**：别在 Reality 同一个 IP 上再开明文 HTTP 代理给人用——明文代理是被墙高危行为，会把整个 IP 连坐黑洞，443 上干净的 Reality 一起陪葬。对外只分发 HTTPS 订阅和 Reality/代理入站，不开裸 HTTP 兼容端口；临时 HTTP 迁移窗口结束后必须关开关、重启服务，并用 `ss -lntp` 确认公网地址不再监听，只允许必要的本地回环端口。
+
+## 速度判断
 
 Speedtest 经代理测的是「用户本地网络 → 跨境链路 → VPS → 测速服务器」端到端结果，不等于 VPS 上限。判断瓶颈至少拆三组：VPS 本机对公网测速（机房出口能力）、用户到 VPS 的延迟/丢包/单连接对比（跨境拥塞）、代理后访问目标的实际体验（目标站/规则/DNS）。单用户只跑到几十 Mbps，若 VPS 本机能跑出远高于此的速度，瓶颈多半在用户到机房的链路、运营商国际出口、测速服务器选择或客户端规则，不必直接归咎 VPS。
-
-不建议为「预防封禁」频繁换出口 IP。Reality 直连 IP 的主要风险来自被墙、协议特征被识别、多人滥用高风险服务、公开传播节点、异常扫描流量。只有出现本地连不上 IP、但 VPS 自己出网正常、换网络/地区复核仍不可达时，才考虑换 IP；换后更新 DNS 和服务端记录，订阅链接用域名时可保持不变。

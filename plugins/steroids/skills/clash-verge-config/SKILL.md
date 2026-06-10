@@ -1,6 +1,6 @@
 ---
 name: clash-verge-config
-description: 以「配置即代码」管理、调试 Clash Verge Rev（mihomo 内核）客户端配置。涵盖：哪些字段扩展脚本能改 / 不能改（external-controller、secret、各端口、log-level 被内核接管）、改了为什么不生效、enhance 管线与字段归属、纯命令行让配置重新生成并生效、mihomo external controller RESTful API、external-ui 自托管面板、判断流量走没走代理 / 命中哪条规则、DNS 泄漏排查、profiles.yaml 里 profile 显示名与到期信息从哪来、远程机器复用本地代理。用户在改 Clash Verge / mihomo 扩展脚本(script) / 扩展配置(merge) / 订阅规则、external-controller / secret / 端口，或抱怨「配置改了不生效」「规则不命中」「远程连不上面板」「DNS 泄漏」「profile 显示名 / 到期不对」「想自动化更新代理配置」时用这个 skill。机场 / 订阅服务端搭建见 airport-deploy skill。
+description: 以「配置即代码」管理、调试 Clash Verge Rev（mihomo 内核）客户端配置。涵盖：哪些字段扩展脚本能改 / 不能改（external-controller、secret、各端口、log-level 被内核接管）、改了为什么不生效、enhance 管线与字段归属、纯命令行让配置重新生成并生效、mihomo external controller RESTful API、external-ui 自托管面板、判断流量走没走代理 / 命中哪条规则、DNS 泄漏排查、profiles.yaml 里 profile 显示名与到期信息从哪来、节点突然全超时时先排除 IP 被墙与 TUN 回环、远程机器复用本地代理。用户在改 Clash Verge / mihomo 扩展脚本(script) / 扩展配置(merge) / 订阅规则、external-controller / secret / 端口，或抱怨「配置改了不生效」「规则不命中」「远程连不上面板」「DNS 泄漏」「profile 显示名 / 到期不对」「节点突然连不上 / 延迟测试超时」「想自动化更新代理配置」时用这个 skill。机场 / 订阅服务端搭建见 airport-deploy skill。
 ---
 
 ## 这个 Skill 解决什么
@@ -47,7 +47,16 @@ Clash Verge Rev 是个 Tauri GUI，底层跑 mihomo 内核。它的配置系统�
 - 国内域名走国内 DoH 或直连 DNS，国外域名和 AI 服务域名经代理解析，避免本地运营商 DNS 暴露访问意图。
 - 验证别只看检测网页结论，要读 mihomo `GET /connections`、日志和最终配置，确认 DNS 连接命中哪条规则、走哪个出站。
 
+跨客户端订阅不要照搬 DNS 片段。Stash 等客户端的 DNS 请求默认可能直连上游，不按普通代理规则走；mihomo 里可用的 `#PROXY`、海外 DoH、`nameserver-policy` 组合在手机端可能变成「基础 DNS 全超时」，进而让 DIRECT 和节点测速一起失败。遇到非 Clash Verge 客户端，先读该客户端官方 DNS/协议文档，再决定模板差异；如果文档语义差异太大，宁可暂时不兼容，也不要把服务端 Xray 参数当作第一嫌疑。
+
 规则同理：从上到下首命中。排查某站没走代理时，找第一条能匹配它的规则，而不是只看最终 IP。
+
+## 节点突然全超时：先排除 IP 被墙，再排除 TUN 回环
+
+某个一直能用的节点突然延迟测试全 timeout，**先别怀疑订阅格式或节点参数**。两个客户端侧的优先排查：
+
+- **IP 被墙**：从本机网络直接对节点落地 `<server-ip>:<port>` 做 TCP 连接测试（绕开 mihomo）。连不上、而换一条已有代理从墙外能连上 = 落地 IP 被封；这时改节点参数、重导订阅都没用，问题在服务端 IP（见 [[airport-deploy]] 的「连不上的分层诊断」）。
+- **TUN 回环**：开 TUN/fake-ip 时，mihomo 的自动分流路由会把「连代理服务器自己那个落地 IP」也吞进 TUN，形成回环超时。用 `route-exclude-address: [<server-ip>/32]` 把落地 IP 排除走物理网关；macOS 上 `route get <server-ip>` 应回到 Wi-Fi 网关而非 `198.18.x.x`。节点 server 写成 IP 字面量、且开着 TUN 时最易触发。
 
 ## 远程机器复用本地代理
 
