@@ -103,12 +103,13 @@ Clash/Mihomo 常用方向：
 - `getLiveServiceInfo`：`ip_nullroutes` 空 + `policy_violation=false` + `suspended=false` + `total_abuse_points=0` ⇒ 机房没动它，封锁在 GFW 侧。
 - 机房侧才会出现的信号：`ip_nullroutes` 非空（DDoS/滥用空路由）、`suspended=true`、`policy_violation=true`——这些要走工单/整改，不是换 IP 能解决。
 
-免费换 IP（确认 GFW 侧封锁后）：
+换 IP / 迁移机房（`734152` 死循环陷阱）：
 
-- `migrate/getLocations` 列可迁机房；`migrate/start?location=<id>` 触发迁移。保 CN2 GIA 选另一个 CN2GIA 机房。
-- 迁移只计流量、几分钟完成；`migrate/start` 偶发 `error 734152`（对本 VPS 暂不可用）是机房侧暂时状态，间隔几分钟重试即可。
-- 回收 IP 可能仍被墙，迁完务必复测墙内可达性；脏了再迁，设重试上限避免空耗流量。
-- 迁移后 IPv4 变化：同步更新 DNS A 记录、服务端节点 server 字段、面板/订阅访问入口；订阅链接用域名时链接本身不变。
+- **`734152`「Migration backend not available for this VPS」根因通常是 IP 被墙**——搬瓦工在 IP 被墙时禁用该 VPS 的迁移。死循环：想靠迁移换掉被墙 IP，而"被墙"正是迁移被禁的原因；`migrate/start` 会一直返回 734152、挂数小时也不恢复，**重试无用**，别让循环空耗。
+- 确认 IP 是否被墙：KiwiVM 黑名单工具 `https://kiwivm.64clouds.com/main-exec.php?mode=blacklistcheck` 点 Test，`IP BLOCKED` 即被墙。
+- **破局两条路**：① **Cloudflare CDN 旁路**（见下节）——不换 IP，把被墙源 IP 藏到 CF 后面，被墙也能用、零成本，通常首选；② **付费换 IP**：客户区（非 KiwiVM 面板）`ipchange.php` → 选该 VPS → `Request IP Change` → 在 Billing/My Invoices 付约 $7.39（支付宝/PayPal/银联）→ 几分钟~24h 自动分配随机新 IP（官方验证大陆可访问）；新 IP 若仍脏，开工单要求再换。免费换 IP 早已取消。
+- **IP 未被墙时**才能用免费迁移换 IP：`migrate/start?location=<id>` 迁到另一机房即得新 IP（只计流量、几分钟完成），CN2 GIA 套餐可在多机房间切。
+- 换 IP / 迁移后 IPv4 变化：同步更新 DNS A 记录、服务端节点 server 字段、面板/订阅入口；订阅链接用域名时链接本身不变。
 
 ## Cloudflare CDN 旁路（源 IP 被墙、又拿不到干净 IP 时的兜底）
 

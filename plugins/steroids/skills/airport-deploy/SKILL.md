@@ -55,9 +55,9 @@ Cloudflare 只做 DNS 时必须灰云。ACME 申请前先确认权威解析和�
 - **黑洞 vs SNI 过滤要分清**：IP 被黑洞时 ICMP/SSH/443 全死，traceroute 在国际出口（电信 CN2 `59.43.x.x`）之后全 `*`；SNI 过滤只让 TCP 连上、ClientHello 后才 RST，且不影响 ICMP/SSH。两者排查方向完全不同。
 - **假阳性陷阱**：做「直连可达」对照时，先确认测试机自己没走代理/TUN，否则流量从代理出口出去，会把「不通」测成「通」。
 
-封锁归属读一手、别猜：KiwiVM `getLiveServiceInfo` 的 `ip_nullroutes` 空 + `policy_violation` false + `suspended` false = 机房没动它，是 GFW 干的（机房侧空路由/滥用停机是另一套处理）。确认 GFW 侧才换 IP：KiwiVM「迁移到另一机房」是免费换 IP（只计流量），保 CN2 GIA 就迁到另一个 CN2GIA 机房；回收 IP 可能仍脏，需重试几次；迁移后端偶发「对本 VPS 暂不可用」是机房侧暂时状态，重试即可。换完更新 DNS 和服务端记录，订阅链接用域名时可保持不变。诊断命令与 API 字段见 `references/3x-ui-reality.md`。
+封锁归属读一手、别猜：KiwiVM `getLiveServiceInfo` 的 `ip_nullroutes` 空 + `policy_violation` false + `suspended` false = 机房没动它，是 GFW 干的（机房侧空路由/滥用停机是另一套处理）。确认 GFW 侧封锁后，注意 **`734152` 死循环**：搬瓦工在 IP 被墙时**禁用该 VPS 的迁移**，`migrate/start` 会持续返回 734152、挂数小时也不恢复——免费迁移换 IP 对被墙 VPS 走不通，别空耗重试。破局：优先**下方 Cloudflare CDN 旁路**（绕过被墙 IP，零成本），或**付费换 IP**（约 $7.39，客户区 `ipchange.php`，非 KiwiVM 面板）。只有 IP **未**被墙时，`migrate/start` 免费迁到另一机房才能换 IP。换 IP/迁移后都要更新 DNS 和服务端记录。诊断命令、黑名单自查、换 IP 步骤见 `references/3x-ui-reality.md`。
 
-**迁移后端长时间 `734152`（对本 VPS 不可用）可能数小时不恢复，或你想让被墙 IP 也能用 → Cloudflare CDN 旁路**：同机加一个 VLESS+WS+TLS 入站（用 Cloudflare 可代理的 HTTPS 端口，非 443），域名转 CF 橙云，客户端经 CF 边缘连入，把被墙的源 IP 藏在背后；订阅端口同样走 CF 可代理端口 + 橙云，墙内才下载得到。直连与 CDN 两节点用 url-test 自动选。可代理端口、`523 = 防火墙没放行回源端口`、渲染器实现坑见 `references/3x-ui-reality.md`。
+**想让被墙 IP 也能用、或换不到干净 IP（含 `734152` 死循环）→ Cloudflare CDN 旁路**：同机加一个 VLESS+WS+TLS 入站（用 Cloudflare 可代理的 HTTPS 端口，非 443），域名转 CF 橙云，客户端经 CF 边缘连入，把被墙的源 IP 藏在背后；订阅端口同样走 CF 可代理端口 + 橙云，墙内才下载得到。直连与 CDN 两节点用 url-test 自动选。可代理端口、`523 = 防火墙没放行回源端口`、渲染器实现坑见 `references/3x-ui-reality.md`。
 
 **预防**：别在 Reality 同一个 IP 上再开明文 HTTP 代理给人用——明文代理是被墙高危行为，会把整个 IP 连坐黑洞，443 上干净的 Reality 一起陪葬。对外只分发 HTTPS 订阅和 Reality/代理入站，不开裸 HTTP 兼容端口；临时 HTTP 迁移窗口结束后必须关开关、重启服务，并用 `ss -lntp` 确认公网地址不再监听，只允许必要的本地回环端口。
 
