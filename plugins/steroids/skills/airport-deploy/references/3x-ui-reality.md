@@ -128,7 +128,7 @@ Clash/Mihomo 常用方向：
 - **渲染器调外部 API 用 `curl`，别用 `urllib`**：Python urllib 的 HTTPS 证书校验在不少机器上失败（CA bundle 与系统不一致），curl 用系统 CA 正常。`subprocess.run(["curl","-s",url])` 更稳；外部 API 结果加几分钟缓存，避免每次订阅请求都打。
 - **信息展示节点（到期/用量）**：想在订阅里显示到期时间、个人/服务器用量，做成"节点"放进选择组列表里——本质是工作节点（CDN）的克隆，测速显示真实延迟、不超时、不产生多余的组卡片。Clash 没有"同一个组用多个名字露出"的机制，二选一：节点（无卡片、静态克隆某条线路）或组（反映 url-test 但每个都是一张卡片）。
 - **用量数据源**：个人用量 = `client_traffics` 里该用户跨入站的 email（含 CDN 入站的 email 变体）up+down 合计；服务器总用量优先用机房 API（Bandwagon 用 KiwiVM `data_counter`/`plan_monthly_data`，精确），无机房 API 时退用 `vnstat`（只从安装时刻起计，会少算本月已用）。
-- **订阅 YAML 顶层下发 `ipv6: false`**：避免客户端解析 AAAA 走 IPv6 直连绕过代理（IPv6 路由泄露——地理严格的站如 Gemini 会因此判错国家、报 not supported）。注意 WebRTC 读网卡 IPv6 的泄露订阅管不了，需设备/路由器关 IPv6，详见 [[clash-verge-config]]。
+- **订阅 YAML 顶层下发 `ipv6: false`**：避免客户端解析 AAAA 走 IPv6 直连绕过代理（IPv6 路由泄露的一般卫生）。注意：地理严格的站（Gemini）报 not supported **多半是出口 IP 被 Google 标错国**（机房 IP 常被标成 CHN，哪怕物理在美国），先用 gemini 检测法验出口 IP 的 Google 地理，别先怀疑泄露——详见 [[clash-verge-config]]。
 
 ## 验收清单
 

@@ -51,15 +51,21 @@ Clash Verge Rev 是个 Tauri GUI，底层跑 mihomo 内核。它的配置系统�
 
 规则同理：从上到下首命中。排查某站没走代理时，找第一条能匹配它的规则，而不是只看最终 IP。
 
-## 地理严格的站报「not supported in your country」：先查泄露，不是出口节点
+## 地理严格的站报「not supported in your country」：先验出口 IP 的 Google 地理，别先怀疑客户端
 
-Gemini 等 Google 服务对地理判定极严。出现 not supported，但**经代理的出口 IP 实测是干净的支持国家**（`curl -x <proxy> https://ipinfo.io/json` 确认）、账号地区也没问题时，几乎一定是**真实（中国）IP 从某条没走代理的路漏出去了**——别去折腾出口节点或服务端 Xray 参数。
+Gemini 等服务按 **Google 自己的 IP 地理库**判国家——它和 ip-api/ipinfo **经常不一致**。**VPS IP（Bandwagon 等机房段尤甚）常被 Google 标成中国，哪怕物理在美国**。所以 not supported 时**第一步是验出口 IP 在 Google 眼里是哪国**，不是去查客户端泄露（那是罕见的次因，且 ip-api 显示干净并不能排除——要看 Google 的库）。
 
-最隐蔽的是 IPv6，且要分清谁能在配置里修：
+**检测法**（从该出口或经该节点 `curl`，不是 ip-api）：
 
-- **IPv6 路由泄露（配置可治）**：大陆宽带常有原生公网 IPv6（`240e:` 电信段，光猫 SLAAC 下发到网卡），浏览器解析到 AAAA 后走 IPv6 直连 Google 绕过 TUN。运行时**顶层 `ipv6: false`**（让 mihomo 不解析/不路由 v6，应用退回 IPv4 走代理）即可堵住；订阅侧也应在渲染的 YAML 顶层下发 `ipv6: false`。
-- **WebRTC 泄露（配置治不了）**：浏览器直接读网卡上的 `240e:` 地址塞给页面 JS，绕过一切代理与路由。订阅/mihomo 改不掉网卡上的地址，只能**设备或路由器/光猫关 IPv6**。
-- **验证**：开代理访问 `browserleaks.com/ip` 与 `/webrtc`，只剩外国代理 IP、没有 `240e:` 开头即干净。
+```bash
+r=$(curl -s -A "Mozilla/5.0" https://gemini.google.com/)
+echo "$r" | grep -q '45631641,null,true' && echo 可用 || echo 不可用
+echo "$r" | grep -oE ',2,1,200,"[A-Z]{2,3}"'   # 引号里就是 Google 判定的国家码
+```
+
+`USA` 且"可用" = 此出口能用；`CHN`/"不可用" = **IP 被 Google 标错国**，改任何客户端/Clash/Xray 配置都救不了——只能换 IP、换节点、或给 Google 报地理纠错。买新节点先跑这条验。
+
+**只有**当出口 IP 的 Google 地理确实是支持国、却仍 not supported 时，才轮到查客户端泄露：浏览器走 IPv6 直连绕过代理（运行时/订阅顶层 `ipv6: false` + 浏览器关 DoH）；或 WebRTC 读网卡 `240e:` 中国 IPv6（设备/路由器关 IPv6，或——若 IPv6 要留给 Tailscale——浏览器层面限制 WebRTC）。验证用 `browserleaks.com/ip` 与 `/webrtc`。
 
 ## 节点突然全超时：先排除 IP 被墙，再排除 TUN 回环
 
