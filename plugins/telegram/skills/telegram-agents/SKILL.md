@@ -13,7 +13,7 @@ description: Configure and manage Telegram-connected Claude agents with heartbea
 agents.yaml（统一配置）
       │
       ├── tmux session: channels
-      │     ├── window: sage ──── Telegram Plugin（getUpdates + sendMessage）
+      │     ├── window: sage ──── 官方 telegram@claude-plugins-official（channel server，轮询 getUpdates）
       │     ├── window: herald       各自独立 bot token + 状态目录
       │     ├── window: ...          一个 session 管理所有 agent
       │     └── [每个 window 一个 agent 身份文件]
@@ -25,10 +25,11 @@ agents.yaml（统一配置）
               └── 心跳消息 → Telegram Bot API → channel session 接收处理
 ```
 
-**三个核心原则**：
-- **收发分离**：channel session 负责双向对话，其他 session 用 telegram-notify MCP 仅发通知
-- **Bot 隔离**：每个 agent 独立 bot token + 独立状态目录，天然无 409 冲突
-- **调度解耦**：dispatcher.py 不知道 Claude 存在，只做匹配时间 + 发 Telegram 消息
+**核心原则**：
+- **双插件分工**（最易踩错，先看这条）：双向 channel 由**官方 `telegram@claude-plugins-official`** 提供——只有它内置 channel server（轮询 getUpdates 把消息注入会话），所以 `--channels` 永远指向它。本仓库（agent-steroids）的 `telegram` 插件只负责**管理层**（本 skill、dispatcher、`tg-*` 命令）+ send-only 的 `telegram-notify` MCP（供普通 session 发通知），**它没有 channel server，绝不能用作 `--channels` 目标**。⚠️ 别因为本 skill 住在 agent-steroids 就把 `--channels` 改成 `telegram@agent-steroids`——那样 poller 不会启动、消息完全不注入。
+- **收发分离**：channel session（官方插件）负责双向对话；其他普通 session 用 `telegram-notify` MCP 仅发通知。
+- **Bot 隔离**：每个 agent 独立 bot token + 独立状态目录，天然无 409 冲突。
+- **调度解耦**：dispatcher.py 不知道 Claude 存在，只做匹配时间 + 发 Telegram 消息。
 
 ## 配置
 
@@ -258,3 +259,4 @@ TELEGRAM_STATE_DIR=~/.claude/channels/<state_dir> \
 - **AbandonProcessGroup**：launchd plist 必须加 `AbandonProcessGroup: true`，否则 dispatcher 后台化任务后主进程退出，后台任务被立即终止
 - **macOS provenance**：Claude Code 创建的脚本文件带 `com.apple.provenance` 扩展属性，launchd 无法直接执行。用 `cat | python3`（dispatcher）和 `echo | bash`（shell 任务）绕过
 - **launchd PATH**：launchd 环境 PATH 极简，plist 中必须显式补充 Homebrew 路径、`~/.local/bin` 和 `~/.bun/bin`。Telegram 插件的 MCP server 用 `bun` 启动（`.mcp.json` 中 `"command": "bun"`），缺少 bun 路径会导致 `spawn bun ENOENT`，agent 看似正常运行但完全收不到消息
+- **launchd dispatcher 只能在 GUI 会话里加载**：SSH 登录是 Background 域（`launchctl managername` 返回 `Background`），`launchctl bootstrap gui/$(id -u) <plist>` 会报 `125: Domain does not support specified action`。必须在 Mac 本机 Terminal（Aqua 域）执行加载，或等下次登录由 `~/Library/LaunchAgents` 自动加载
