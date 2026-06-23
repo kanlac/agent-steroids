@@ -1,8 +1,8 @@
 ---
 name: meta-learning
 description: |
-  Use when a user asks the agent to "learn" from a file, example, correction, failed workflow, or feedback and persist that learning into skills or agent instructions.
-  Guides semantic skill refactoring: extract the transferable behavior, update the owning skill so it becomes clearer and easier to execute, avoid append-only note dumping, and decide when not to create new reference files.
+  Use when a correction, mistake, pitfall, failed workflow, example, or piece of feedback should become a durable update to a skill or agent instructions — e.g. "记录这个坑/教训到 skill", "把这次经验写进源码", "更新 skill 加上这条", "从这次失败里总结", "record this gotcha", "document this lesson", "learn from this and update the skill".
+  Performs semantic skill refactoring: extract the transferable behavior and rewrite the owning skill so it reads clearer, instead of appending raw notes; also decides when NOT to add a reference file. Not for routine skill edits that carry no lesson.
 ---
 
 # Meta Learning
