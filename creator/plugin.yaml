@@ -1,5 +1,5 @@
 manifest_version: 1
-name: steroids
+name: creator
 version: 2.4.3
 description: Core Agent Steroids skills and workflow helpers for Hermes, including proxy stack operations.
 author: Kan

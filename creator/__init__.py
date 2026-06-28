@@ -1,9 +1,9 @@
-"""Hermes plugin shim for the Agent Steroids steroids plugin.
+"""Hermes plugin shim for the Agent Steroids creator plugin.
 
 Hermes installs this repository as one git checkout, then discovers these
 root-level shim directories as category-namespaced plugins such as
-``agent-steroids/steroids``.  The canonical cross-runtime skills stay under
-``plugins/steroids/skills`` for Claude Code and Codex compatibility.
+``agent-steroids/creator``.  The canonical cross-runtime skills stay under
+``plugins/creator/skills`` for Claude Code and Codex compatibility.
 """
 
 from __future__ import annotations
@@ -46,7 +46,7 @@ def _frontmatter_description(skill_md: Path) -> str:
 
 def register(ctx) -> None:
     repo_root = Path(__file__).resolve().parent.parent
-    skills_dir = repo_root / "plugins" / "steroids" / "skills"
+    skills_dir = repo_root / "plugins" / "creator" / "skills"
     if not skills_dir.exists():
         return
 

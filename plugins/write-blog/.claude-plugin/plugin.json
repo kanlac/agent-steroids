@@ -1,0 +1,9 @@
+{
+  "name": "write-blog",
+  "version": "1.0.0",
+  "description": "Blog writing workflow: from topic ideation and conversational mining to outline iteration and drafting in the author's voice; includes an infographic/diagramming reference",
+  "author": {
+    "name": "Kan"
+  },
+  "license": "MIT"
+}

@@ -5,8 +5,8 @@
   },
   "plugins": [
     {
-      "name": "steroids",
-      "source": "./plugins/steroids",
+      "name": "creator",
+      "source": "./plugins/creator",
       "description": "Core Agent Steroids skills and workflow helpers, including Skill inventory auditing"
     },
     {
@@ -18,6 +18,11 @@
       "name": "chrome",
       "source": "./plugins/chrome",
       "description": "Optional shared headed Chrome/CDP browser provider"
+    },
+    {
+      "name": "write-blog",
+      "source": "./plugins/write-blog",
+      "description": "Blog writing workflow in the author's voice: topic ideation, conversational mining, outline iteration, drafting, and an infographic/diagramming reference"
     }
   ]
 }
