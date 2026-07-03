@@ -35,11 +35,13 @@ Grade bands (psychiatric-diagnosis framing, tune copy to taste, keep it playful 
 
 | 分数 | 病情分级 |
 |---|---|
-| 90–100 | 脑回清奇（保持） |
-| 75–89 | 轻度记忆囤积 |
-| 60–74 | 记忆虚胖症 |
-| 40–59 | 数字仓鼠症 |
-| <40 | smooth brain 晚期 · 脑子进水 |
+| 90–100 | 认知清明（脑回清奇） |
+| 75–89 | 轻度信息过载 |
+| 60–74 | 记忆囤积倾向 |
+| 40–59 | 记忆囤积障碍（伴脑雾） |
+| <40 | 重度脑雾 · 上下文失忆 |
+
+The framing is psychiatric (diagnosing a mind), so keep band names in that register — cognition, load, hoarding, fog, amnesia — not body-weight metaphors.
 
 Always print a small disclaimer: the score is a **directional reference, not a precise measure** — mechanical items reproduce, semantic items depend on this run's judgment; the real value is the prescription, not the number.
 

@@ -5,8 +5,8 @@
   },
   "plugins": [
     {
-      "name": "creator",
-      "source": "./plugins/creator",
+      "name": "steroids",
+      "source": "./plugins/steroids",
       "description": "Core Agent Steroids skills and workflow helpers, including Skill inventory auditing"
     },
     {

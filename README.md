@@ -2,12 +2,12 @@
 
 Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容三种 agent runtime，但各插件的 runtime 覆盖不同。插件按用途分类，方便在不同环境中按需启用：
 
-- `creator`：主体 Skills 和通用 workflow。
+- `steroids`：主体 Skills 和通用 workflow。
 - `telegram`：Claude Code 专用的 Telegram agent 运维、通知 MCP、Telegram hook，并包含 `guard-payload-size`。
 - `chrome`：可选的每 OS 用户一个进程的共享有头 Chrome provider；Claude Code / Codex 安装后随插件提供 `cdp-chrome` MCP 启动器。
 - `write-blog`：Claude Code 专用的写作流程 skill 插件——选题构思、对话式挖掘、大纲迭代、按作者风格成文，附信息图/制图参考。
 
-`creator` 和 `chrome` 的 canonical skills 位于 `plugins/<plugin>/skills/` 并可跨 runtime 复用；Claude Code / Codex 通过各自 marketplace 安装，Hermes 通过根目录 shim 仅暴露 `creator` 与 `chrome`。`telegram` 和 `write-blog` 保持 Claude Code 专用，不提供 Codex marketplace 条目或 Hermes shim。
+`steroids` 和 `chrome` 的 canonical skills 位于 `plugins/<plugin>/skills/` 并可跨 runtime 复用；Claude Code / Codex 通过各自 marketplace 安装，Hermes 通过根目录 shim 仅暴露 `steroids` 与 `chrome`。`telegram` 和 `write-blog` 保持 Claude Code 专用，不提供 Codex marketplace 条目或 Hermes shim。
 
 ## 安装
 
@@ -19,7 +19,7 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 
 | Plugin | Runtime | 包含内容 | 硬依赖 | 可选 / capability 依赖 |
 |---|---|---|---|---|
-| [`creator`](plugins/creator/) | Claude + Codex + Hermes | 主体 Skills：文档处理、书籍阅读、PDF 导出、网页剪藏、论文下载、微信桌面 workflow、skill 学习方法论，以及 `/song` | 无 | `paper-download` / `clipping` 的登录态或 CAPTCHA 场景需要 `headed-browser`；`wechat-desktop` 需要 macOS + computer-use MCP |
+| [`steroids`](plugins/steroids/) | Claude + Codex + Hermes | 主体 Skills：文档处理、书籍阅读、PDF 导出、网页剪藏、论文下载、微信桌面 workflow、skill 学习方法论，以及 `/song` | 无 | `paper-download` / `clipping` 的登录态或 CAPTCHA 场景需要 `headed-browser`；`wechat-desktop` 需要 macOS + computer-use MCP |
 | [`telegram`](plugins/telegram/) | Claude Code only | `telegram-agents`、`/tg-*`、`/check-release`、`telegram-notify` MCP、Telegram time hook、`guard-payload-size` hook | Claude Code + official Telegram plugin；心跳 workflow 需 Telethon/tmux/launchd | 无 |
 | [`chrome`](plugins/chrome/) | Claude + Codex + Hermes | `cdp-chrome` 每 OS 用户一个进程的共享有头 Chrome provider；Claude/Codex 内置 `cdp-chrome` MCP 启动器，会读取当前用户 steroids 配置 | Chrome、`npx`；Hermes 使用时需在 `mcp_servers` 注册 | 提供 `headed-browser`，可被 Codex Chrome plugin / 原生 browser-use 替代 |
 | [`write-blog`](plugins/write-blog/) | Claude Code only | `write-blog` skill：选题/对话式挖掘/大纲迭代/按作者风格成文，附 voice-dna 与制图参考 | 无 | 无 |
@@ -28,18 +28,18 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 
 | Skill | Plugin | 说明 |
 |-------|--------|------|
-| [`extract-to-md`](plugins/creator/skills/extract-to-md/SKILL.md) | `creator` | 将网页导出内容或 PDF 报告重构为可编辑 Markdown。处理断行修复、段落结构恢复、图片插入等。 |
-| [`read-book`](plugins/creator/skills/read-book/SKILL.md) | `creator` | EPUB 书籍中英双语翻译，以及阅读和讨论书籍内容。 |
-| [`youtube-bilingual-transcript`](plugins/creator/skills/youtube-bilingual-transcript/SKILL.md) | `creator` | 把 YouTube 链接转成中英对照单页 HTML 阅读稿。yt-dlp 抓字幕+章节，agent 翻译并策展，脚本渲染带时间戳跳转、带序号章节目录、重点高亮、专有名词内联点击注释。 |
-| [`html-to-pdf`](plugins/creator/skills/html-to-pdf/SKILL.md) | `creator` | 将样式化 HTML 转为高质量单页 PDF。自动处理动态元素（scroll-snap、CSS 动画、IntersectionObserver），含可复用生成脚本。 |
-| [`clipping`](plugins/creator/skills/clipping/SKILL.md) | `creator` | 将网页文章保存为本地 Markdown 笔记。支持微信公众号等 JS 渲染页面；对信息图/表格截图可使用 PaddleOCR 提取文本并重构为 Markdown 表格。 |
-| [`paper-download`](plugins/creator/skills/paper-download/SKILL.md) | `creator` | 学术论文检索与下载。三级策略：HTTP/OA 直链、headless 解析、headed browser 登录/CAPTCHA。`cdp-chrome` 只是可选 provider。 |
-| [`wechat-desktop`](plugins/creator/skills/wechat-desktop/SKILL.md) | `creator` | 通过 computer-use MCP 在 macOS 上读取、浏览和总结微信群聊消息。 |
-| [`airport-deploy`](plugins/creator/skills/airport-deploy/SKILL.md) | `creator` | 自建机场（服务端）搭建与运维：VPS 加固、3X-UI、Xray VLESS Reality/Vision 入站、多用户独立订阅、订阅 YAML 渲染、Profile 显示名与到期下发、域名/ACME 证书、测速与 IP 风险、备份。 |
-| [`clash-verge-config`](plugins/creator/skills/clash-verge-config/SKILL.md) | `creator` | Clash Verge Rev / mihomo 客户端配置即代码：保留字段与 enhance 管线、profiles.yaml 显示名/到期缓存、配置不生效排查、external controller/UI、DNS 泄漏与分流规则、节点突然超时先排查 IP 被墙/TUN 回环、远程复用本地代理。 |
-| [`meta-learning`](plugins/creator/skills/meta-learning/SKILL.md) | `creator` | 将用户纠偏、样例和失败经验沉淀为更清晰的 skill 行为：提炼可迁移规则、重构决策结构，避免低密度资料堆叠。 |
-| [`skill-console`](plugins/creator/skills/skill-console/SKILL.md) | `creator` | 生成本地 Skill 清单控制台，审计 token 用量、description token、重复项路径、Skill 内容预览，并导出选中 Skill 的 `{name, path}` JSON。 |
-| [`memory-clinic`](plugins/creator/skills/memory-clinic/SKILL.md) | `creator` | Agent 记忆环境体检：扫描预置记忆（全局/项目 CLAUDE.md/AGENTS.md）与外部记忆（skills、文档），按体量/可用性/新鲜度/矛盾四维打分，产出「记忆精神科确诊书」HTML 报告 + 交互式「治疗确认书」（ReviewTable），人签字确认后再执行清理。承载 push/pull、稀缺、归位、何时不记的记忆管理品味。 |
+| [`extract-to-md`](plugins/steroids/skills/extract-to-md/SKILL.md) | `steroids` | 将网页导出内容或 PDF 报告重构为可编辑 Markdown。处理断行修复、段落结构恢复、图片插入等。 |
+| [`read-book`](plugins/steroids/skills/read-book/SKILL.md) | `steroids` | EPUB 书籍中英双语翻译，以及阅读和讨论书籍内容。 |
+| [`youtube-bilingual-transcript`](plugins/steroids/skills/youtube-bilingual-transcript/SKILL.md) | `steroids` | 把 YouTube 链接转成中英对照单页 HTML 阅读稿。yt-dlp 抓字幕+章节，agent 翻译并策展，脚本渲染带时间戳跳转、带序号章节目录、重点高亮、专有名词内联点击注释。 |
+| [`html-to-pdf`](plugins/steroids/skills/html-to-pdf/SKILL.md) | `steroids` | 将样式化 HTML 转为高质量单页 PDF。自动处理动态元素（scroll-snap、CSS 动画、IntersectionObserver），含可复用生成脚本。 |
+| [`clipping`](plugins/steroids/skills/clipping/SKILL.md) | `steroids` | 将网页文章保存为本地 Markdown 笔记。支持微信公众号等 JS 渲染页面；对信息图/表格截图可使用 PaddleOCR 提取文本并重构为 Markdown 表格。 |
+| [`paper-download`](plugins/steroids/skills/paper-download/SKILL.md) | `steroids` | 学术论文检索与下载。三级策略：HTTP/OA 直链、headless 解析、headed browser 登录/CAPTCHA。`cdp-chrome` 只是可选 provider。 |
+| [`wechat-desktop`](plugins/steroids/skills/wechat-desktop/SKILL.md) | `steroids` | 通过 computer-use MCP 在 macOS 上读取、浏览和总结微信群聊消息。 |
+| [`airport-deploy`](plugins/steroids/skills/airport-deploy/SKILL.md) | `steroids` | 自建机场（服务端）搭建与运维：VPS 加固、3X-UI、Xray VLESS Reality/Vision 入站、多用户独立订阅、订阅 YAML 渲染、Profile 显示名与到期下发、域名/ACME 证书、测速与 IP 风险、备份。 |
+| [`clash-verge-config`](plugins/steroids/skills/clash-verge-config/SKILL.md) | `steroids` | Clash Verge Rev / mihomo 客户端配置即代码：保留字段与 enhance 管线、profiles.yaml 显示名/到期缓存、配置不生效排查、external controller/UI、DNS 泄漏与分流规则、节点突然超时先排查 IP 被墙/TUN 回环、远程复用本地代理。 |
+| [`meta-learning`](plugins/steroids/skills/meta-learning/SKILL.md) | `steroids` | 将用户纠偏、样例和失败经验沉淀为更清晰的 skill 行为：提炼可迁移规则、重构决策结构，避免低密度资料堆叠。 |
+| [`skill-console`](plugins/steroids/skills/skill-console/SKILL.md) | `steroids` | 生成本地 Skill 清单控制台，审计 token 用量、description token、重复项路径、Skill 内容预览，并导出选中 Skill 的 `{name, path}` JSON。 |
+| [`memory-clinic`](plugins/steroids/skills/memory-clinic/SKILL.md) | `steroids` | Agent 记忆环境体检：扫描预置记忆（全局/项目 CLAUDE.md/AGENTS.md）与外部记忆（skills、文档），按体量/可用性/新鲜度/矛盾四维打分，产出「记忆精神科确诊书」HTML 报告 + 交互式「治疗确认书」（ReviewTable），人签字确认后再执行清理。承载 push/pull、稀缺、归位、何时不记的记忆管理品味。 |
 | [`telegram-agents`](plugins/telegram/skills/telegram-agents/SKILL.md) | `telegram` | Telegram agent 配置与管理。包括 tmux 会话、Telethon 调度器、launchd 心跳定时任务。 |
 | [`cdp-chrome`](plugins/chrome/skills/cdp-chrome/SKILL.md) | `chrome` | 可选的共享有头 Chrome provider。适合需要持久登录态、用户手动 CAPTCHA、反 bot 页面或 live site inspection 的环境。 |
 | [`write-blog`](plugins/write-blog/skills/write-blog/SKILL.md) | `write-blog` | 写作全流程：从录音稿成文，或从零开始的对话式写作（选题、调研、提问漏斗、大纲迭代、初稿）。按作者 voice-dna 风格输出，附「图形为主、文字为辅」制图参考。 |
@@ -48,7 +48,7 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 
 | 命令 | Plugin | 说明 |
 |------|--------|------|
-| [`/song <query>`](plugins/creator/commands/song.md) | `creator` | 搜索歌词、翻译为中文，收集趣闻和流行文化梗。 |
+| [`/song <query>`](plugins/steroids/commands/song.md) | `steroids` | 搜索歌词、翻译为中文，收集趣闻和流行文化梗。 |
 | [`/check-release`](plugins/telegram/commands/check-release.md) | `telegram` | 检查 Claude Code 版本更新，通过 Telegram 发送发布报告或 Anthropic 新闻简报。 |
 | [`/tg-status`](plugins/telegram/commands/tg-status.md) | `telegram` | 查看所有 Telegram agent 的运行状态。 |
 | [`/tg-restart <agent>`](plugins/telegram/commands/tg-restart.md) | `telegram` | 重启指定 Telegram agent 的 channel 会话。 |
@@ -82,11 +82,11 @@ agent-steroids/
   INSTALL.md            # 唯一安装手册：给 human/agent 安装时读取
   .agents/plugins/      # Codex marketplace 配置（只列跨运行时 skill 插件）
   .claude-plugin/       # Claude marketplace 配置（列三个插件）
-  creator/              # Hermes shim：agent-steroids/creator
+  steroids/              # Hermes shim：agent-steroids/steroids
   chrome/               # Hermes shim：agent-steroids/chrome
   scripts/              # 独立 CLI 工具
   plugins/
-    creator/            # 主体 skills 和通用 commands
+    steroids/            # 主体 skills 和通用 commands
     telegram/           # Telegram skill/commands/MCP/hooks（含 guard-payload-size）
     chrome/             # cdp-chrome provider（含 Claude/Codex MCP launcher 配置）
     write-blog/         # 写作流程 skill（Claude Code only）

@@ -5,10 +5,10 @@
   },
   "plugins": [
     {
-      "name": "creator",
+      "name": "steroids",
       "source": {
         "source": "local",
-        "path": "./plugins/creator"
+        "path": "./plugins/steroids"
       },
       "policy": {
         "installation": "AVAILABLE",

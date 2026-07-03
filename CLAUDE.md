@@ -17,11 +17,11 @@ Do not commit unless user asked to.
 
 安装、升级、启用流程统一维护在 `INSTALL.md`；`README.md` 和本文件只引用安装手册，不重复安装命令。让 agent 安装本仓库时，要求它先读取 `INSTALL.md`。
 
-Claude Code、Codex、Hermes 三种 agent runtime 都支持本仓库，但 runtime 覆盖不同：Claude Code 暴露 `creator`、`telegram`、`chrome`、`write-blog`；Codex 和 Hermes 只暴露跨运行时稳定可用的 `creator`、`chrome`。`telegram` 和 `write-blog` 是 Claude Code 专用插件，不提供 Codex marketplace 条目或 Hermes shim。
+Claude Code、Codex、Hermes 三种 agent runtime 都支持本仓库，但 runtime 覆盖不同：Claude Code 暴露 `steroids`、`telegram`、`chrome`、`write-blog`；Codex 和 Hermes 只暴露跨运行时稳定可用的 `steroids`、`chrome`。`telegram` 和 `write-blog` 是 Claude Code 专用插件，不提供 Codex marketplace 条目或 Hermes shim。
 
 正式 runtime skills 只放在对应插件的 `plugins/<plugin>/skills/`，不要在根目录维护第二份或用 symlink。Hermes shim 只负责注册这些 canonical skill；不要新增根目录 `plugin.yaml`，否则会把仓库变成单一根插件并挡住子插件发现。Codex marketplace 只声明跨运行时稳定可用的 skill 插件；Claude Code 专用的 commands、agents、hooks、MCP server 可放在对应 Claude 插件根目录下，但除非确认 Codex/Hermes 支持对应运行时语义，不要把 Claude Code 专用配置直接挂到 Codex manifest 或 Hermes shim。
 
-插件拆分保持简单：`creator`、`telegram`、`chrome`、`write-blog`。插件之间尽量用能力依赖（capability）描述，而不是强制安装某个 provider。例如需要可人工接管浏览器时写 `headed-browser`，并说明 `chrome/cdp-chrome`、Codex Chrome plugin、原生 browser-use 都可以满足；只有实现确实绑定某个 provider 时才写硬依赖。
+插件拆分保持简单：`steroids`、`telegram`、`chrome`、`write-blog`。插件之间尽量用能力依赖（capability）描述，而不是强制安装某个 provider。例如需要可人工接管浏览器时写 `headed-browser`，并说明 `chrome/cdp-chrome`、Codex Chrome plugin、原生 browser-use 都可以满足；只有实现确实绑定某个 provider 时才写硬依赖。
 
 ## 用户配置文件规范
 

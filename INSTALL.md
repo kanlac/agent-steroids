@@ -7,7 +7,7 @@
 ## 安装原则
 
 1. 优先使用各 runtime 的插件/marketplace 机制，不要手工复制一份 `skills/` 目录。
-2. 默认只安装 `creator` 主插件；只有需要持久登录态、人工 CAPTCHA、live site inspection 等 `headed-browser` 能力时才安装 `chrome`。
+2. 默认只安装 `steroids` 主插件；只有需要持久登录态、人工 CAPTCHA、live site inspection 等 `headed-browser` 能力时才安装 `chrome`。
 3. `telegram` 是 **Claude Code 专用** 插件；不要在 Codex 或 Hermes 中安装/启用 Telegram 插件。
 4. 如果 marketplace 或插件已经存在，不要当作失败；继续执行安装、更新或验证步骤。
 
@@ -15,9 +15,9 @@
 
 | Runtime | 默认安装 | 可选安装 | 不安装 |
 |---|---|---|---|
-| Claude Code | `creator` | `chrome`, `telegram`, `write-blog` | 无 |
-| Codex | `creator` | `chrome` | `telegram`, `write-blog` |
-| Hermes | `agent-steroids/creator` | `agent-steroids/chrome` | `agent-steroids/telegram`, `agent-steroids/write-blog` |
+| Claude Code | `steroids` | `chrome`, `telegram`, `write-blog` | 无 |
+| Codex | `steroids` | `chrome` | `telegram`, `write-blog` |
+| Hermes | `agent-steroids/steroids` | `agent-steroids/chrome` | `agent-steroids/telegram`, `agent-steroids/write-blog` |
 
 ## Claude Code
 
@@ -25,7 +25,7 @@
 
 ```bash
 claude plugin marketplace add kanlac/agent-steroids
-claude plugin install creator@agent-steroids
+claude plugin install steroids@agent-steroids
 ```
 
 按需安装：
@@ -44,11 +44,11 @@ claude plugin list
 
 ## Codex
 
-适用场景：Codex 使用跨运行时稳定的 skill 插件。Codex marketplace 只暴露 `creator` 和 `chrome`。
+适用场景：Codex 使用跨运行时稳定的 skill 插件。Codex marketplace 只暴露 `steroids` 和 `chrome`。
 
 ```bash
 codex plugin marketplace add kanlac/agent-steroids
-codex plugin add creator@agent-steroids
+codex plugin add steroids@agent-steroids
 ```
 
 按需安装：
@@ -69,7 +69,7 @@ codex plugin list
 
 ```bash
 hermes plugins install kanlac/agent-steroids --no-enable
-hermes plugins enable agent-steroids/creator
+hermes plugins enable agent-steroids/steroids
 ```
 
 按需启用：
@@ -87,7 +87,7 @@ hermes plugins list --plain --no-bundled
 Hermes 加载 skill 时使用插件命名空间，而不是 enable key：
 
 ```bash
-hermes -s creator:paper-download
+hermes -s steroids:paper-download
 hermes -s chrome:cdp-chrome
 ```
 

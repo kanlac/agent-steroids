@@ -151,7 +151,7 @@
 
     .form-head {
       display: grid;
-      grid-template-columns: 86px minmax(0, 1fr) auto;
+      grid-template-columns: 86px minmax(0, 1fr);
       gap: 18px;
       align-items: center;
       padding-bottom: 18px;
@@ -174,14 +174,28 @@
     .doc-title {
       margin: 0;
       font-family: var(--display);
-      font-size: clamp(30px, 5vw, 64px);
-      line-height: 1.02;
+      font-size: clamp(36px, 5vw, 68px);
+      line-height: .96;
       letter-spacing: 0;
-      overflow-wrap: anywhere;
+      word-break: keep-all;
+      overflow-wrap: normal;
     }
 
     .doc-title span {
       display: block;
+    }
+
+    .doc-title .title-main {
+      font-size: .78em;
+      letter-spacing: .02em;
+      white-space: nowrap;
+    }
+
+    .doc-title .title-type {
+      margin-top: 4px;
+      color: var(--red-deep);
+      font-size: 1.08em;
+      white-space: nowrap;
     }
 
     .doc-subtitle {
@@ -196,8 +210,10 @@
 
     .case-meta {
       display: grid;
+      grid-column: 1 / -1;
+      grid-template-columns: repeat(3, minmax(0, auto));
       gap: 7px;
-      width: max-content;
+      width: 100%;
       max-width: 100%;
       padding: 10px 12px;
       border: 1px solid var(--line-strong);
@@ -205,7 +221,7 @@
       font-family: var(--utility);
       font-size: 12px;
       line-height: 1.3;
-      white-space: nowrap;
+      white-space: normal;
     }
 
     .diagnosis-stamp {
@@ -256,19 +272,27 @@
       margin: 0;
       max-width: 920px;
       font-family: var(--display);
-      font-size: clamp(34px, 6.4vw, 76px);
-      line-height: .98;
+      font-size: clamp(34px, 5.8vw, 72px);
+      line-height: 1.02;
       font-weight: 900;
       letter-spacing: 0;
       text-wrap: balance;
-      word-break: break-word;
-      overflow-wrap: anywhere;
+      word-break: keep-all;
+      overflow-wrap: normal;
     }
 
     .diagnosis-line {
       display: block;
-      word-break: break-all;
-      overflow-wrap: anywhere;
+      word-break: keep-all;
+      overflow-wrap: normal;
+    }
+
+    .diagnosis-line:first-child {
+      font-size: .86em;
+    }
+
+    .diagnosis-line:last-child {
+      font-size: .58em;
     }
 
     .primary-complaint {
@@ -726,53 +750,124 @@
     }
 
     .conflict-card {
+      overflow: hidden;
+      border: 2px solid var(--ink);
+      background: rgba(255, 255, 255, .38);
+    }
+
+    .conflict-diagnosis {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line-strong);
+      background: rgba(251, 244, 220, .78);
+      color: var(--ink-muted);
+      font-size: 12px;
+      font-weight: 900;
+      line-height: 1.35;
+    }
+
+    .conflict-diagnosis b {
+      color: var(--red-deep);
+      font-family: var(--utility);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .split-diff {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 76px minmax(0, 1fr);
-      gap: 14px;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       align-items: stretch;
     }
 
-    .quote-box {
+    .diff-panel {
       min-width: 0;
-      padding: 16px;
-      border: 2px solid var(--ink);
-      background: rgba(255, 255, 255, .40);
+      border-right: 1px solid var(--line-strong);
+      background: rgba(255, 255, 255, .30);
     }
 
-    .quote-box .source {
-      display: block;
-      margin-bottom: 9px;
-      color: var(--blue-deep);
+    .diff-panel:last-child {
+      border-right: 0;
+    }
+
+    .diff-path {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 8px;
+      align-items: center;
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--line-strong);
+      background: rgba(24, 33, 31, .88);
+      color: #fff;
       font-family: var(--utility);
       font-size: 12px;
       font-weight: 900;
+      line-height: 1.3;
+    }
+
+    .diff-path span:last-child {
       overflow-wrap: anywhere;
     }
 
-    .quote-box p {
-      margin: 0;
-      font-size: 15px;
-      font-weight: 800;
-      line-height: 1.55;
-      overflow-wrap: anywhere;
-    }
-
-    .versus {
-      display: grid;
+    .diff-badge {
+      display: inline-grid;
       place-items: center;
-      min-height: 100%;
+      min-width: 24px;
+      height: 24px;
+      border: 1px solid rgba(255, 255, 255, .42);
       color: #fff;
-      background: var(--red-deep);
-      font-family: var(--display);
-      font-size: 32px;
       font-weight: 900;
-      writing-mode: vertical-rl;
-      letter-spacing: .08em;
     }
+
+    .diff-row {
+      display: grid;
+      grid-template-columns: 54px minmax(0, 1fr);
+      min-height: 72px;
+      font-family: var(--utility);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .diff-gutter {
+      display: grid;
+      place-items: start end;
+      padding: 13px 10px;
+      border-right: 1px solid var(--line);
+      color: var(--ink-muted);
+      background: rgba(24, 33, 31, .055);
+      user-select: none;
+    }
+
+    .diff-code {
+      display: grid;
+      align-items: start;
+      padding: 13px 12px;
+      overflow-wrap: anywhere;
+      font-weight: 800;
+    }
+
+    .diff-code del,
+    .diff-code ins {
+      text-decoration: none;
+    }
+
+    .diff-panel.old .diff-code {
+      border-left: 5px solid rgba(180, 34, 43, .74);
+      background: rgba(180, 34, 43, .105);
+    }
+
+    .diff-panel.new .diff-code {
+      border-left: 5px solid rgba(71, 121, 106, .78);
+      background: rgba(71, 121, 106, .12);
+    }
+
+    .diff-panel.old .diff-badge { background: var(--red-deep); }
+    .diff-panel.new .diff-badge { background: var(--green); }
 
     .confidence {
       display: inline-block;
-      margin-top: 10px;
       padding: 4px 7px;
       color: #fff;
       background: var(--violet);
@@ -854,6 +949,52 @@
       font-size: 10px;
       letter-spacing: .08em;
       text-transform: uppercase;
+    }
+
+    .treatment-cta {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: center;
+      margin-top: 18px;
+      padding: clamp(16px, 3vw, 24px);
+      border: 3px solid var(--red);
+      background:
+        linear-gradient(135deg, rgba(180, 34, 43, .12), transparent 48%),
+        rgba(251, 244, 220, .82);
+      box-shadow: inset 0 0 0 2px rgba(180, 34, 43, .16);
+    }
+
+    .treatment-cta p {
+      margin: 0;
+      font-size: clamp(16px, 2vw, 20px);
+      font-weight: 900;
+      line-height: 1.45;
+    }
+
+    .treatment-cta span {
+      display: block;
+      margin-top: 4px;
+      color: var(--ink-muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .treatment-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+      padding: 13px 18px;
+      border: 2px solid var(--red-deep);
+      color: #fff;
+      background: var(--red);
+      font-family: var(--display);
+      font-size: 18px;
+      font-weight: 900;
+      text-decoration: none;
+      white-space: nowrap;
+      box-shadow: 6px 6px 0 rgba(127, 21, 30, .18);
     }
 
     .prognosis {
@@ -993,6 +1134,8 @@
       .memory-grid,
       .diagnostic-grid,
       .prescription-grid,
+      .split-diff,
+      .treatment-cta,
       .prognosis {
         grid-template-columns: 1fr;
       }
@@ -1001,9 +1144,30 @@
         min-height: 0;
       }
 
+      .form-head {
+        grid-template-columns: 86px minmax(0, 1fr);
+      }
+
+      .case-meta {
+        grid-column: 1 / -1;
+      }
+
       .case-meta {
         width: 100%;
         white-space: normal;
+      }
+
+      .case-meta {
+        grid-template-columns: 1fr;
+      }
+
+      .diff-panel {
+        border-right: 0;
+        border-bottom: 1px solid var(--line-strong);
+      }
+
+      .diff-panel:last-child {
+        border-bottom: 0;
       }
     }
 
@@ -1031,14 +1195,14 @@
       }
 
       .diagnosis-title {
-        font-size: clamp(30px, 9.5vw, 36px);
-        line-height: 1.05;
-        text-wrap: auto;
-        word-break: break-all;
+        font-size: clamp(30px, 8.5vw, 36px);
+        line-height: 1.08;
+        text-wrap: balance;
+        word-break: keep-all;
       }
 
       .doc-title {
-        font-size: clamp(27px, 8vw, 36px);
+        font-size: clamp(31px, 8.6vw, 38px);
       }
 
       .score-number {
@@ -1059,11 +1223,13 @@
         line-height: 1.08;
       }
 
-      .form-head,
       .section-header,
-      .shock-strip,
-      .conflict-card {
+      .shock-strip {
         grid-template-columns: 1fr;
+      }
+
+      .form-head {
+        grid-template-columns: 62px minmax(0, 1fr);
       }
 
       .hospital-mark {
@@ -1088,13 +1254,22 @@
         text-align: left;
       }
 
-      .versus {
-        min-height: 52px;
-        writing-mode: horizontal-tb;
+      .diff-row {
+        grid-template-columns: 42px minmax(0, 1fr);
+        font-size: 12px;
+      }
+
+      .diff-gutter {
+        padding: 12px 7px;
       }
 
       .rx-meta {
         grid-template-columns: 1fr;
+      }
+
+      .treatment-link {
+        width: 100%;
+        white-space: normal;
       }
     }
 
@@ -1123,7 +1298,7 @@
           <div class="form-head">
             <div class="hospital-mark" aria-hidden="true">脑</div>
             <div>
-              <h1 class="doc-title"><span>Agent 记忆精神科</span><span>确诊书</span></h1>
+              <h1 class="doc-title"><span class="title-main">Agent 记忆精神科</span><span class="title-type">确诊书</span></h1>
               <p class="doc-subtitle">Memory Health Scan Report · DSM-MHS-2026 · 病历首页</p>
             </div>
             <div class="case-meta" aria-label="报告元信息">
@@ -1135,26 +1310,26 @@
 
           <div class="diagnosis-stamp" tabindex="0" aria-label="主诊断">
             <span class="stamp-kicker">PRIMARY DIAGNOSIS</span>
-            <p class="diagnosis-title" aria-label="确诊：记忆虚胖症 · 伴 31% 上下文失联综合征"><span class="diagnosis-line">确诊：记忆虚胖症</span><span class="diagnosis-line">伴 31% 上下文</span><span class="diagnosis-line">失联综合征</span></p>
+            <p class="diagnosis-title" aria-label="确诊：记忆囤积障碍 · 伴 31% 上下文失忆"><span class="diagnosis-line">确诊：记忆囤积障碍</span><span class="diagnosis-line">伴 31% 上下文失忆</span></p>
           </div>
 
           <dl class="primary-complaint">
             <dt>主诉</dt>
-            <dd>你的记忆有 31% 每轮在白烧 token，其中 12 条<br>其实是放错地方、本该住进某个 skill 的教训。</dd>
+            <dd>你的记忆约有 31% 每轮未产生有效价值，其中 12 条<br>适合迁移到对应 skill，减少常驻负荷。</dd>
           </dl>
 
           <div class="shock-strip" aria-label="现病史震撼三连">
             <div class="shock-item">
               <span class="shock-label">病灶体积</span>
-              <span class="shock-value">全局 CLAUDE.md 47 KB</span>
+              <span class="shock-value"><span>全局</span><span>CLAUDE.md</span><span>47 KB</span></span>
             </div>
             <div class="shock-item">
               <span class="shock-label">每日输液</span>
               <span class="shock-value">每轮预载 ~11,800 tokens</span>
             </div>
             <div class="shock-item">
-              <span class="shock-label">失联脑区</span>
-              <span class="shock-value" aria-label="约 31% 从未被加载（已超上下文预算，被静默截断）"><span>约 31% 从未被加载</span><span>（已超上下文预算，</span><span>被静默截断）</span></span>
+              <span class="shock-label">失忆脑区</span>
+              <span class="shock-value" aria-label="约 31% 从未进入有效上下文"><span>约 31% 从未进入</span><span>有效上下文</span></span>
             </div>
           </div>
         </div>
@@ -1166,28 +1341,28 @@
               <span>Directional score</span>
             </div>
             <div class="score-number">58 <span>/ 100</span></div>
-            <p class="level-note"><strong>等级带：微胖（Cluttered）</strong> — 该断舍离了。按病历口径，本例落在「记忆虚胖症」段，尚未发展为数字仓鼠症。</p>
+            <p class="level-note"><strong>等级带：记忆囤积障碍（伴脑雾）</strong> — 本例 58 分，落在 40-59 分区间；需要先清理长期常驻、过期和互相冲突的记忆负荷。</p>
           </div>
 
           <div class="chart-card severity">
             <h2>病情分级</h2>
             <div class="severity-rail" aria-label="等级带">
-              <div class="severity-step"><span>脑回清奇（保持）</span><span class="severity-code">KEEP</span></div>
-              <div class="severity-step"><span>轻度记忆囤积</span><span class="severity-code">MILD</span></div>
-              <div class="severity-step current"><span>记忆虚胖症（本例）</span><span class="severity-code">CASE</span></div>
-              <div class="severity-step"><span>数字仓鼠症</span><span class="severity-code">HOARD</span></div>
-              <div class="severity-step"><span>smooth brain 晚期 · 脑子进水</span><span class="severity-code">CRIT</span></div>
+              <div class="severity-step"><span>90-100：认知清明（脑回清奇）</span><span class="severity-code">CLEAR</span></div>
+              <div class="severity-step"><span>75-89：轻度信息过载</span><span class="severity-code">LOAD</span></div>
+              <div class="severity-step"><span>60-74：记忆囤积倾向</span><span class="severity-code">RISK</span></div>
+              <div class="severity-step current"><span>40-59：记忆囤积障碍（伴脑雾）</span><span class="severity-code">CASE</span></div>
+              <div class="severity-step"><span>0-39：重度脑雾 · 上下文失忆</span><span class="severity-code">CRIT</span></div>
             </div>
           </div>
 
           <div class="chart-card mini-findings">
             <div class="mini-row">
               <b>现病史</b>
-              <span>约 31% 内容超出上下文预算，被 harness 静默截断，后半段根本没在生效。</span>
+              <span>约 31% 内容超出上下文预算，未能进入有效上下文，实际指导价值缺失。</span>
             </div>
             <div class="mini-row">
               <b>初步医嘱</b>
-              <span>嘱患者忌口，勿再向 CLAUDE.md 投喂垃圾；每轮少烧 8000 token，戒断数字囤积。</span>
+              <span>建议收敛 CLAUDE.md 常驻内容；每轮减少约 8000 token，降低记忆囤积复发风险。</span>
             </div>
           </div>
         </aside>
@@ -1206,13 +1381,13 @@
                 <div class="memory-top">
                   <div>
                     <h3>预置记忆</h3>
-                    <p>预置记忆（每轮预载）：49 / 100，属于常驻脑内弹幕</p>
+                    <p>预置记忆（每轮预载）：49 / 100，常驻负荷偏高</p>
                   </div>
                   <div class="memory-score">49</div>
                 </div>
                 <ul class="surface-list">
                   <li>
-                    <span class="surface-name">全局记忆 <code>~/.claude/CLAUDE.md</code><span class="surface-note">太肥，892 行</span></span>
+                    <span class="surface-name">全局记忆 <code>~/.claude/CLAUDE.md</code><span class="surface-note">过长，892 行</span></span>
                     <span class="surface-score">42</span>
                   </li>
                   <li>
@@ -1232,7 +1407,7 @@
                 </div>
                 <ul class="surface-list">
                   <li>
-                    <span class="surface-name">技能 <code>skills</code><span class="surface-note">大体可用，有两个技能偏肥</span></span>
+                    <span class="surface-name">技能 <code>skills</code><span class="surface-note">大体可用，有两个技能偏长</span></span>
                     <span class="surface-score">71</span>
                   </li>
                   <li>
@@ -1257,13 +1432,13 @@
                 <div class="finding-head">
                   <div>
                     <h3>① 体量 Bloat</h3>
-                    <p class="finding-tagline">太臃肿吗？本项已进入红色化验值。</p>
+                    <p class="finding-tagline">常驻信息负荷过高，本项已进入红色化验值。</p>
                   </div>
                   <div class="finding-score danger">38</div>
                 </div>
                 <ul class="evidence-list">
                   <li class="evidence"><strong>~/.claude/CLAUDE.md</strong><span>892 行（超 200 行上限 4.5 倍）/ 47 KB / 每轮约 11,800 tokens</span></li>
-                  <li class="evidence"><strong>上下文预算</strong><span>约 31% 内容超出上下文预算，被 harness 静默截断——后半段根本没在生效</span></li>
+                  <li class="evidence"><strong>上下文预算</strong><span>约 31% 内容超出上下文预算，未能进入有效上下文，实际指导价值缺失</span></li>
                   <li class="evidence"><strong>skills/wechat-desktop/SKILL.md</strong><span>340 行（建议拆分）</span></li>
                   <li class="evidence"><strong>skills/clash-verge-config/SKILL.md</strong><span>268 行</span></li>
                 </ul>
@@ -1323,44 +1498,67 @@
           <div class="section-header">
             <span class="section-tag">鉴别诊断</span>
             <h2 id="contradictions">矛盾专区</h2>
-            <span class="section-caption">两条原文摆上台面，谁像医嘱谁像偏方</span>
+            <span class="section-caption">两条原文并排看，差异会自己冒出来</span>
           </div>
           <div class="section-body">
             <div class="vs-list">
               <article class="conflict-card">
-                <div class="quote-box">
-                  <span class="source">[~/.claude/CLAUDE.md:某行]</span>
-                  <p>文档命名统一用 “yyMMdd-” 前缀（如 260603-）</p>
-                </div>
-                <div class="versus" aria-hidden="true">⚔️</div>
-                <div class="quote-box">
-                  <span class="source">[agent-steroids/CLAUDE.md:某行]</span>
-                  <p>文件名统一用 “YYYYMMDD-” 前缀</p>
-                </div>
-              </article>
-
-              <article class="conflict-card">
-                <div class="quote-box">
-                  <span class="source">[~/.claude/CLAUDE.md]</span>
-                  <p>读社交媒体直接用 CDP Chrome，不要先试 defuddle/WebFetch</p>
-                </div>
-                <div class="versus" aria-hidden="true">⚔️</div>
-                <div class="quote-box">
-                  <span class="source">[skills/web-access]</span>
-                  <p>优先 WebSearch/WebFetch/Jina，静态层无效才上 CDP</p>
+                <div class="conflict-diagnosis"><b>矛盾 #1</b><span>文档命名前缀口径不一致，值得你看一眼。</span></div>
+                <div class="split-diff" aria-label="矛盾 #1 GitHub split diff">
+                  <div class="diff-panel old">
+                    <div class="diff-path"><span class="diff-badge">−</span><span>~/.claude/CLAUDE.md:612</span></div>
+                    <div class="diff-row">
+                      <span class="diff-gutter">612</span>
+                      <span class="diff-code"><del>文档命名统一用 “yyMMdd-” 前缀（如 260603-）</del></span>
+                    </div>
+                  </div>
+                  <div class="diff-panel new">
+                    <div class="diff-path"><span class="diff-badge">+</span><span>agent-steroids/CLAUDE.md:24</span></div>
+                    <div class="diff-row">
+                      <span class="diff-gutter">24</span>
+                      <span class="diff-code"><ins>文件名统一用 “YYYYMMDD-” 前缀</ins></span>
+                    </div>
+                  </div>
                 </div>
               </article>
 
               <article class="conflict-card">
-                <div class="quote-box">
-                  <span class="source">[~/.claude/CLAUDE.md]</span>
-                  <p>默认用 github.com 作 git host</p>
+                <div class="conflict-diagnosis"><b>矛盾 #2</b><span>社交媒体读取路由互相打架，这条可以再斟酌。</span></div>
+                <div class="split-diff" aria-label="矛盾 #2 GitHub split diff">
+                  <div class="diff-panel old">
+                    <div class="diff-path"><span class="diff-badge">−</span><span>~/.claude/CLAUDE.md:388</span></div>
+                    <div class="diff-row">
+                      <span class="diff-gutter">388</span>
+                      <span class="diff-code"><del>读社交媒体直接用 CDP Chrome，不要先试 defuddle/WebFetch</del></span>
+                    </div>
+                  </div>
+                  <div class="diff-panel new">
+                    <div class="diff-path"><span class="diff-badge">+</span><span>skills/web-access/SKILL.md:41</span></div>
+                    <div class="diff-row">
+                      <span class="diff-gutter">41</span>
+                      <span class="diff-code"><ins>优先 WebSearch/WebFetch/Jina，静态层无效才上 CDP</ins></span>
+                    </div>
+                  </div>
                 </div>
-                <div class="versus" aria-hidden="true">⚔️</div>
-                <div class="quote-box">
-                  <span class="source">[项目 CLAUDE.md]</span>
-                  <p>本项目一律走 mindfitgit</p>
-                  <span class="confidence">低置信：更像“特例覆盖”而非真冲突，交人工判断</span>
+              </article>
+
+              <article class="conflict-card">
+                <div class="conflict-diagnosis"><b>矛盾 #3</b><span>低置信：更像“特例覆盖”而非真冲突，由你定夺。</span></div>
+                <div class="split-diff" aria-label="矛盾 #3 GitHub split diff">
+                  <div class="diff-panel old">
+                    <div class="diff-path"><span class="diff-badge">−</span><span>~/.claude/CLAUDE.md:73</span></div>
+                    <div class="diff-row">
+                      <span class="diff-gutter">73</span>
+                      <span class="diff-code"><del>默认用 github.com 作 git host</del></span>
+                    </div>
+                  </div>
+                  <div class="diff-panel new">
+                    <div class="diff-path"><span class="diff-badge">+</span><span>agent-steroids/CLAUDE.md:19</span></div>
+                    <div class="diff-row">
+                      <span class="diff-gutter">19</span>
+                      <span class="diff-code"><ins>本项目一律走 mindfitgit</ins><span class="confidence">值得看一眼</span></span>
+                    </div>
+                  </div>
                 </div>
               </article>
             </div>
@@ -1371,26 +1569,26 @@
           <div class="section-header">
             <span class="section-tag">医嘱</span>
             <h2 id="prescription">处方笺</h2>
-            <span class="section-caption">西药机械修复，中药需要拍板；剂量和疗效写清楚</span>
+            <span class="section-caption">高置信项可直接执行；需判断项保留复核口径</span>
           </div>
           <div class="section-body">
             <div class="prescription-grid">
               <article class="rx-pad">
                 <h3><span>💊 西药</span><small>高置信 · 可直接执行</small></h3>
                 <ul class="rx-list">
-                  <li class="rx-item">
+                  <li id="rx-001" class="rx-item">
                     <p class="rx-name">删除 <code>agent-steroids/CLAUDE.md</code> 中已过期的 “guard-payload-size 临时方案” 段</p>
                     <div class="rx-meta"><span><b>剂量</b>12 行</span><span><b>置信度</b>高</span><span><b>疗效</b>+4</span></div>
                   </li>
-                  <li class="rx-item">
+                  <li id="rx-002" class="rx-item">
                     <p class="rx-name">项目 <code>./CLAUDE.md</code> 收敛为一行 <code>@AGENTS.md</code> 导入，约定只写一份</p>
                     <div class="rx-meta"><span><b>剂量</b>3 个文件</span><span><b>置信度</b>高</span><span><b>疗效</b>+3</span></div>
                   </li>
-                  <li class="rx-item">
+                  <li id="rx-003" class="rx-item">
                     <p class="rx-name">拆分全局 <code>CLAUDE.md</code>（892 → &lt;200 行），把专题段落外移</p>
                     <div class="rx-meta"><span><b>剂量</b>692 行</span><span><b>置信度</b>高</span><span><b>疗效</b>+9</span></div>
                   </li>
-                  <li class="rx-item">
+                  <li id="rx-004" class="rx-item">
                     <p class="rx-name">修复指向 <code>old-proxy.conf</code> 的断链引用</p>
                     <div class="rx-meta"><span><b>剂量</b>1 处</span><span><b>置信度</b>高</span><span><b>疗效</b>+1</span></div>
                   </li>
@@ -1398,26 +1596,30 @@
               </article>
 
               <article class="rx-pad herbal">
-                <h3><span>🌿 中药</span><small>语义判断 · 请你拍板</small></h3>
+                <h3><span>🌿 中药</span><small>语义判断 · 值得看一眼</small></h3>
                 <ul class="rx-list">
-                  <li class="rx-item">
+                  <li id="rx-005" class="rx-item">
                     <p class="rx-name">把「解压中文 zip」「Clash 自建节点」「机场部署」等专题教训 PR 回各自的 skill</p>
                     <div class="rx-meta"><span><b>剂量</b>约 12 条</span><span><b>置信度</b>中</span><span><b>疗效</b>+11 · 确认哪些搬、哪些留</span></div>
                   </li>
-                  <li class="rx-item">
+                  <li id="rx-006" class="rx-item">
                     <p class="rx-name">统一 <code>yyMMdd-</code> vs <code>YYYYMMDD-</code> 命名矛盾</p>
                     <div class="rx-meta"><span><b>剂量</b>1 处矛盾</span><span><b>置信度</b>中</span><span><b>疗效</b>+3 · 确认用哪个标准</span></div>
                   </li>
-                  <li class="rx-item">
+                  <li id="rx-007" class="rx-item">
                     <p class="rx-name">消解 CDP-vs-WebFetch 的社媒读取路由矛盾</p>
                     <div class="rx-meta"><span><b>剂量</b>1 处矛盾</span><span><b>置信度</b>中</span><span><b>疗效</b>+3 · 确认以哪条为准</span></div>
                   </li>
-                  <li class="rx-item">
+                  <li id="rx-008" class="rx-item">
                     <p class="rx-name">删除 3 处已过期的“临时方案”标记</p>
                     <div class="rx-meta"><span><b>剂量</b>3 处</span><span><b>置信度</b>低</span><span><b>疗效</b>+2 · 确认是否确已失效</span></div>
                   </li>
                 </ul>
               </article>
+            </div>
+            <div class="treatment-cta">
+              <p>诊断只是建议，改不改由你签字确认。<span>下一页会逐条列出处方、证据和决定栏，保存后 agent 只执行你勾选的项目。</span></p>
+              <a class="treatment-link" href="./review-table-template.html">去签《治疗确认书》→</a>
             </div>
           </div>
         </section>
@@ -1433,13 +1635,13 @@
               <div class="after-card">
                 <span>总分变化</span>
                 <strong>58 → 89</strong>
-                <p>等级带：微胖 → 精瘦（Lean）</p>
+                <p>等级带：记忆囤积障碍（伴脑雾） → 轻度信息过载</p>
               </div>
               <ul class="prognosis-list">
                 <li><b>每轮 token 税</b><span>−68%（11,800 → ~3,800）</span></li>
                 <li><b>全局 CLAUDE.md</b><span>47 KB → ~9 KB</span></li>
                 <li><b>加载状态</b><span>恢复全量加载（不再被截断）</span></li>
-                <li><b>临床印象</b><span>戒断数字囤积，处方有效；复查时重点看预置层是否反弹。</span></li>
+                <li><b>临床印象</b><span>记忆囤积明显缓解，处方有效；复查时重点看预置层是否反弹。</span></li>
               </ul>
             </div>
           </div>
@@ -1447,7 +1649,7 @@
       </main>
 
       <footer class="disclaimer">
-        小字免责：分数是方向性参考、不是精确度量；机械项可复现，语义项取决于当次判断；真正有价值的是处方，不是数字。本报告诊断的是 Agent 的“脑子”，不是人的脑子。
+        小字免责：分数是方向性参考、不是精确度量；高置信项可复现，语义项取决于当次判断；真正有价值的是处方，不是数字。本报告诊断的是 Agent 的“脑子”，不是人的脑子。
       </footer>
     </article>
   </div>
