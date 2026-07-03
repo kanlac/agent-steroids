@@ -1,37 +1,37 @@
-# Diagnosis Report — scoring and rendering
+# 诊断报告 —— 打分与渲染
 
-How to turn a scan into the "记忆精神科确诊书" (the diagnosis report). The visual template is `assets/diagnosis-template.html`; this doc is the rubric and the fill guidance behind it.
+如何把一次扫描变成「记忆精神科确诊书」。视觉模板是 `assets/diagnosis-template.html`；这篇是它背后的评分细则和填充指引。
 
-## Principle: no evidence, no points
+## 原则：没有证据就不扣分
 
-Every score is a claim, and every claim needs a receipt. Before deducting on any dimension, capture the concrete `file:line` and the quoted text that justifies it. The report shows those quotes inline under each dimension — that is what proves the diagnosis was computed from the user's real memory rather than pasted from a template. A dimension score with no cited lines is a bug.
+每个分数都是一个断言，每个断言都要有凭据。在任何维度扣分之前，先拿到具体的 `file:line` 和证明它的原文引用。报告在每个维度下方内联展示这些引用——这正是让用户相信「诊断是从我真实的记忆算出来的、不是套模板」的东西。一个没有引用行的维度分数是个 bug。
 
-Signals come in two kinds; keep them honest about which is which:
+信号分两种，别把它们混为一谈：
 
-- **🔧 Mechanical (reproducible)** — line counts, file sizes, the 200-line rule, per-session token estimates, broken references, `@AGENTS.md`-import checks. Anyone re-running gets the same answer.
-- **🧠 Semantic (judgment)** — "this line changes no decision", "this note is stale", "these two rules contradict". This is where the agent's taste shows. Label it as judgment, don't dress it up as measurement.
+- **🔧 机械（可复现）**——行数、文件大小、200 行规则、每轮 token 估算、断链检查、`@AGENTS.md` 导入检查。谁重跑都得同样的结果。
+- **🧠 语义（判断）**——「这一行不改变任何决策」「这条笔记过时了」「这两条规则矛盾」。这是 Agent 品味所在的地方。把它标成判断，别装成度量。
 
-## The four dimensions
+## 四个维度
 
-Each answers one distinct question — keep them non-overlapping (太大 / 没用说不清 / 过时 / 打架).
+每个回答一个不同的问题——保持互不重叠（太大 / 没用说不清 / 过时 / 打架）。
 
-- **① 体量 Bloat** — size only. Per-file line count vs the ~200-line rule, total bytes, estimated tokens loaded per session, and the red line: is push so large the harness truncates it (so part never loads)? Mostly mechanical. Applies to any single file, push or pull.
-- **② 可用性 Usability** — of the content that exists, how much changes a decision. Flag generic filler, anything inferrable from the repo, and instructions too vague to act on. Mostly semantic, with mechanical help (duplicate detection, boilerplate patterns).
-- **③ 新鲜度 Freshness** — is it still true. Dead paths / renamed files (mechanical), finished-work records and expired "temporary/WIP/currently-using-X" claims (semantic).
-- **④ 矛盾 Contradiction** — does anything contradict anything else, *including across push and pull*. Surface conflicts as **pairs**, each side quoted with its `file:line`. This is the highest-signal, most convincing finding — the "oh, I did write both" moment — so give it its own prominent section, laid out like a side-by-side diff (two columns, line numbers shown; for a demo, invented line numbers are fine).
+- **① 体量 Bloat**——只看大小。单文件行数对照约 200 行规则、总字节、每轮载入的 token 估算，以及那条红线：预置是否大到被 harness 截断（于是一部分从不加载）？主要靠机械。对任何单文件适用，无论预置还是外部。
+- **② 可用性 Usability**——已有的内容里，有多少真能改变一个决策。标记通用废话、能从 repo 推断的内容、以及**含糊到无法执行的指令**。主要靠语义，辅以机械（重复检测、样板套话）。注意：这一维分析的是**用户文件里已有的内容**，如实说它「含糊、无法执行」即可，不要给它套上「医嘱」之类的词——诊所开出来的才叫医嘱，被分析的现有内容不是。
+- **③ 新鲜度 Freshness**——是否还成立。指向已删/改名文件的死路径（机械）、已完工的进度记录和失效的「临时/WIP/currently-using-X」声明（语义）。
+- **④ 矛盾 Contradiction**——有没有东西和另一处冲突，**包括跨预置和外部**。把冲突**成对**呈现，每一侧引用各自的 `file:line`。这是信号最强、最有说服力的发现——用户会「啊，这俩我确实都写过」——所以给它一块独立醒目的版面，做成左右并排（两栏、显示行号；demo 用假行号也行）。
 
-## Rollup
+## 汇总
 
 ```
-per-dimension evidence
-   → surface scores: 全局记忆 / 项目记忆 / 技能 / 文档   (each 0–100, shown directly)
-   → push score (global+project)  and  pull score (skills+docs)
-   → total = push : pull = 5:5     (0–100) + grade band
+每维度的证据
+   → 表面分：全局记忆 / 项目记忆 / 技能 / 文档（各 0–100，直接展示）
+   → 预置分（全局+项目）和 外部分（技能+文档）
+   → 总分 = 预置 : 外部 = 5:5（0–100）+ 等级带
 ```
 
-Weight 5:5 by default — do not presume which layer matters more for a given user. Name the surfaces in human terms (全局记忆 = the global CLAUDE.md), never "上半区/push" in the visible report.
+默认 5:5 加权——不预设哪一层对某个用户更重要。表面用用户看得懂的名字（全局记忆 = 那个全局 CLAUDE.md），可见报告里绝不写「上半区/push」这种词。
 
-Grade bands (psychiatric-diagnosis framing, tune copy to taste, keep it playful not mean):
+等级带（精神科诊断口径，措辞可调，好玩但不刻薄）：
 
 | 分数 | 病情分级 |
 |---|---|
@@ -41,25 +41,29 @@ Grade bands (psychiatric-diagnosis framing, tune copy to taste, keep it playful 
 | 40–59 | 记忆囤积障碍（伴脑雾） |
 | <40 | 重度脑雾 · 上下文失忆 |
 
-The framing is psychiatric (diagnosing a mind), so keep band names in that register — cognition, load, hoarding, fog, amnesia — not body-weight metaphors.
+叙事是精神科（在诊断一颗大脑），所以等级带保持这个语域——认知、负荷、囤积、脑雾、失忆——不要用体重隐喻。
 
-Always print a small disclaimer: the score is a **directional reference, not a precise measure** — mechanical items reproduce, semantic items depend on this run's judgment; the real value is the prescription, not the number.
+始终打一行小字声明：分数是**方向性参考，不是精确度量**——机械项可复现，语义项取决于当次判断；真正有价值的是处方，不是数字。
 
-## The report's sections (what the template fills)
+## 只填数据，不写文案
 
-The template is a psychiatric case-report ("确诊书"). Fill every section from real scan data — no placeholders left in a produced report:
+报告里所有固定文案——标题、各维度副标题、矛盾区引导语、免责声明、「确诊：___」的句式、等级带名称——都已经写死在 `assets/diagnosis-template.html` 里。Agent 运行时不写文案，只做三件事：算分并收集证据（数据）、按分数查表选出等级带（固定枚举里挑一个）、把这些数据填进模板的对应位置。需要改措辞时改模板，不在运行时临场编。
 
-1. **主诉 / Hero** — total score, grade band as a diagnosis line (e.g. "确诊：记忆虚胖症 · 伴 N% 上下文失联"), a one-line diagnosis, and the shock stats (total size, per-session token tax, % never loaded). The big title must stay readable — do not let it compress into an awkward multi-line block.
-2. **两类记忆记分** — the four surface scores under 预置 / 外部.
-3. **四维诊断（分数即证据）** — each dimension's score with its cited lines beneath it.
-4. **矛盾专区** — the paired contradictions, diff-style with line numbers.
-5. **处方笺** — 西药 (mechanical / high-confidence) and 中药 (judgment / medium-low confidence), each item with 剂量 (how many), 置信度, and expected 疗效 (+X). Word the 中药 items as recommendations to review, not as orders.
-6. **疗效预测** — before/after: total, token tax, whether full loading is restored.
+## 报告的板块（模板要填的数据）
 
-## Prescription → confirmation handoff
+模板是一份精神科病历（确诊书）。每一块都用真实扫描数据填满——产出的报告里不留占位符：
 
-The prescription is not the end. Its items become the rows of the ReviewTable (治疗确认书). End the report with a clear path into that confirmation step, and do not apply any edit before the user has confirmed. See `references/review-table.md`.
+1. **主诉 / Hero**——总分、把等级带写成一句确诊（如「确诊：记忆囤积障碍 · 伴 N% 上下文失忆」）、一句诊断，以及震撼数据（总大小、每轮 token 税、多少比例从未加载）。大标题要保持好读，别挤成难看的多行块。
+2. **两类记忆记分**——预置 / 外部 下的四个表面分。
+3. **四维诊断（分数即证据）**——每个维度的分数，下方铺开它扣分的引用行。
+4. **矛盾专区**——成对的冲突，左右并排带行号。
+5. **处方笺**——西药（机械/高把握）和中药（判断/中低把握），每项带剂量（多少条）、把握程度、预期疗效（+X）。中药措辞是「供你定夺」，不是命令。在诊断报告这一页，处方只是预告：突出 1–3 个最值得关注的项并说明原因即可，不必写全，完整清单在治疗确认书里。
+6. **疗效预测**——照做前后对比：总分、token 税、是否恢复全量加载。
 
-## Producing the file
+## 处方 → 确认交接
 
-Populate `assets/diagnosis-template.html` with the scan's real numbers and evidence and write it to a working location the user can open (a scratch dir or the project). Keep it a single self-contained HTML — inline CSS/JS, no external requests, so it opens offline. Confirm every section is filled from real data and the contradiction pairs cite actual conflicting lines before handing it over.
+处方不是终点。它的每一项会成为治疗确认书（ReviewTable）的一行。报告结尾给一个清晰的入口进入确认步骤（按钮放在整页最后），在用户确认之前不执行任何改动。见 `references/review-table.md`。
+
+## 生成文件
+
+把扫描的真实数字和证据填进 `assets/diagnosis-template.html`，写到用户能打开的位置（临时目录或项目里）。保持单文件、自包含——内联 CSS/JS、无外部请求，离线可开。交付前确认每一块都由真实数据填满、矛盾对引用的是真实的冲突行。

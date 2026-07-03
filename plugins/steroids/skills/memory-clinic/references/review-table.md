@@ -1,34 +1,34 @@
-# ReviewTable — the 治疗确认书 (treatment confirmation)
+# ReviewTable —— 治疗确认书
 
-Diagnosis is not permission to edit. Between the report and any change stands a confirmation the user fills in themselves. The pattern is a **ReviewTable**: an interactive table where the agent lays out its findings and proposed actions, the user reviews and decides row by row, and the result is saved as a small JSON the agent reads back. It keeps the clinic from ever silently rewriting someone's memory.
+诊断不是修改的许可。在报告和任何改动之间，隔着一份由用户自己填的确认。形式是 **ReviewTable**：一张可交互的表，Agent 把发现和建议动作铺开，用户逐行审阅、决定，结果存成一份小 JSON，Agent 读回来。它让诊所永远不会不打招呼就改写别人的记忆。
 
-The demo frames it as a "治疗确认书 / 知情同意书" — you sign off on which treatments to apply. The template is `assets/review-table-template.html`.
+demo 把它做成一份「治疗确认书」——你逐条确认要执行哪些治疗。模板是 `assets/review-table-template.html`。
 
-## Shape
+## 结构
 
-One row per prescription item from the report. Columns:
+报告里处方的每一项对应一行。列：
 
-- **病灶 / finding** — the problem, in plain terms.
-- **证据 evidence** — the `file:line` and quoted text (same receipts as the report).
-- **建议 action** — what the agent proposes to do (delete / split / move into skill X / reconcile / import).
-- **置信度 confidence** — 高 / 中 / 低. High = mechanical, safe to apply as-is. Medium/low = a judgment call; visually flag these so the eye lands on the rows that most benefit from a look. Word them as "worth a look", never as a demand.
-- **决定 decision** — the only user-owned column: apply / skip, and a free-text note. For a contradiction row, the note is where the user says which side wins.
+- **病灶 / finding**——问题，用大白话说。
+- **证据 evidence**——`file:line` 和原文引用（和报告里同一份凭据）。
+- **建议 action**——Agent 打算做什么（删 / 拆 / 移进 skill X / 调和 / 导入）。
+- **把握程度 confidence**——高 / 中 / 低。高＝机械，可放心照做。中/低＝需要判断的，视觉上标出来，让视线落在最需要用户看一眼的行上。
+- **决定 decision**——唯一属于用户的列：执行 / 跳过，加一栏自由填写。矛盾行的这栏，用来写以哪条为准。
 
-Rows default to the sensible action (高置信 default to apply, 中低 default to review), but nothing is applied until the user saves and returns.
+行的默认值取合理动作（高把握默认执行，中低默认待定），但在用户保存并返回之前，什么都不执行。
 
-## Live prognosis
+## 实时疗效分
 
-The predicted health score reacts to the checkboxes: as the user toggles rows on/off, recompute the projected total from each item's 疗效 (+X) and update it live in the page. It turns confirmation into a visible negotiation — "if I skip this, I stay at 61" — instead of a static form.
+预测的健康分随勾选变化：用户开/关一行，就按每项的疗效（+X）重算预测总分并在页面上实时更新。它把确认变成一场看得见的权衡——「这条不勾，我就停在 61」——而不是一张静止的表单。
 
-## Save → read-back contract
+## 保存 → 读回契约
 
-Saving writes a JSON the agent can read. For an offline single-file page, export via a download (Blob) to a known path — Downloads is fine for a demo — and the user tells the agent where it landed (or says "我填好了" and the agent looks in the default location). Schema:
+保存时落一份 Agent 能读的 JSON。对离线单文件页面，用下载（Blob）导出到一个已知路径——demo 放 Downloads 即可——用户告诉 Agent 它落在哪（或说「填好了」，Agent 去默认位置找）。schema：
 
 ```json
 {
   "schema": "memory-clinic.review-table.v1",
   "generated_at": "<ISO8601>",
-  "source_report": "<path or id of the diagnosis>",
+  "source_report": "<诊断报告的路径或 id>",
   "projected_score": 84,
   "decisions": [
     {
@@ -53,13 +53,17 @@ Saving writes a JSON the agent can read. For an offline single-file page, export
 }
 ```
 
-Keep field names stable (`id`, `action`, `apply`, `note`) — the treat step keys off them. `id` must match the prescription item ids the report/table assigned, so a decision maps back to a concrete edit.
+字段名保持稳定（`id`、`action`、`apply`、`note`）——治疗步骤靠它们取值。`id` 必须和报告/表给处方项分配的 id 对上，这样一个决定才能映射回一处具体的改动。
 
-## Treat
+## 页面文案的意图
 
-When the user returns, read the JSON and apply only rows with `apply: true`:
+治疗确认书是对用户说话的，不是旁白。这一页要传达的是：请你把这份清单读一遍，尤其是标着「中把握」「低把握」的那几项——它们最需要你亲自定夺。措辞面向用户、直接、不解说机制。（这一页最显眼的那句引导语，措辞由具体需求定；候选先给用户确认。）
 
-- **高置信 / mechanical** — apply directly.
-- **中低置信 / judgment** — apply as the `note` directs; for a contradiction, edit toward the side the user chose. If a "PR into skill X" item is approved, that rewrite is `meta-learning`'s job — hand it there rather than stapling a raw note.
+## 治疗
 
-Then re-state the achieved delta (old score → new) so the loop closes on a visible win. Never apply a row the user left unchecked, and never edit beyond what a decision authorizes.
+用户返回后，读 JSON，只对 `apply: true` 的行执行：
+
+- **高把握 / 机械**——直接执行。
+- **中低把握 / 判断**——按 `note` 执行；矛盾就朝用户选的那一侧改。若批了一条「PR 进 skill X」，那次重写交给 `meta-learning`，别把原始笔记钉上去。
+
+然后复述达成的变化（旧分 → 新分），让循环落在一个看得见的改善上。永远不执行用户没勾的行，也不越过一个决定所授权的范围去改。

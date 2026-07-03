@@ -6,70 +6,70 @@ description: |
 
 # Memory Clinic
 
-The clinic for an agent's memory. It holds the taste for **where each piece of memory should live**, turns that taste into a **scored diagnosis**, and closes the loop with a **human-confirmed cleanup**.
+给 Agent 记忆做的诊所。它握着「每一条记忆该住在哪里」的品味，把品味变成一份**可打分的诊断**，再用一份**人工确认**收尾。
 
-Diagnose → confirm → treat. Never silently rewrite a user's memory.
+诊断 → 确认 → 治疗。永远不要不打招呼就改写用户的记忆。
 
-## The one idea: push vs pull
+## 一个核心：预置 vs 外部
 
-An agent's memory splits into two layers with opposite failure modes. Everything this skill does hangs off this distinction.
+Agent 的记忆分两层，失效模式相反，这个 skill 做的每件事都挂在这个区分上。
 
-- **预置记忆 (push / preset)** — loaded into context *every* session: global `~/.claude/CLAUDE.md`, project `CLAUDE.md` / `AGENTS.md`, native auto-memory. Failure mode is **bloat**: every line taxes every turn, and past the budget the harness silently truncates it, so the agent gets *dumber*, not smarter. Push must be scarce.
-- **外部记忆 (pull / external)** — retrieved only when needed: skill bodies, docs. It can grow, but it **rots, drifts, and contradicts itself**. Pull must stay findable and honest.
+- **预置记忆（每轮预载）**——每次对话都被载入上下文：全局 `~/.claude/CLAUDE.md`、项目 `CLAUDE.md` / `AGENTS.md`、原生 auto-memory。失效模式是**膨胀**：每一行都在给每一轮交税，超过预算后 harness 会静默截断，于是 Agent 反而更笨，不是更聪明。预置层必须稀缺。
+- **外部记忆（按需取用）**——只在需要时被检索：skill 正文、文档。它可以生长，但会**腐烂、失联、自相矛盾**。外部层必须保持可检索、可信。
 
-The core routing question for any lesson: *does it belong in push, in pull, in a skill as an improvement, or nowhere (git already has it)?* The full taste lives in `references/memory-philosophy.md` — read it before making judgment calls about what to keep, move, or cut.
+任何一条教训的路由问题就是：*它属于预置、属于外部、属于某个 skill（作为改进）、还是根本不该留（git 里已经有了）？* 完整品味见 `references/memory-philosophy.md`——在对「留什么、移什么、删什么」下判断之前先读它。
 
-## What the clinic does
+## 诊所做什么
 
-Three jobs, always in this order:
+三件事，永远按这个顺序：
 
-1. **诊断 Diagnose** — scan the memory environment, score it, produce the diagnosis report.
-2. **确认 Confirm** — hand the user a ReviewTable ("治疗确认书") so they decide, row by row, what actually gets changed.
-3. **治疗 Treat** — read the saved confirmation and apply only the approved edits.
+1. **诊断** —— 扫描记忆环境、打分、生成诊断报告。
+2. **确认** —— 交给用户一份 ReviewTable（治疗确认书），由用户逐条决定到底改哪些。
+3. **治疗** —— 读取用户确认后的结果，只执行获批的改动。
 
-### Scope of a scan
+### 扫描范围
 
-Read everything the current environment exposes:
+读当前环境能读到的一切：
 
-- Global memory: `~/.claude/CLAUDE.md` (and `~/.claude/AGENTS.md` if present)
-- Project memory: `CLAUDE.md` / `AGENTS.md` at the repo root
-- The pull layer that is reachable: installed/project skills and their descriptions, and any docs the instruction files point to
+- 全局记忆：`~/.claude/CLAUDE.md`（以及存在的话 `~/.claude/AGENTS.md`）
+- 项目记忆：仓库根目录的 `CLAUDE.md` / `AGENTS.md`
+- 可触达的外部层：已安装/项目内的 skill 及其 description，以及指令文件指向的文档
 
-Do **not** wander into other projects' memory. The scan is about *this* agent, here.
+不要跑去扫别的项目的记忆。扫的是**此时此地这个** Agent。
 
-## The four diagnostic dimensions
+## 四个诊断维度
 
-Each dimension answers one distinct question and must be **backed by evidence** — every deduction points to a concrete `file:line` and quotes it. No evidence, no points; a score with no receipts reads as a template and no one trusts it.
+每个维度回答一个不同的问题，且必须**挂证据**——每扣一分都要指向具体的 `file:line` 并引用原文。没有证据就不扣分；没有证据支撑的分数看起来像套模板，没人会信。
 
 | 维度 | 它问的 | 典型信号 |
 |---|---|---|
-| **① 体量 Bloat** | 太臃肿吗? | 单文件 >200 行、总大小、每轮 token 税、大到被静默截断 |
-| **② 可用性 Usability** | 有用且说得清吗? | 不改变任何决策的通用废话、模型能从 repo 推断的内容、含糊到无法执行的指令 |
-| **③ 新鲜度 Freshness** | 过时了吗? | 指向已删/改名文件的断链、已完工的进度记录、失效的时效声明 |
-| **④ 矛盾 Contradiction** | 自相打架吗? | 跨预置/外部：全局规则与某 skill、两个文档之间的冲突（成对呈现，带行号） |
+| **① 体量 Bloat** | 太臃肿吗？ | 单文件 >200 行、总大小、每轮 token 税、大到被静默截断 |
+| **② 可用性 Usability** | 有用且说得清吗？ | 不改变任何决策的通用废话、模型能从 repo 推断的内容、含糊到无法执行的指令 |
+| **③ 新鲜度 Freshness** | 过时了吗？ | 指向已删/改名文件的断链、已完工的进度记录、失效的时效声明 |
+| **④ 矛盾 Contradiction** | 自相打架吗？ | 跨预置/外部：全局规则与某个 skill、两个文档之间的冲突（成对呈现，带行号） |
 
-Scores roll up by surface (global / project / skills / docs), then into a push score and a pull score weighted **5:5**, then a total 0–100 with a grade band. The score is a **directional reference, not a precise measure** — say so in the report. The scoring rubric, grade bands, and report generation live in `references/diagnosis-report.md`.
+分数先按表面聚合（全局记忆 / 项目记忆 / 技能 / 文档），再合成预置分与外部分（**5:5** 加权），最后得到 0–100 的总分和一个等级带。这个分数是**方向性参考，不是精确度量**——报告里要说清楚。评分细则、等级带、报告生成见 `references/diagnosis-report.md`。
 
-## Prescription: two kinds of fix, with confidence
+## 处方：两类修复，带把握程度
 
-Cleanup actions come in two flavors, and the split is the whole point of the confirm step:
+清理动作分两类，这个区分正是「确认」这一步存在的意义：
 
-- **💊 西药 (mechanical, high-confidence)** — deterministic fixes safe to apply directly: delete a finished-work record git already has, split a 260-line file, collapse a project file to `@AGENTS.md`.
-- **🌿 中药 (judgment, medium/low-confidence)** — semantic calls that benefit from a human look: which contradicting rule wins, whether a lesson should be PR'd into a specific skill, whether a "temporary" note is truly dead. Present these as a recommendation with reasoning, not an order — the user is signing off, not being told.
+- **💊 西药（机械、高把握）**——确定性的、可直接执行的修复：删掉 git 已有的完工记录、拆分一个 260 行的文件、把项目文件收敛为 `@AGENTS.md`。
+- **🌿 中药（判断、中/低把握）**——需要人看一眼的语义决定：两条冲突指令以哪条为准、某条教训是否该 PR 进某个 skill、某个"临时"标记是否真的失效了。这类给出建议和理由，由用户定夺，而不是替他拍板。
 
-## Confirm before treating (ReviewTable)
+## 先确认再治疗（ReviewTable）
 
-Diagnosis is not permission. After the report, hand the user an interactive **治疗确认书** (a ReviewTable): one row per prescription item, showing the finding, evidence, the agent's suggested action, and a confidence flag; the user checks what to apply, and for contradictions writes which side wins. Saving it writes a small JSON to disk; the agent reads that back and applies only the approved edits. This is what keeps the clinic from ever silently rewriting someone's memory. The interaction contract, JSON schema, and template live in `references/review-table.md`.
+诊断不等于许可。报告之后，交给用户一份可交互的**治疗确认书**（ReviewTable）：处方每项一行，列出病灶、证据、建议动作和把握程度；用户勾选要执行哪些，矛盾项则写下以哪条为准。保存时落一份 JSON 到磁盘，Agent 读回来，只执行获批的改动。这就是诊所永远不会不打招呼改写记忆的原因。交互契约、JSON schema、模板见 `references/review-table.md`。
 
-## Workflow
+## 工作流程
 
-1. Read `references/memory-philosophy.md` for the routing taste, then scan the in-scope surfaces above.
-2. Score the four dimensions with evidence, following `references/diagnosis-report.md`; render the diagnosis report from `assets/diagnosis-template.html`.
-3. Generate the ReviewTable from `assets/review-table-template.html` per `references/review-table.md`, and point the user to it.
-4. When the user says they've saved their choices, read the confirmation JSON and apply only the approved fixes — 西药 directly, 中药 as the user decided.
-5. Re-state the resulting health delta (what the score would become) so the loop closes on a visible improvement.
+1. 读 `references/memory-philosophy.md` 拿到路由品味，再扫上面的范围。
+2. 按 `references/diagnosis-report.md` 给四维打分并挂证据；用 `assets/diagnosis-template.html` 渲染诊断报告。
+3. 按 `references/review-table.md` 用 `assets/review-table-template.html` 生成治疗确认书，指引用户去填。
+4. 用户说填好了之后，读确认 JSON，只执行获批的项——西药直接执行，中药按用户的决定执行。
+5. 复述最终的健康变化（分数会变成多少），让这个循环落在一个看得见的改善上。
 
-## Notes
+## 备注
 
-- This skill decides *where memory should live* and *whether it should exist at all* — it does not impose a specific wiki/doc structure, since every repo organizes docs differently.
-- Related: `meta-learning` owns the deeper craft of rewriting a lesson *into* a skill (refactor, don't append). When a 中药 fix is "PR this into skill X", that is `meta-learning` territory.
+- 这个 skill 决定的是记忆**该住哪里**、**该不该存在**，它不规定具体的 wiki/文档结构——每个仓库组织文档的方式都不一样。
+- 相关：`meta-learning` 负责把一条教训**重写进** skill 的更深功夫（重构，而非追加）。当一条中药是「PR 进 skill X」时，那属于 `meta-learning` 的活。

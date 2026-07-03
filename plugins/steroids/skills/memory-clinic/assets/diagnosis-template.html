@@ -106,7 +106,7 @@
     }
 
     .medical-folder::after {
-      content: "仅供参考 · 非医学建议 · 但很像真的";
+      content: "仅供参考 · 非医学建议";
       position: absolute;
       top: 18px;
       right: -54px;
@@ -334,6 +334,8 @@
     }
 
     .shock-item {
+      display: grid;
+      align-content: start;
       min-width: 0;
       padding: 16px;
       border-right: 1px solid var(--line);
@@ -349,17 +351,18 @@
       font-weight: 900;
       letter-spacing: .14em;
       text-transform: uppercase;
+      white-space: nowrap;
     }
 
     .shock-value {
       display: block;
       color: var(--blue-deep);
       font-family: var(--display);
-      font-size: clamp(22px, 3vw, 34px);
+      font-size: clamp(18px, 2vw, 26px);
       font-weight: 900;
-      line-height: 1;
-      word-break: break-word;
-      overflow-wrap: anywhere;
+      line-height: 1.12;
+      word-break: keep-all;
+      overflow-wrap: normal;
     }
 
     .shock-value span {
@@ -877,8 +880,15 @@
 
     .prescription-grid {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: 1fr;
       gap: 18px;
+    }
+
+    .prescription-preview {
+      border: 2px solid var(--ink);
+      background:
+        linear-gradient(0deg, transparent 0 31px, rgba(180, 34, 43, .10) 32px, transparent 33px) 0 0 / 100% 33px,
+        rgba(255, 255, 255, .38);
     }
 
     .rx-pad {
@@ -924,6 +934,29 @@
       font-weight: 900;
       line-height: 1.45;
       overflow-wrap: anywhere;
+    }
+
+    .rx-focus .rx-name {
+      margin-bottom: 6px;
+      font-size: clamp(16px, 2vw, 19px);
+    }
+
+    .rx-reason {
+      margin: 0;
+      color: var(--ink-muted);
+      font-size: 14px;
+      font-weight: 800;
+      line-height: 1.55;
+      overflow-wrap: anywhere;
+    }
+
+    .rx-footnote {
+      margin: 0;
+      padding: 0 14px 16px;
+      color: var(--ink-muted);
+      font-size: 13px;
+      font-weight: 900;
+      line-height: 1.4;
     }
 
     .rx-meta {
@@ -1219,11 +1252,14 @@
       }
 
       .shock-value {
-        font-size: clamp(23px, 7vw, 30px);
+        font-size: clamp(18px, 5.4vw, 24px);
         line-height: 1.08;
       }
 
-      .section-header,
+      .section-header {
+        grid-template-columns: 1fr;
+      }
+
       .shock-strip {
         grid-template-columns: 1fr;
       }
@@ -1242,6 +1278,10 @@
       }
 
       .shock-item:last-child { border-bottom: 0; }
+
+      .shock-label {
+        margin-bottom: 8px;
+      }
 
       .primary-complaint,
       .mini-row,
@@ -1321,15 +1361,15 @@
           <div class="shock-strip" aria-label="现病史震撼三连">
             <div class="shock-item">
               <span class="shock-label">病灶体积</span>
-              <span class="shock-value"><span>全局</span><span>CLAUDE.md</span><span>47 KB</span></span>
+              <span class="shock-value"><span>全局 CLAUDE.md</span><span>47 KB</span></span>
             </div>
             <div class="shock-item">
-              <span class="shock-label">每日输液</span>
-              <span class="shock-value">每轮预载 ~11,800 tokens</span>
+              <span class="shock-label">每轮输液</span>
+              <span class="shock-value"><span>~11,800</span><span>tokens</span></span>
             </div>
             <div class="shock-item">
               <span class="shock-label">失忆脑区</span>
-              <span class="shock-value" aria-label="约 31% 从未进入有效上下文"><span>约 31% 从未进入</span><span>有效上下文</span></span>
+              <span class="shock-value" aria-label="约 31% 从未进入有效上下文"><span>约 31%</span><span>未加载</span></span>
             </div>
           </div>
         </div>
@@ -1448,7 +1488,7 @@
                 <div class="finding-head">
                   <div>
                     <h3>② 可用性 Usability</h3>
-                    <p class="finding-tagline">说了等于没说的医嘱，扣。</p>
+                    <p class="finding-tagline">有些指令太含糊或太通用，Agent 根本无从执行。</p>
                   </div>
                   <div class="finding-score warn">55</div>
                 </div>
@@ -1498,7 +1538,7 @@
           <div class="section-header">
             <span class="section-tag">鉴别诊断</span>
             <h2 id="contradictions">矛盾专区</h2>
-            <span class="section-caption">两条原文并排看，差异会自己冒出来</span>
+            <span class="section-caption">这几处指令自相矛盾——你的 Agent 到底该听哪条？</span>
           </div>
           <div class="section-body">
             <div class="vs-list">
@@ -1556,7 +1596,7 @@
                     <div class="diff-path"><span class="diff-badge">+</span><span>agent-steroids/CLAUDE.md:19</span></div>
                     <div class="diff-row">
                       <span class="diff-gutter">19</span>
-                      <span class="diff-code"><ins>本项目一律走 mindfitgit</ins><span class="confidence">值得看一眼</span></span>
+                      <span class="diff-code"><ins>本项目一律走 mindfitgit</ins></span>
                     </div>
                   </div>
                 </div>
@@ -1573,53 +1613,23 @@
           </div>
           <div class="section-body">
             <div class="prescription-grid">
-              <article class="rx-pad">
-                <h3><span>💊 西药</span><small>高置信 · 可直接执行</small></h3>
+              <article class="prescription-preview">
                 <ul class="rx-list">
-                  <li id="rx-001" class="rx-item">
-                    <p class="rx-name">删除 <code>agent-steroids/CLAUDE.md</code> 中已过期的 “guard-payload-size 临时方案” 段</p>
-                    <div class="rx-meta"><span><b>剂量</b>12 行</span><span><b>置信度</b>高</span><span><b>疗效</b>+4</span></div>
+                  <li class="rx-item rx-focus">
+                    <p class="rx-name">拆分全局 CLAUDE.md（892 → &lt;200 行）</p>
+                    <p class="rx-reason">它大到有 31% 每轮根本没加载，拆完立刻恢复全量加载。</p>
                   </li>
-                  <li id="rx-002" class="rx-item">
-                    <p class="rx-name">项目 <code>./CLAUDE.md</code> 收敛为一行 <code>@AGENTS.md</code> 导入，约定只写一份</p>
-                    <div class="rx-meta"><span><b>剂量</b>3 个文件</span><span><b>置信度</b>高</span><span><b>疗效</b>+3</span></div>
+                  <li class="rx-item rx-focus">
+                    <p class="rx-name">把约 12 条 skill 专属教训移回各自的 skill</p>
+                    <p class="rx-reason">它们塞在全局里给每轮交税，其实只在各自 skill 才用得上。</p>
                   </li>
-                  <li id="rx-003" class="rx-item">
-                    <p class="rx-name">拆分全局 <code>CLAUDE.md</code>（892 → &lt;200 行），把专题段落外移</p>
-                    <div class="rx-meta"><span><b>剂量</b>692 行</span><span><b>置信度</b>高</span><span><b>疗效</b>+9</span></div>
-                  </li>
-                  <li id="rx-004" class="rx-item">
-                    <p class="rx-name">修复指向 <code>old-proxy.conf</code> 的断链引用</p>
-                    <div class="rx-meta"><span><b>剂量</b>1 处</span><span><b>置信度</b>高</span><span><b>疗效</b>+1</span></div>
+                  <li class="rx-item rx-focus">
+                    <p class="rx-name">调和 3 处自相矛盾的指令</p>
+                    <p class="rx-reason">让 Agent 不再在同一件事上收到相反命令。</p>
                   </li>
                 </ul>
+                <p class="rx-footnote">完整处方（8 项）在治疗确认书里。</p>
               </article>
-
-              <article class="rx-pad herbal">
-                <h3><span>🌿 中药</span><small>语义判断 · 值得看一眼</small></h3>
-                <ul class="rx-list">
-                  <li id="rx-005" class="rx-item">
-                    <p class="rx-name">把「解压中文 zip」「Clash 自建节点」「机场部署」等专题教训 PR 回各自的 skill</p>
-                    <div class="rx-meta"><span><b>剂量</b>约 12 条</span><span><b>置信度</b>中</span><span><b>疗效</b>+11 · 确认哪些搬、哪些留</span></div>
-                  </li>
-                  <li id="rx-006" class="rx-item">
-                    <p class="rx-name">统一 <code>yyMMdd-</code> vs <code>YYYYMMDD-</code> 命名矛盾</p>
-                    <div class="rx-meta"><span><b>剂量</b>1 处矛盾</span><span><b>置信度</b>中</span><span><b>疗效</b>+3 · 确认用哪个标准</span></div>
-                  </li>
-                  <li id="rx-007" class="rx-item">
-                    <p class="rx-name">消解 CDP-vs-WebFetch 的社媒读取路由矛盾</p>
-                    <div class="rx-meta"><span><b>剂量</b>1 处矛盾</span><span><b>置信度</b>中</span><span><b>疗效</b>+3 · 确认以哪条为准</span></div>
-                  </li>
-                  <li id="rx-008" class="rx-item">
-                    <p class="rx-name">删除 3 处已过期的“临时方案”标记</p>
-                    <div class="rx-meta"><span><b>剂量</b>3 处</span><span><b>置信度</b>低</span><span><b>疗效</b>+2 · 确认是否确已失效</span></div>
-                  </li>
-                </ul>
-              </article>
-            </div>
-            <div class="treatment-cta">
-              <p>诊断只是建议，改不改由你签字确认。<span>下一页会逐条列出处方、证据和决定栏，保存后 agent 只执行你勾选的项目。</span></p>
-              <a class="treatment-link" href="./review-table-template.html">去签《治疗确认书》→</a>
             </div>
           </div>
         </section>
@@ -1646,10 +1656,15 @@
             </div>
           </div>
         </section>
+
+        <div class="treatment-cta">
+          <p>诊断只是建议，改不改由你签字确认。<span>下一页会逐条列出处方、证据和决定栏，保存后 agent 只执行你勾选的项目。</span></p>
+          <a class="treatment-link" href="./review-table-template.html">去签《治疗确认书》→</a>
+        </div>
       </main>
 
       <footer class="disclaimer">
-        小字免责：分数是方向性参考、不是精确度量；高置信项可复现，语义项取决于当次判断；真正有价值的是处方，不是数字。本报告诊断的是 Agent 的“脑子”，不是人的脑子。
+        小字免责：分数是方向性参考、不是精确度量；高置信项可复现，语义项取决于当次判断；真正有价值的是处方，不是数字。
       </footer>
     </article>
   </div>

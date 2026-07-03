@@ -11,6 +11,10 @@ If a plugin's MCP config is shared through `mcpServers: "./.mcp.json"`, keep the
 
 Do not commit unless user asked to.
 
+## Skill 正文语言
+
+Skill 的 frontmatter（尤其 description，用于触发）用英文；frontmatter 以下的正文（SKILL.md 正文与 references/ 文档）一律用中文撰写，不要中英夹杂。
+
 ## README 维护
 
 添加、删除或修改 skill、command、agent、hook、MCP server 时，同步更新 `README.md` 中对应的表格，保持项目介绍与实际内容一致。
