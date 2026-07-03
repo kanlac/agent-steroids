@@ -39,6 +39,7 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 | [`clash-verge-config`](plugins/creator/skills/clash-verge-config/SKILL.md) | `creator` | Clash Verge Rev / mihomo 客户端配置即代码：保留字段与 enhance 管线、profiles.yaml 显示名/到期缓存、配置不生效排查、external controller/UI、DNS 泄漏与分流规则、节点突然超时先排查 IP 被墙/TUN 回环、远程复用本地代理。 |
 | [`meta-learning`](plugins/creator/skills/meta-learning/SKILL.md) | `creator` | 将用户纠偏、样例和失败经验沉淀为更清晰的 skill 行为：提炼可迁移规则、重构决策结构，避免低密度资料堆叠。 |
 | [`skill-console`](plugins/creator/skills/skill-console/SKILL.md) | `creator` | 生成本地 Skill 清单控制台，审计 token 用量、description token、重复项路径、Skill 内容预览，并导出选中 Skill 的 `{name, path}` JSON。 |
+| [`memory-clinic`](plugins/creator/skills/memory-clinic/SKILL.md) | `creator` | Agent 记忆环境体检：扫描预置记忆（全局/项目 CLAUDE.md/AGENTS.md）与外部记忆（skills、文档），按体量/可用性/新鲜度/矛盾四维打分，产出「记忆精神科确诊书」HTML 报告 + 交互式「治疗确认书」（ReviewTable），人签字确认后再执行清理。承载 push/pull、稀缺、归位、何时不记的记忆管理品味。 |
 | [`telegram-agents`](plugins/telegram/skills/telegram-agents/SKILL.md) | `telegram` | Telegram agent 配置与管理。包括 tmux 会话、Telethon 调度器、launchd 心跳定时任务。 |
 | [`cdp-chrome`](plugins/chrome/skills/cdp-chrome/SKILL.md) | `chrome` | 可选的共享有头 Chrome provider。适合需要持久登录态、用户手动 CAPTCHA、反 bot 页面或 live site inspection 的环境。 |
 | [`write-blog`](plugins/write-blog/skills/write-blog/SKILL.md) | `write-blog` | 写作全流程：从录音稿成文，或从零开始的对话式写作（选题、调研、提问漏斗、大纲迭代、初稿）。按作者 voice-dna 风格输出，附「图形为主、文字为辅」制图参考。 |

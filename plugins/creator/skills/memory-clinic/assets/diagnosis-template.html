@@ -1,0 +1,1455 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>记忆健康度扫描报告 · 精神科确诊书</title>
+  <style>
+    :root {
+      --paper: #f4f6ed;
+      --paper-cool: #e5f0e8;
+      --paper-warm: #fbf4dc;
+      --ink: #18211f;
+      --ink-muted: #51605c;
+      --line: rgba(24, 33, 31, .23);
+      --line-strong: rgba(24, 33, 31, .52);
+      --red: #b4222b;
+      --red-deep: #7f151e;
+      --blue: #1f5876;
+      --blue-deep: #173d58;
+      --green: #47796a;
+      --yellow: #d4a72c;
+      --orange: #c96a2b;
+      --violet: #44385d;
+      --shadow: 0 30px 70px rgba(15, 25, 25, .24);
+      --display: "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", serif;
+      --body: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      --utility: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      min-width: 0;
+    }
+
+    html {
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 10% 8%, rgba(180, 34, 43, .15), transparent 26rem),
+        radial-gradient(circle at 88% 12%, rgba(31, 88, 118, .20), transparent 30rem),
+        linear-gradient(135deg, #dce8e1 0%, #eef2e2 43%, #d8e5e0 100%);
+      scroll-behavior: smooth;
+      overflow-x: hidden;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--body);
+      overflow-x: hidden;
+      background:
+        linear-gradient(90deg, rgba(24, 33, 31, .045) 1px, transparent 1px) 0 0 / 34px 34px,
+        linear-gradient(0deg, rgba(24, 33, 31, .045) 1px, transparent 1px) 0 0 / 34px 34px,
+        linear-gradient(90deg, rgba(24, 33, 31, .08) 1px, transparent 1px) 0 0 / 170px 170px,
+        linear-gradient(0deg, rgba(24, 33, 31, .08) 1px, transparent 1px) 0 0 / 170px 170px;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: .32;
+      background:
+        repeating-linear-gradient(102deg, transparent 0 19px, rgba(255, 255, 255, .38) 20px, transparent 21px),
+        radial-gradient(circle, rgba(24, 33, 31, .16) 0 .7px, transparent 1px) 0 0 / 10px 10px;
+      mix-blend-mode: multiply;
+    }
+
+    a,
+    button,
+    summary { color: inherit; }
+
+    a:focus-visible,
+    button:focus-visible,
+    summary:focus-visible,
+    [tabindex]:focus-visible {
+      outline: 3px solid var(--blue);
+      outline-offset: 4px;
+      border-radius: 5px;
+    }
+
+    .page {
+      width: calc(100% - 32px);
+      max-width: 1220px;
+      margin: 0 auto;
+      padding: 28px 0 56px;
+    }
+
+    .medical-folder {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--line-strong);
+      background:
+        linear-gradient(90deg, rgba(31, 88, 118, .06) 1px, transparent 1px) 0 0 / 22px 22px,
+        linear-gradient(0deg, rgba(31, 88, 118, .045) 1px, transparent 1px) 0 0 / 22px 22px,
+        var(--paper);
+      box-shadow: var(--shadow);
+    }
+
+    .medical-folder::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      border: 14px solid rgba(24, 33, 31, .045);
+    }
+
+    .medical-folder::after {
+      content: "仅供参考 · 非医学建议 · 但很像真的";
+      position: absolute;
+      top: 18px;
+      right: -54px;
+      z-index: 4;
+      width: 230px;
+      padding: 8px 0;
+      transform: rotate(35deg);
+      color: #fff;
+      background: var(--blue-deep);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-align: center;
+      box-shadow: 0 10px 24px rgba(23, 61, 88, .22);
+    }
+
+    header,
+    main,
+    footer {
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(330px, .8fr);
+      gap: 28px;
+      min-height: 720px;
+      padding: clamp(22px, 4vw, 46px);
+      border-bottom: 5px double var(--line-strong);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, .46), transparent 65%),
+        linear-gradient(90deg, rgba(71, 121, 106, .10), transparent 32%);
+    }
+
+    .hero-left,
+    .hero-right,
+    .section {
+      min-width: 0;
+    }
+
+    .form-head {
+      display: grid;
+      grid-template-columns: 86px minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: center;
+      padding-bottom: 18px;
+      border-bottom: 3px solid var(--ink);
+    }
+
+    .hospital-mark {
+      display: grid;
+      place-items: center;
+      width: 86px;
+      aspect-ratio: 1;
+      border: 3px solid var(--ink);
+      background: var(--paper-cool);
+      font-family: var(--display);
+      font-size: 34px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .doc-title {
+      margin: 0;
+      font-family: var(--display);
+      font-size: clamp(30px, 5vw, 64px);
+      line-height: 1.02;
+      letter-spacing: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .doc-title span {
+      display: block;
+    }
+
+    .doc-subtitle {
+      margin: 8px 0 0;
+      color: var(--ink-muted);
+      font-family: var(--utility);
+      font-size: clamp(12px, 1.4vw, 15px);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      overflow-wrap: anywhere;
+    }
+
+    .case-meta {
+      display: grid;
+      gap: 7px;
+      width: max-content;
+      max-width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--line-strong);
+      background: rgba(255, 255, 255, .38);
+      font-family: var(--utility);
+      font-size: 12px;
+      line-height: 1.3;
+      white-space: nowrap;
+    }
+
+    .diagnosis-stamp {
+      position: relative;
+      margin: clamp(26px, 5vw, 48px) 0 28px;
+      padding: clamp(22px, 4vw, 38px);
+      border: 5px solid var(--red);
+      color: var(--red-deep);
+      background:
+        linear-gradient(135deg, rgba(180, 34, 43, .10), transparent 42%),
+        rgba(255, 255, 255, .22);
+      transform: rotate(-1.2deg);
+      box-shadow: inset 0 0 0 2px rgba(180, 34, 43, .34), 0 18px 38px rgba(127, 21, 30, .12);
+    }
+
+    .diagnosis-stamp::before,
+    .diagnosis-stamp::after {
+      content: "";
+      position: absolute;
+      inset: 12px;
+      pointer-events: none;
+      border: 2px solid rgba(180, 34, 43, .54);
+    }
+
+    .diagnosis-stamp::after {
+      inset: 23px;
+      border-style: dashed;
+      opacity: .65;
+    }
+
+    .stamp-kicker {
+      position: relative;
+      z-index: 1;
+      display: inline-block;
+      margin-bottom: 12px;
+      padding: 5px 9px;
+      color: #fff;
+      background: var(--red);
+      font-family: var(--utility);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .10em;
+    }
+
+    .diagnosis-title {
+      position: relative;
+      z-index: 1;
+      margin: 0;
+      max-width: 920px;
+      font-family: var(--display);
+      font-size: clamp(34px, 6.4vw, 76px);
+      line-height: .98;
+      font-weight: 900;
+      letter-spacing: 0;
+      text-wrap: balance;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
+    .diagnosis-line {
+      display: block;
+      word-break: break-all;
+      overflow-wrap: anywhere;
+    }
+
+    .primary-complaint {
+      display: grid;
+      grid-template-columns: 112px minmax(0, 1fr);
+      border: 2px solid var(--ink);
+      background: rgba(255, 255, 255, .34);
+    }
+
+    .primary-complaint dt,
+    .primary-complaint dd {
+      margin: 0;
+      padding: 13px 15px;
+    }
+
+    .primary-complaint dt {
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: var(--ink);
+      font-weight: 900;
+      letter-spacing: .08em;
+    }
+
+    .primary-complaint dd {
+      font-size: clamp(16px, 2vw, 22px);
+      line-height: 1.45;
+      font-weight: 800;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
+    .shock-strip {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      margin-top: 22px;
+      border: 2px solid var(--line-strong);
+      background: var(--paper-warm);
+    }
+
+    .shock-item {
+      min-width: 0;
+      padding: 16px;
+      border-right: 1px solid var(--line);
+    }
+
+    .shock-item:last-child { border-right: 0; }
+
+    .shock-label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--ink-muted);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .shock-value {
+      display: block;
+      color: var(--blue-deep);
+      font-family: var(--display);
+      font-size: clamp(22px, 3vw, 34px);
+      font-weight: 900;
+      line-height: 1;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
+    .shock-value span {
+      display: block;
+    }
+
+    .hero-right {
+      display: grid;
+      align-content: start;
+      gap: 18px;
+    }
+
+    .chart-card {
+      max-width: 100%;
+      overflow: hidden;
+      border: 2px solid var(--ink);
+      background:
+        linear-gradient(90deg, transparent 0 31px, rgba(31, 88, 118, .10) 32px, transparent 33px) 0 0 / 33px 33px,
+        linear-gradient(0deg, transparent 0 31px, rgba(31, 88, 118, .08) 32px, transparent 33px) 0 0 / 33px 33px,
+        rgba(255, 255, 255, .34);
+    }
+
+    .score-card {
+      padding: 24px;
+    }
+
+    .score-label {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 12px;
+      font-family: var(--utility);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .10em;
+      text-transform: uppercase;
+    }
+
+    .score-number {
+      margin: 16px 0 12px;
+      color: var(--red-deep);
+      font-family: var(--display);
+      font-size: clamp(86px, 15vw, 156px);
+      font-weight: 900;
+      line-height: .78;
+      letter-spacing: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .score-number span {
+      color: var(--ink);
+      font-family: var(--utility);
+      font-size: clamp(20px, 3vw, 34px);
+      font-weight: 900;
+    }
+
+    .level-note {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.55;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    .severity {
+      padding: 16px;
+    }
+
+    .severity h2 {
+      margin: 0 0 14px;
+      font-family: var(--display);
+      font-size: 24px;
+    }
+
+    .severity-rail {
+      display: grid;
+      gap: 8px;
+    }
+
+    .severity-step {
+      display: grid;
+      grid-template-columns: 26px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, .34);
+      font-size: 13px;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .severity-step::before {
+      content: "";
+      width: 12px;
+      aspect-ratio: 1;
+      border-radius: 999px;
+      border: 2px solid var(--line-strong);
+      background: var(--paper);
+    }
+
+    .severity-step.current {
+      border-color: var(--red);
+      background: rgba(180, 34, 43, .10);
+      color: var(--red-deep);
+      font-weight: 900;
+    }
+
+    .severity-step.current::before {
+      border-color: var(--red);
+      background: var(--red);
+      box-shadow: 0 0 0 5px rgba(180, 34, 43, .12);
+    }
+
+    .severity-code {
+      font-family: var(--utility);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .08em;
+    }
+
+    .mini-findings {
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .mini-row {
+      display: grid;
+      grid-template-columns: 118px minmax(0, 1fr);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .mini-row:last-child { border-bottom: 0; }
+
+    .mini-row b,
+    .mini-row span {
+      padding: 12px 14px;
+      min-width: 0;
+    }
+
+    .mini-row b {
+      color: #fff;
+      background: var(--blue-deep);
+      font-size: 13px;
+      letter-spacing: .08em;
+    }
+
+    .mini-row span {
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    main {
+      display: grid;
+      gap: 26px;
+      padding: clamp(20px, 4vw, 42px);
+    }
+
+    .section {
+      border: 2px solid var(--line-strong);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, .50), rgba(255, 255, 255, .18)),
+        rgba(244, 246, 237, .84);
+    }
+
+    .section-header {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: center;
+      padding: 14px 16px;
+      border-bottom: 2px solid var(--line-strong);
+      background: rgba(229, 240, 232, .72);
+    }
+
+    .section-tag {
+      padding: 6px 8px;
+      color: #fff;
+      background: var(--ink);
+      font-family: var(--utility);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .08em;
+    }
+
+    .section h2 {
+      margin: 0;
+      font-family: var(--display);
+      font-size: clamp(24px, 3vw, 38px);
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .section-caption {
+      color: var(--ink-muted);
+      font-size: 13px;
+      font-weight: 800;
+      text-align: right;
+    }
+
+    .section-body {
+      padding: clamp(16px, 3vw, 26px);
+    }
+
+    .memory-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .memory-card {
+      min-width: 0;
+      border: 2px solid var(--ink);
+      background: rgba(255, 255, 255, .36);
+    }
+
+    .memory-card.preset { border-color: var(--red-deep); }
+    .memory-card.external { border-color: var(--green); }
+
+    .memory-top {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: end;
+      padding: 18px;
+      border-bottom: 1px solid var(--line-strong);
+    }
+
+    .memory-top h3 {
+      margin: 0;
+      font-family: var(--display);
+      font-size: 28px;
+      line-height: 1.1;
+    }
+
+    .memory-top p {
+      margin: 6px 0 0;
+      color: var(--ink-muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .memory-score {
+      color: var(--red-deep);
+      font-family: var(--display);
+      font-size: 62px;
+      font-weight: 900;
+      line-height: .82;
+    }
+
+    .memory-card.external .memory-score { color: var(--green); }
+
+    .surface-list {
+      display: grid;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .surface-list li {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 52px;
+      gap: 12px;
+      align-items: center;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .surface-list li:last-child { border-bottom: 0; }
+
+    .surface-name {
+      min-width: 0;
+      font-weight: 900;
+      line-height: 1.35;
+    }
+
+    code,
+    .code {
+      font-family: var(--utility);
+      font-size: .92em;
+      overflow-wrap: anywhere;
+    }
+
+    .surface-note {
+      display: block;
+      margin-top: 4px;
+      color: var(--ink-muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .surface-score {
+      display: grid;
+      place-items: center;
+      min-width: 44px;
+      aspect-ratio: 1;
+      color: #fff;
+      background: var(--ink);
+      font-family: var(--utility);
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .diagnostic-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .finding-card {
+      min-width: 0;
+      border: 2px solid var(--line-strong);
+      background: rgba(255, 255, 255, .36);
+    }
+
+    .finding-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      padding: 15px 16px;
+      border-bottom: 1px solid var(--line-strong);
+      background: rgba(255, 255, 255, .38);
+    }
+
+    .finding-head h3 {
+      margin: 0;
+      font-family: var(--display);
+      font-size: 25px;
+      line-height: 1.08;
+    }
+
+    .finding-score {
+      display: grid;
+      place-items: center;
+      width: 78px;
+      aspect-ratio: 1;
+      border: 3px solid currentColor;
+      font-family: var(--display);
+      font-size: 32px;
+      font-weight: 900;
+      line-height: 1;
+      transform: rotate(2deg);
+    }
+
+    .danger { color: var(--red-deep); }
+    .warn { color: var(--orange); }
+    .caution { color: #9b780d; }
+
+    .finding-tagline {
+      margin: 8px 0 0;
+      color: var(--ink-muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .evidence-list {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+      padding: 14px;
+      list-style: none;
+    }
+
+    .evidence {
+      display: grid;
+      gap: 6px;
+      padding: 11px 12px;
+      border-left: 5px solid var(--blue);
+      background: rgba(229, 240, 232, .70);
+    }
+
+    .evidence strong {
+      font-family: var(--utility);
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    .evidence span {
+      font-size: 14px;
+      line-height: 1.48;
+      overflow-wrap: anywhere;
+    }
+
+    .vs-list {
+      display: grid;
+      gap: 18px;
+    }
+
+    .conflict-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 76px minmax(0, 1fr);
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .quote-box {
+      min-width: 0;
+      padding: 16px;
+      border: 2px solid var(--ink);
+      background: rgba(255, 255, 255, .40);
+    }
+
+    .quote-box .source {
+      display: block;
+      margin-bottom: 9px;
+      color: var(--blue-deep);
+      font-family: var(--utility);
+      font-size: 12px;
+      font-weight: 900;
+      overflow-wrap: anywhere;
+    }
+
+    .quote-box p {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 800;
+      line-height: 1.55;
+      overflow-wrap: anywhere;
+    }
+
+    .versus {
+      display: grid;
+      place-items: center;
+      min-height: 100%;
+      color: #fff;
+      background: var(--red-deep);
+      font-family: var(--display);
+      font-size: 32px;
+      font-weight: 900;
+      writing-mode: vertical-rl;
+      letter-spacing: .08em;
+    }
+
+    .confidence {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 4px 7px;
+      color: #fff;
+      background: var(--violet);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .prescription-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .rx-pad {
+      min-width: 0;
+      border: 2px solid var(--ink);
+      background:
+        linear-gradient(0deg, transparent 0 31px, rgba(180, 34, 43, .10) 32px, transparent 33px) 0 0 / 100% 33px,
+        rgba(255, 255, 255, .38);
+    }
+
+    .rx-pad h3 {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0;
+      padding: 16px;
+      color: #fff;
+      background: var(--ink);
+      font-family: var(--display);
+      font-size: 26px;
+      line-height: 1.1;
+    }
+
+    .rx-pad.herbal h3 { background: var(--green); }
+
+    .rx-list {
+      display: grid;
+      gap: 12px;
+      margin: 0;
+      padding: 14px;
+      list-style: none;
+    }
+
+    .rx-item {
+      padding: 14px;
+      border: 1px solid var(--line-strong);
+      background: rgba(244, 246, 237, .78);
+    }
+
+    .rx-name {
+      margin: 0 0 11px;
+      font-size: 15px;
+      font-weight: 900;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .rx-meta {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .rx-meta span {
+      min-width: 0;
+      padding: 7px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, .56);
+      font-size: 12px;
+      font-weight: 900;
+      line-height: 1.3;
+    }
+
+    .rx-meta b {
+      display: block;
+      color: var(--ink-muted);
+      font-family: var(--utility);
+      font-size: 10px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .prognosis {
+      display: grid;
+      grid-template-columns: minmax(260px, .75fr) minmax(0, 1.25fr);
+      gap: 20px;
+      align-items: stretch;
+    }
+
+    .after-card {
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      border: 4px solid var(--green);
+      background: rgba(71, 121, 106, .10);
+      text-align: center;
+    }
+
+    .after-card span {
+      display: block;
+      color: var(--ink-muted);
+      font-family: var(--utility);
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: .10em;
+      text-transform: uppercase;
+    }
+
+    .after-card strong {
+      display: block;
+      margin: 12px 0;
+      color: var(--green);
+      font-family: var(--display);
+      font-size: clamp(64px, 11vw, 126px);
+      font-weight: 900;
+      line-height: .82;
+    }
+
+    .after-card p {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 900;
+      line-height: 1.4;
+    }
+
+    .prognosis-list {
+      display: grid;
+      gap: 12px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .prognosis-list li {
+      display: grid;
+      grid-template-columns: 145px minmax(0, 1fr);
+      border: 2px solid var(--line-strong);
+      background: rgba(255, 255, 255, .38);
+    }
+
+    .prognosis-list b,
+    .prognosis-list span {
+      min-width: 0;
+      padding: 14px;
+      line-height: 1.4;
+    }
+
+    .prognosis-list b {
+      color: #fff;
+      background: var(--blue-deep);
+    }
+
+    .prognosis-list span {
+      font-size: 16px;
+      font-weight: 900;
+      overflow-wrap: anywhere;
+    }
+
+    .disclaimer {
+      padding: 18px clamp(20px, 4vw, 42px) 28px;
+      color: var(--ink-muted);
+      border-top: 1px solid var(--line-strong);
+      font-size: 12px;
+      line-height: 1.7;
+      background: rgba(255, 255, 255, .28);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .diagnosis-stamp,
+      .chart-card,
+      .section {
+        animation: rise .7s ease both;
+      }
+
+      .chart-card:nth-child(2) { animation-delay: .08s; }
+      .chart-card:nth-child(3) { animation-delay: .16s; }
+      .section:nth-child(2) { animation-delay: .06s; }
+      .section:nth-child(3) { animation-delay: .10s; }
+      .section:nth-child(4) { animation-delay: .14s; }
+      .section:nth-child(5) { animation-delay: .18s; }
+      .section:nth-child(6) { animation-delay: .22s; }
+
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(14px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .diagnosis-stamp {
+        animation-name: stamp-in;
+        animation-duration: .55s;
+      }
+
+      @keyframes stamp-in {
+        0% {
+          opacity: 0;
+          transform: rotate(-7deg) scale(1.08);
+        }
+        72% {
+          opacity: 1;
+          transform: rotate(-1.2deg) scale(.985);
+        }
+        100% {
+          opacity: 1;
+          transform: rotate(-1.2deg) scale(1);
+        }
+      }
+    }
+
+    @media (max-width: 980px) {
+      .hero,
+      .memory-grid,
+      .diagnostic-grid,
+      .prescription-grid,
+      .prognosis {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        min-height: 0;
+      }
+
+      .case-meta {
+        width: 100%;
+        white-space: normal;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .page {
+        width: calc(100vw - 18px);
+        max-width: 372px;
+        margin-left: 9px;
+        margin-right: 0;
+        padding-top: 10px;
+      }
+
+      .medical-folder::after {
+        display: none;
+      }
+
+      .hero,
+      main {
+        padding: 16px;
+      }
+
+      .diagnosis-stamp {
+        transform: none;
+        padding: 18px;
+      }
+
+      .diagnosis-title {
+        font-size: clamp(30px, 9.5vw, 36px);
+        line-height: 1.05;
+        text-wrap: auto;
+        word-break: break-all;
+      }
+
+      .doc-title {
+        font-size: clamp(27px, 8vw, 36px);
+      }
+
+      .score-number {
+        font-size: clamp(70px, 25vw, 108px);
+      }
+
+      .score-label span:last-child {
+        display: none;
+      }
+
+      .level-note,
+      .mini-row span {
+        word-break: break-all;
+      }
+
+      .shock-value {
+        font-size: clamp(23px, 7vw, 30px);
+        line-height: 1.08;
+      }
+
+      .form-head,
+      .section-header,
+      .shock-strip,
+      .conflict-card {
+        grid-template-columns: 1fr;
+      }
+
+      .hospital-mark {
+        width: 62px;
+      }
+
+      .shock-item {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .shock-item:last-child { border-bottom: 0; }
+
+      .primary-complaint,
+      .mini-row,
+      .surface-list li,
+      .prognosis-list li {
+        grid-template-columns: 1fr;
+      }
+
+      .section-caption {
+        text-align: left;
+      }
+
+      .versus {
+        min-height: 52px;
+        writing-mode: horizontal-tb;
+      }
+
+      .rx-meta {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media print {
+      html,
+      body {
+        background: #fff;
+      }
+
+      .page {
+        width: 100%;
+        padding: 0;
+      }
+
+      .medical-folder {
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <article class="medical-folder" aria-label="记忆健康度扫描报告">
+      <header class="hero">
+        <div class="hero-left">
+          <div class="form-head">
+            <div class="hospital-mark" aria-hidden="true">脑</div>
+            <div>
+              <h1 class="doc-title"><span>Agent 记忆精神科</span><span>确诊书</span></h1>
+              <p class="doc-subtitle">Memory Health Scan Report · DSM-MHS-2026 · 病历首页</p>
+            </div>
+            <div class="case-meta" aria-label="报告元信息">
+              <span>编号：MHS-CLAUDE-0058</span>
+              <span>日期：2026-07-02</span>
+              <span>样本：CLAUDE.md / skills / docs</span>
+            </div>
+          </div>
+
+          <div class="diagnosis-stamp" tabindex="0" aria-label="主诊断">
+            <span class="stamp-kicker">PRIMARY DIAGNOSIS</span>
+            <p class="diagnosis-title" aria-label="确诊：记忆虚胖症 · 伴 31% 上下文失联综合征"><span class="diagnosis-line">确诊：记忆虚胖症</span><span class="diagnosis-line">伴 31% 上下文</span><span class="diagnosis-line">失联综合征</span></p>
+          </div>
+
+          <dl class="primary-complaint">
+            <dt>主诉</dt>
+            <dd>你的记忆有 31% 每轮在白烧 token，其中 12 条<br>其实是放错地方、本该住进某个 skill 的教训。</dd>
+          </dl>
+
+          <div class="shock-strip" aria-label="现病史震撼三连">
+            <div class="shock-item">
+              <span class="shock-label">病灶体积</span>
+              <span class="shock-value">全局 CLAUDE.md 47 KB</span>
+            </div>
+            <div class="shock-item">
+              <span class="shock-label">每日输液</span>
+              <span class="shock-value">每轮预载 ~11,800 tokens</span>
+            </div>
+            <div class="shock-item">
+              <span class="shock-label">失联脑区</span>
+              <span class="shock-value" aria-label="约 31% 从未被加载（已超上下文预算，被静默截断）"><span>约 31% 从未被加载</span><span>（已超上下文预算，</span><span>被静默截断）</span></span>
+            </div>
+          </div>
+        </div>
+
+        <aside class="hero-right" aria-label="总分和病情分级">
+          <div class="chart-card score-card">
+            <div class="score-label">
+              <span>总分：58 / 100</span>
+              <span>Directional score</span>
+            </div>
+            <div class="score-number">58 <span>/ 100</span></div>
+            <p class="level-note"><strong>等级带：微胖（Cluttered）</strong> — 该断舍离了。按病历口径，本例落在「记忆虚胖症」段，尚未发展为数字仓鼠症。</p>
+          </div>
+
+          <div class="chart-card severity">
+            <h2>病情分级</h2>
+            <div class="severity-rail" aria-label="等级带">
+              <div class="severity-step"><span>脑回清奇（保持）</span><span class="severity-code">KEEP</span></div>
+              <div class="severity-step"><span>轻度记忆囤积</span><span class="severity-code">MILD</span></div>
+              <div class="severity-step current"><span>记忆虚胖症（本例）</span><span class="severity-code">CASE</span></div>
+              <div class="severity-step"><span>数字仓鼠症</span><span class="severity-code">HOARD</span></div>
+              <div class="severity-step"><span>smooth brain 晚期 · 脑子进水</span><span class="severity-code">CRIT</span></div>
+            </div>
+          </div>
+
+          <div class="chart-card mini-findings">
+            <div class="mini-row">
+              <b>现病史</b>
+              <span>约 31% 内容超出上下文预算，被 harness 静默截断，后半段根本没在生效。</span>
+            </div>
+            <div class="mini-row">
+              <b>初步医嘱</b>
+              <span>嘱患者忌口，勿再向 CLAUDE.md 投喂垃圾；每轮少烧 8000 token，戒断数字囤积。</span>
+            </div>
+          </div>
+        </aside>
+      </header>
+
+      <main>
+        <section class="section" aria-labelledby="memory-scores">
+          <div class="section-header">
+            <span class="section-tag">病历 01</span>
+            <h2 id="memory-scores">两类记忆记分</h2>
+            <span class="section-caption">预置 : 外部 = 5 : 5，聚合总分 58</span>
+          </div>
+          <div class="section-body">
+            <div class="memory-grid">
+              <article class="memory-card preset">
+                <div class="memory-top">
+                  <div>
+                    <h3>预置记忆</h3>
+                    <p>预置记忆（每轮预载）：49 / 100，属于常驻脑内弹幕</p>
+                  </div>
+                  <div class="memory-score">49</div>
+                </div>
+                <ul class="surface-list">
+                  <li>
+                    <span class="surface-name">全局记忆 <code>~/.claude/CLAUDE.md</code><span class="surface-note">太肥，892 行</span></span>
+                    <span class="surface-score">42</span>
+                  </li>
+                  <li>
+                    <span class="surface-name">项目记忆 <code>./CLAUDE.md</code><span class="surface-note">局部有用，但也开始粘锅</span></span>
+                    <span class="surface-score">63</span>
+                  </li>
+                </ul>
+              </article>
+
+              <article class="memory-card external">
+                <div class="memory-top">
+                  <div>
+                    <h3>外部记忆</h3>
+                    <p>外部记忆（按需取用）：67 / 100，像药房药柜，不该塞进脑袋</p>
+                  </div>
+                  <div class="memory-score">67</div>
+                </div>
+                <ul class="surface-list">
+                  <li>
+                    <span class="surface-name">技能 <code>skills</code><span class="surface-note">大体可用，有两个技能偏肥</span></span>
+                    <span class="surface-score">71</span>
+                  </li>
+                  <li>
+                    <span class="surface-name">文档 <code>docs</code><span class="surface-note">有断链、过期记录和命名口径冲突</span></span>
+                    <span class="surface-score">58</span>
+                  </li>
+                </ul>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" aria-labelledby="findings">
+          <div class="section-header">
+            <span class="section-tag">辅助检查</span>
+            <h2 id="findings">四维诊断：分数即证据</h2>
+            <span class="section-caption">每条异常挂原始证据，不靠玄学把脉</span>
+          </div>
+          <div class="section-body">
+            <div class="diagnostic-grid">
+              <article class="finding-card">
+                <div class="finding-head">
+                  <div>
+                    <h3>① 体量 Bloat</h3>
+                    <p class="finding-tagline">太臃肿吗？本项已进入红色化验值。</p>
+                  </div>
+                  <div class="finding-score danger">38</div>
+                </div>
+                <ul class="evidence-list">
+                  <li class="evidence"><strong>~/.claude/CLAUDE.md</strong><span>892 行（超 200 行上限 4.5 倍）/ 47 KB / 每轮约 11,800 tokens</span></li>
+                  <li class="evidence"><strong>上下文预算</strong><span>约 31% 内容超出上下文预算，被 harness 静默截断——后半段根本没在生效</span></li>
+                  <li class="evidence"><strong>skills/wechat-desktop/SKILL.md</strong><span>340 行（建议拆分）</span></li>
+                  <li class="evidence"><strong>skills/clash-verge-config/SKILL.md</strong><span>268 行</span></li>
+                </ul>
+              </article>
+
+              <article class="finding-card">
+                <div class="finding-head">
+                  <div>
+                    <h3>② 可用性 Usability</h3>
+                    <p class="finding-tagline">说了等于没说的医嘱，扣。</p>
+                  </div>
+                  <div class="finding-score warn">55</div>
+                </div>
+                <ul class="evidence-list">
+                  <li class="evidence"><strong>~/.claude/CLAUDE.md:441</strong><span>“写代码时注意处理好边界情况” → 太含糊，agent 无法据此做任何具体决策</span></li>
+                  <li class="evidence"><strong>~/.claude/CLAUDE.md:203</strong><span>“保持代码整洁、可维护” → 通用废话，不改变任何决策</span></li>
+                  <li class="evidence"><strong>预置层</strong><span>约 40% 的行可从 repo / package.json 直接推断（技术栈、显而易见的约定）</span></li>
+                  <li class="evidence"><strong>含糊指令</strong><span>7 处类似的含糊指令（“合理处理”“视情况而定”“注意性能”）</span></li>
+                </ul>
+              </article>
+
+              <article class="finding-card">
+                <div class="finding-head">
+                  <div>
+                    <h3>③ 新鲜度 Freshness</h3>
+                    <p class="finding-tagline">临时方案久病成医嘱，容易误诊。</p>
+                  </div>
+                  <div class="finding-score caution">61</div>
+                </div>
+                <ul class="evidence-list">
+                  <li class="evidence"><strong>agent-steroids/CLAUDE.md:88</strong><span>“guard-payload-size 临时方案……官方修复后可移除” → 上游 issue 已于两月前修复，此段已过期</span></li>
+                  <li class="evidence"><strong>~/.claude/CLAUDE.md:127</strong><span>引用 <code>~/.config/old-proxy.conf</code> → 该文件已不存在（断链）</span></li>
+                  <li class="evidence"><strong>工作记录</strong><span>3 处 “临时方案 / WIP” 标记，对应工作均已 ship</span></li>
+                  <li class="evidence"><strong>~/.claude/CLAUDE.md</strong><span>2 条节点测速数据来自 4 个月前，已不代表现状</span></li>
+                </ul>
+              </article>
+
+              <article class="finding-card">
+                <div class="finding-head">
+                  <div>
+                    <h3>④ 矛盾 Contradiction</h3>
+                    <p class="finding-tagline">跨预置/外部打架，像左右脑互相开处方。</p>
+                  </div>
+                  <div class="finding-score warn">52</div>
+                </div>
+                <ul class="evidence-list">
+                  <li class="evidence"><strong>矛盾 #1</strong><span><code>[~/.claude/CLAUDE.md:某行]</code> 文档命名统一用 “yyMMdd-” 前缀 ⚔️ <code>[agent-steroids/CLAUDE.md:某行]</code> 文件名统一用 “YYYYMMDD-” 前缀</span></li>
+                  <li class="evidence"><strong>矛盾 #2</strong><span><code>[~/.claude/CLAUDE.md]</code> 读社交媒体直接用 CDP Chrome ⚔️ <code>[skills/web-access]</code> 优先 WebSearch/WebFetch/Jina</span></li>
+                  <li class="evidence"><strong>矛盾 #3</strong><span><code>[~/.claude/CLAUDE.md]</code> 默认用 github.com 作 git host ⚔️ <code>[项目 CLAUDE.md]</code> 本项目一律走 mindfitgit</span></li>
+                </ul>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" aria-labelledby="contradictions">
+          <div class="section-header">
+            <span class="section-tag">鉴别诊断</span>
+            <h2 id="contradictions">矛盾专区</h2>
+            <span class="section-caption">两条原文摆上台面，谁像医嘱谁像偏方</span>
+          </div>
+          <div class="section-body">
+            <div class="vs-list">
+              <article class="conflict-card">
+                <div class="quote-box">
+                  <span class="source">[~/.claude/CLAUDE.md:某行]</span>
+                  <p>文档命名统一用 “yyMMdd-” 前缀（如 260603-）</p>
+                </div>
+                <div class="versus" aria-hidden="true">⚔️</div>
+                <div class="quote-box">
+                  <span class="source">[agent-steroids/CLAUDE.md:某行]</span>
+                  <p>文件名统一用 “YYYYMMDD-” 前缀</p>
+                </div>
+              </article>
+
+              <article class="conflict-card">
+                <div class="quote-box">
+                  <span class="source">[~/.claude/CLAUDE.md]</span>
+                  <p>读社交媒体直接用 CDP Chrome，不要先试 defuddle/WebFetch</p>
+                </div>
+                <div class="versus" aria-hidden="true">⚔️</div>
+                <div class="quote-box">
+                  <span class="source">[skills/web-access]</span>
+                  <p>优先 WebSearch/WebFetch/Jina，静态层无效才上 CDP</p>
+                </div>
+              </article>
+
+              <article class="conflict-card">
+                <div class="quote-box">
+                  <span class="source">[~/.claude/CLAUDE.md]</span>
+                  <p>默认用 github.com 作 git host</p>
+                </div>
+                <div class="versus" aria-hidden="true">⚔️</div>
+                <div class="quote-box">
+                  <span class="source">[项目 CLAUDE.md]</span>
+                  <p>本项目一律走 mindfitgit</p>
+                  <span class="confidence">低置信：更像“特例覆盖”而非真冲突，交人工判断</span>
+                </div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" aria-labelledby="prescription">
+          <div class="section-header">
+            <span class="section-tag">医嘱</span>
+            <h2 id="prescription">处方笺</h2>
+            <span class="section-caption">西药机械修复，中药需要拍板；剂量和疗效写清楚</span>
+          </div>
+          <div class="section-body">
+            <div class="prescription-grid">
+              <article class="rx-pad">
+                <h3><span>💊 西药</span><small>高置信 · 可直接执行</small></h3>
+                <ul class="rx-list">
+                  <li class="rx-item">
+                    <p class="rx-name">删除 <code>agent-steroids/CLAUDE.md</code> 中已过期的 “guard-payload-size 临时方案” 段</p>
+                    <div class="rx-meta"><span><b>剂量</b>12 行</span><span><b>置信度</b>高</span><span><b>疗效</b>+4</span></div>
+                  </li>
+                  <li class="rx-item">
+                    <p class="rx-name">项目 <code>./CLAUDE.md</code> 收敛为一行 <code>@AGENTS.md</code> 导入，约定只写一份</p>
+                    <div class="rx-meta"><span><b>剂量</b>3 个文件</span><span><b>置信度</b>高</span><span><b>疗效</b>+3</span></div>
+                  </li>
+                  <li class="rx-item">
+                    <p class="rx-name">拆分全局 <code>CLAUDE.md</code>（892 → &lt;200 行），把专题段落外移</p>
+                    <div class="rx-meta"><span><b>剂量</b>692 行</span><span><b>置信度</b>高</span><span><b>疗效</b>+9</span></div>
+                  </li>
+                  <li class="rx-item">
+                    <p class="rx-name">修复指向 <code>old-proxy.conf</code> 的断链引用</p>
+                    <div class="rx-meta"><span><b>剂量</b>1 处</span><span><b>置信度</b>高</span><span><b>疗效</b>+1</span></div>
+                  </li>
+                </ul>
+              </article>
+
+              <article class="rx-pad herbal">
+                <h3><span>🌿 中药</span><small>语义判断 · 请你拍板</small></h3>
+                <ul class="rx-list">
+                  <li class="rx-item">
+                    <p class="rx-name">把「解压中文 zip」「Clash 自建节点」「机场部署」等专题教训 PR 回各自的 skill</p>
+                    <div class="rx-meta"><span><b>剂量</b>约 12 条</span><span><b>置信度</b>中</span><span><b>疗效</b>+11 · 确认哪些搬、哪些留</span></div>
+                  </li>
+                  <li class="rx-item">
+                    <p class="rx-name">统一 <code>yyMMdd-</code> vs <code>YYYYMMDD-</code> 命名矛盾</p>
+                    <div class="rx-meta"><span><b>剂量</b>1 处矛盾</span><span><b>置信度</b>中</span><span><b>疗效</b>+3 · 确认用哪个标准</span></div>
+                  </li>
+                  <li class="rx-item">
+                    <p class="rx-name">消解 CDP-vs-WebFetch 的社媒读取路由矛盾</p>
+                    <div class="rx-meta"><span><b>剂量</b>1 处矛盾</span><span><b>置信度</b>中</span><span><b>疗效</b>+3 · 确认以哪条为准</span></div>
+                  </li>
+                  <li class="rx-item">
+                    <p class="rx-name">删除 3 处已过期的“临时方案”标记</p>
+                    <div class="rx-meta"><span><b>剂量</b>3 处</span><span><b>置信度</b>低</span><span><b>疗效</b>+2 · 确认是否确已失效</span></div>
+                  </li>
+                </ul>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" aria-labelledby="prognosis">
+          <div class="section-header">
+            <span class="section-tag">预后</span>
+            <h2 id="prognosis">疗效预测 Before / After</h2>
+            <span class="section-caption">照方抓药后，脑内常驻噪声明显退烧</span>
+          </div>
+          <div class="section-body">
+            <div class="prognosis">
+              <div class="after-card">
+                <span>总分变化</span>
+                <strong>58 → 89</strong>
+                <p>等级带：微胖 → 精瘦（Lean）</p>
+              </div>
+              <ul class="prognosis-list">
+                <li><b>每轮 token 税</b><span>−68%（11,800 → ~3,800）</span></li>
+                <li><b>全局 CLAUDE.md</b><span>47 KB → ~9 KB</span></li>
+                <li><b>加载状态</b><span>恢复全量加载（不再被截断）</span></li>
+                <li><b>临床印象</b><span>戒断数字囤积，处方有效；复查时重点看预置层是否反弹。</span></li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="disclaimer">
+        小字免责：分数是方向性参考、不是精确度量；机械项可复现，语义项取决于当次判断；真正有价值的是处方，不是数字。本报告诊断的是 Agent 的“脑子”，不是人的脑子。
+      </footer>
+    </article>
+  </div>
+</body>
+</html>
