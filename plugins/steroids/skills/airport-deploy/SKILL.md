@@ -34,7 +34,7 @@ Cloudflare 只做 DNS 时必须灰云。ACME 申请前先确认权威解析和�
 客户端入口期待远程 YAML 时，自建一个小 HTTP 服务监听订阅端口：按 subId 查用户 → 渲染 Clash/Mihomo YAML → 用响应头控制展示。渲染要同时管好三件事：
 
 - **节点字段完整**：`type: vless`、`tls: true`、`flow: xtls-rprx-vision`、Reality `public-key`/`short-id`/SNI/fingerprint 必须与入站一致。
-- **规则和 DNS 集中维护**：把 `dns`/`proxy-groups`/`rules` 写进订阅模板，或让客户端全局 Merge/Script 统一叠加，改一次全员刷新生效。跨客户端下发（如 Stash、Clash Verge、mihomo）前先读目标客户端官方文档；同名字段的出口语义可能不同，不要把一个客户端的 `#PROXY`/DoH 写法直接搬给另一个。
+- **规则、DNS 和 TUN 保护集中维护**：把 `dns`/`proxy-groups`/`rules` 写进订阅模板，或让客户端全局 Merge/Script 统一叠加，改一次全员刷新生效。订阅模板还应维护所有节点入口公网 IP，并下发 `tun.route-exclude-address: [<entry-ip>/32, ...]`，避免用户环境开启 TUN/fake-ip 后把“连接代理入口本身”的流量再吞进代理形成回环；节点 `server` 写域名时也要排除其源站入口 IP。跨客户端下发（如 Stash、Clash Verge、mihomo）前先读目标客户端官方文档；同名字段的出口语义可能不同，不要把一个客户端的 `#PROXY`/DoH 写法直接搬给另一个。
 - **显示名和到期都靠响应头，不是 URL**，这是最容易翻车的地方：
 
 **Profile 显示名** = `Profile-Title: <名>` + `Content-Disposition: attachment; filename=<名>`。

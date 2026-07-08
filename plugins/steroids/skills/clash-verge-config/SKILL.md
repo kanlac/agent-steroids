@@ -72,7 +72,7 @@ echo "$r" | grep -oE ',2,1,200,"[A-Z]{2,3}"'   # 引号里就是 Google 判定�
 某个一直能用的节点突然延迟测试全 timeout，**先别怀疑订阅格式或节点参数**。两个客户端侧的优先排查：
 
 - **IP 被墙**：从本机网络直接对节点落地 `<server-ip>:<port>` 做 TCP 连接测试（绕开 mihomo）。连不上、而换一条已有代理从墙外能连上 = 落地 IP 被封；这时改节点参数、重导订阅都没用，问题在服务端 IP（见 [[airport-deploy]] 的「连不上的分层诊断」）。
-- **TUN 回环**：开 TUN/fake-ip 时，mihomo 的自动分流路由会把「连代理服务器自己那个落地 IP」也吞进 TUN，形成回环超时。用 `route-exclude-address: [<server-ip>/32]` 把落地 IP 排除走物理网关；macOS 上 `route get <server-ip>` 应回到 Wi-Fi 网关而非 `198.18.x.x`。节点 server 写成 IP 字面量、且开着 TUN 时最易触发。
+- **TUN 回环**：开 TUN/fake-ip 时，mihomo 的自动分流路由会把「连代理服务器自己那个入口公网 IP」也吞进 TUN，形成回环超时。用 `route-exclude-address: [<entry-ip>/32]` 把所有节点入口公网 IP 排除走物理网关；macOS 上 `route get <entry-ip>` 应回到 Wi-Fi 网关而非 `198.18.x.x`。节点 `server` 写 IP 字面量时最易触发，但写域名也不能只排除域名本身：订阅或全局脚本应解析/维护源站入口 IP 列表并下发排除项，尤其是面向别的用户环境时不能假设他们已有本地兜底脚本。
 
 ## 远程机器复用本地代理
 
