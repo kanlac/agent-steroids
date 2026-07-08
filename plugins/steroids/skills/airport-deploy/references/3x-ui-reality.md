@@ -83,11 +83,12 @@ Clash/Mihomo 常用方向：
 
 - `dns.enable: true`。
 - fake-ip 模式减少系统 DNS 泄漏。
+- 节点 `server` 是域名时，给 `dns.proxy-server-nameserver` 配直连可达 DNS，专门解析代理服务器域名；普通 `dns.nameserver` 用带 `#PROXY` 的海外 DoH，避免 DNS leak 检测显示国内解析器出口。
 - 国内域名走国内 DoH 或直连 DNS。
 - 海外域名和敏感服务域名走带 `#PROXY` 的 DoH。
 - 用 external controller 查看 DNS 请求和目标请求实际命中的规则。
 
-客户端 DNS 语义要按客户端文档核对。Stash 这类客户端默认让 DNS 请求直连上游，不会自动按普通代理规则走；把 mihomo 里可用的海外 DoH 或 `#PROXY` 写法照搬过去，可能导致 iOS 上基础 DNS 全超时，表现为 DIRECT、节点测试和网络诊断一起失败。面向中国网络的移动端订阅优先用 1-2 个国内 UDP/system DNS，确认 DNS 诊断通过后再查代理协议兼容。
+客户端 DNS 语义要按客户端文档核对。Stash 这类客户端默认让 DNS 请求直连上游，不会自动按普通代理规则走；把 mihomo 里可用的海外 DoH 或 `#PROXY` 写法照搬过去，可能导致 iOS 上基础 DNS 全超时，表现为 DIRECT、节点测试和网络诊断一起失败。服务端订阅渲染器应按 User-Agent、路径或显式参数分模板：桌面 Mihomo 追求 DNS leak 防护，Stash 移动端优先使用其官方支持的直连 DNS 字段恢复可用性。
 
 ## 连不上：诊断命令与封锁归属
 
@@ -126,9 +127,10 @@ Clash/Mihomo 常用方向：
 
 - **响应头里的 emoji/中文会让 Python `http.server` 崩**：它按 latin-1 编码头部，非 latin-1 字符抛异常、整条订阅返回空。`Profile-Title` 等值用 `value.encode("utf-8").decode("latin-1")` 把 UTF-8 字节偷渡过去（客户端按 UTF-8 解）；`Content-Disposition` 的 filename 保持纯 ASCII（空格/emoji 会破坏头部解析）。
 - **渲染器调外部 API 用 `curl`，别用 `urllib`**：Python urllib 的 HTTPS 证书校验在不少机器上失败（CA bundle 与系统不一致），curl 用系统 CA 正常。`subprocess.run(["curl","-s",url])` 更稳；外部 API 结果加几分钟缓存，避免每次订阅请求都打。
-- **信息展示节点（到期/用量）**：想在订阅里显示到期时间、个人/服务器用量，做成"节点"放进选择组列表里——本质是工作节点（CDN）的克隆，测速显示真实延迟、不超时、不产生多余的组卡片。Clash 没有"同一个组用多个名字露出"的机制，二选一：节点（无卡片、静态克隆某条线路）或组（反映 url-test 但每个都是一张卡片）。
+- **信息展示节点（到期/用量）**：想在订阅里显示到期时间、个人/服务器用量，桌面 Mihomo/Clash Verge 可做成"节点"放进选择组列表里——本质是工作节点（CDN）的克隆，测速显示真实延迟、不超时、不产生多余的组卡片。Stash 等移动端兼容性更差，不要把信息节点伪装成真实 VLESS 下发；否则它会参与测速并把信息项也标成失败。移动端优先依赖 `Subscription-Userinfo` 响应头或单独客户端模板。
 - **用量数据源**：个人用量 = `client_traffics` 里该用户跨入站的 email（含 CDN 入站的 email 变体）up+down 合计；服务器总用量优先用机房 API（Bandwagon 用 KiwiVM `data_counter`/`plan_monthly_data`，精确），无机房 API 时退用 `vnstat`（只从安装时刻起计，会少算本月已用）。
-- **订阅 YAML 顶层下发 TUN 入口排除**：维护所有客户端会直连的入口公网 IP（直连 Reality 源站、非 CDN 前置、云厂商或线路优化前置入口），渲染 `tun.route-exclude-address` 为 `<ip>/32`。这不是只给本机 Clash Verge 的增强脚本做的优化，而是订阅本身的安全兜底：用户环境开启 TUN/fake-ip 时，如果连接节点入口的流量被 TUN 捕获，会形成自回环并表现为节点 timeout。Cloudflare 橙云节点通常排除的是客户端直连的边缘地址不可枚举，不应把源站 IP 当作该 CDN 节点的连接目标；但同一订阅里若还包含直连源站节点，源站 IP 仍必须排除。
+- **订阅 YAML 顶层下发 TUN 入口排除**：遍历本次实际渲染出的所有工作节点和信息节点的 `server` 字段，IP 字面量直接渲染为 `<ip>/32`，域名则解析当前 A 记录后逐个渲染为 `/32`，写入 `tun.route-exclude-address`。这不是只给本机 Clash Verge 的增强脚本做的优化，而是订阅本身的安全兜底：用户环境开启 TUN/fake-ip 时，如果连接节点入口的流量被 TUN 捕获，会形成自回环并表现为节点 timeout。不要维护一份静态入口 IP 清单；DNS 切换、Cloudflare 边缘变化、前置替换后，静态清单会继续下发已经不对应当前节点 server 的旧 IP。
+- **订阅 YAML 分离普通 DNS 与代理服务器 DNS**：只要节点 `server` 是域名，就给 `dns.proxy-server-nameserver` 留一条直连 DNS 通道；普通 `dns.nameserver` 用带代理组后缀的海外 DoH。否则模板里 `fallback: ...#PROXY` / `...#LEGAL` 这类海外 DoH 会在节点尚未连上时反过来依赖该节点，mihomo 日志常见 `dns resolve failed`；但如果普通 `nameserver` 直连国内 DoH，又会在 DNS leak 检测里暴露国内解析器出口。
 - **订阅 YAML 顶层下发 `ipv6: false`**：避免客户端解析 AAAA 走 IPv6 直连绕过代理（IPv6 路由泄露的一般卫生）。注意：地理严格的站（Gemini）报 not supported **多半是出口 IP 被 Google 标错国**（机房 IP 常被标成 CHN，哪怕物理在美国），先用 gemini 检测法验出口 IP 的 Google 地理，别先怀疑泄露——详见 [[clash-verge-config]]。
 
 ## 验收清单

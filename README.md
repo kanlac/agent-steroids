@@ -37,6 +37,7 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 | [`wechat-desktop`](plugins/steroids/skills/wechat-desktop/SKILL.md) | `steroids` | 通过 computer-use MCP 在 macOS 上读取、浏览和总结微信群聊消息。 |
 | [`airport-deploy`](plugins/steroids/skills/airport-deploy/SKILL.md) | `steroids` | 自建机场（服务端）搭建与运维：VPS 加固、3X-UI、Xray VLESS Reality/Vision 入站、多用户独立订阅、订阅 YAML 渲染、Profile 显示名与到期下发、域名/ACME 证书、测速与 IP 风险、备份。 |
 | [`clash-verge-config`](plugins/steroids/skills/clash-verge-config/SKILL.md) | `steroids` | Clash Verge Rev / mihomo 客户端配置即代码：保留字段与 enhance 管线、profiles.yaml 显示名/到期缓存、配置不生效排查、external controller/UI、DNS 泄漏与分流规则、节点突然超时先排查 IP 被墙/TUN 回环、远程复用本地代理。 |
+| [`line-quality-audit`](plugins/steroids/skills/line-quality-audit/SKILL.md) | `steroids` | VPS / 机场节点线路质量评估：区分去程/回程，识别 CN2 GIA、CTGNet、9929、CMI 与普通 transit，测延迟/丢包/抖动/单线程吞吐、端口/IP 风险和 Google 地理误判，并按模板输出可比较报告。 |
 | [`meta-learning`](plugins/steroids/skills/meta-learning/SKILL.md) | `steroids` | 将用户纠偏、样例和失败经验沉淀为更清晰的 skill 行为：提炼可迁移规则、重构决策结构，避免低密度资料堆叠。 |
 | [`skill-console`](plugins/steroids/skills/skill-console/SKILL.md) | `steroids` | 生成本地 Skill 清单控制台，审计 token 用量、description token、重复项路径、Skill 内容预览，并导出选中 Skill 的 `{name, path}` JSON。 |
 | [`memory-clinic`](plugins/steroids/skills/memory-clinic/SKILL.md) | `steroids` | Agent 记忆环境体检：扫描预置记忆（全局/项目 CLAUDE.md/AGENTS.md）与外部记忆（skills、文档），按体量/可用性/新鲜度/矛盾四维打分，产出「记忆精神科确诊书」HTML 报告 + 交互式「治疗确认书」（ReviewTable），人签字确认后再执行清理。承载 push/pull、稀缺、归位、何时不记的记忆管理品味。 |

@@ -34,7 +34,7 @@ Cloudflare 只做 DNS 时必须灰云。ACME 申请前先确认权威解析和�
 客户端入口期待远程 YAML 时，自建一个小 HTTP 服务监听订阅端口：按 subId 查用户 → 渲染 Clash/Mihomo YAML → 用响应头控制展示。渲染要同时管好三件事：
 
 - **节点字段完整**：`type: vless`、`tls: true`、`flow: xtls-rprx-vision`、Reality `public-key`/`short-id`/SNI/fingerprint 必须与入站一致。
-- **规则、DNS 和 TUN 保护集中维护**：把 `dns`/`proxy-groups`/`rules` 写进订阅模板，或让客户端全局 Merge/Script 统一叠加，改一次全员刷新生效。订阅模板还应维护所有节点入口公网 IP，并下发 `tun.route-exclude-address: [<entry-ip>/32, ...]`，避免用户环境开启 TUN/fake-ip 后把“连接代理入口本身”的流量再吞进代理形成回环；节点 `server` 写域名时也要排除其源站入口 IP。跨客户端下发（如 Stash、Clash Verge、mihomo）前先读目标客户端官方文档；同名字段的出口语义可能不同，不要把一个客户端的 `#PROXY`/DoH 写法直接搬给另一个。
+- **规则、DNS 和 TUN 保护集中维护**：把 `dns`/`proxy-groups`/`rules` 写进订阅模板，或让客户端全局 Merge/Script 统一叠加，改一次全员刷新生效。订阅模板还应从本次实际生成的所有节点 `server` 字段推导 `tun.route-exclude-address`：IP 字面量转 `<ip>/32`，域名解析当前 A 记录后逐个转 `/32`。Mihomo/Clash Verge 里，节点域名用 `dns.proxy-server-nameserver` 直连解析，普通 `dns.nameserver` 用带代理组后缀的海外 DoH，避免 DNS leak；Stash 等移动端不要照搬这套 `#PROXY`/`#LEGAL` DNS，按客户端下发兼容模板，否则可能所有节点测速超时。不要维护一份会过期的静态入口 IP 清单；否则 DNS 切换、Cloudflare 边缘变化或前置替换后会把无关旧 IP 下发给用户。
 - **显示名和到期都靠响应头，不是 URL**，这是最容易翻车的地方：
 
 **Profile 显示名** = `Profile-Title: <名>` + `Content-Disposition: attachment; filename=<名>`。

@@ -44,10 +44,13 @@ Clash Verge Rev 是个 Tauri GUI，底层跑 mihomo 内核。它的配置系统�
 
 - 确认最终运行时配置里确实有 `dns.enable: true`，且没被 Clash Verge 的 DNS 设置或全局脚本覆盖。
 - 用 fake-ip / redir-host 时都要明确 `nameserver`、`fallback`/`nameserver-policy` 的出口意图；海外 DoH 用 `https://1.1.1.1/dns-query#PROXY` 这类写法强制经代理解析。
+- 代理服务器自身的域名必须有直连解析通道：在 Mihomo 订阅里给 `dns.proxy-server-nameserver` 配国内或系统可达 DNS。普通 `dns.nameserver` 才放带 `#PROXY` 的海外 DoH。否则节点 server 也是域名时，海外 DoH 可能递归成「解析代理服务器需要先连代理」；反过来，如果普通 `nameserver` 直连国内 DoH，DNS leak 检测会显示国内解析器出口。
 - 国内域名走国内 DoH 或直连 DNS，国外域名和 AI 服务域名经代理解析，避免本地运营商 DNS 暴露访问意图。
 - 验证别只看检测网页结论，要读 mihomo `GET /connections`、日志和最终配置，确认 DNS 连接命中哪条规则、走哪个出站。
 
-跨客户端订阅不要照搬 DNS 片段。Stash 等客户端的 DNS 请求默认可能直连上游，不按普通代理规则走；mihomo 里可用的 `#PROXY`、海外 DoH、`nameserver-policy` 组合在手机端可能变成「基础 DNS 全超时」，进而让 DIRECT 和节点测速一起失败。遇到非 Clash Verge 客户端，先读该客户端官方 DNS/协议文档，再决定模板差异；如果文档语义差异太大，宁可暂时不兼容，也不要把服务端 Xray 参数当作第一嫌疑。
+跨客户端订阅不要照搬 DNS 片段。Stash 等客户端的 DNS 请求默认可能直连上游，不按普通代理规则走；mihomo 里可用的 `#PROXY`、海外 DoH、`nameserver-policy` 组合在手机端可能变成「基础 DNS 全超时」，进而让 DIRECT 和节点测速一起失败。遇到 Stash 更新订阅后所有节点超时，优先看订阅是否把桌面 Mihomo 的 `#PROXY/#LEGAL` DNS 原样下发给了 iOS；Stash 常见兜底是独立模板：`redir-host`、直连基础 DNS、入口域名 `hosts`、GEOIP 规则加 `no-resolve`。服务端应按客户端分模板，而不是改 Xray 入站参数。
+
+Stash 的远程 API 更接近运行时控制器，不是 profile 管理器。`PATCH /configs` 只能改 `mode`、`log-level`、端口等少量运行项，不能用 `payload` 替换整份 YAML；`/profiles` 这类 profile 更新接口也不一定存在。验证订阅模板修复时，必须让用户在 Stash 内执行订阅更新或重新导入，再用 `/proxies`、`/rules`、`/connections` 读实际运行态，别把 API 返回 `204` 误判为整份订阅已热加载。
 
 规则同理：从上到下首命中。排查某站没走代理时，找第一条能匹配它的规则，而不是只看最终 IP。
 
@@ -72,7 +75,8 @@ echo "$r" | grep -oE ',2,1,200,"[A-Z]{2,3}"'   # 引号里就是 Google 判定�
 某个一直能用的节点突然延迟测试全 timeout，**先别怀疑订阅格式或节点参数**。两个客户端侧的优先排查：
 
 - **IP 被墙**：从本机网络直接对节点落地 `<server-ip>:<port>` 做 TCP 连接测试（绕开 mihomo）。连不上、而换一条已有代理从墙外能连上 = 落地 IP 被封；这时改节点参数、重导订阅都没用，问题在服务端 IP（见 [[airport-deploy]] 的「连不上的分层诊断」）。
-- **TUN 回环**：开 TUN/fake-ip 时，mihomo 的自动分流路由会把「连代理服务器自己那个入口公网 IP」也吞进 TUN，形成回环超时。用 `route-exclude-address: [<entry-ip>/32]` 把所有节点入口公网 IP 排除走物理网关；macOS 上 `route get <entry-ip>` 应回到 Wi-Fi 网关而非 `198.18.x.x`。节点 `server` 写 IP 字面量时最易触发，但写域名也不能只排除域名本身：订阅或全局脚本应解析/维护源站入口 IP 列表并下发排除项，尤其是面向别的用户环境时不能假设他们已有本地兜底脚本。
+- **TUN 回环**：开 TUN/fake-ip 时，mihomo 的自动分流路由会把「连代理服务器自己那个入口地址」也吞进 TUN，形成回环超时。用 `route-exclude-address` 把本次订阅实际节点 `server` 对应的 IPv4 排除走物理网关：IP 字面量直接排 `<ip>/32`，域名解析当前 A 记录后逐个排 `/32`；macOS 上 `route get <resolved-ip>` 应回到 Wi-Fi 网关而非 `198.18.x.x`。不要只排域名，也不要维护一份旧的入口 IP 清单，尤其是面向别的用户环境时不能假设他们已有本地兜底脚本。
+- **代理域名 DNS 递归**：如果 TCP 直连入口成功、`route get` 也走物理网关，但 mihomo 日志出现 DoH 经代理组解析节点 server 并最终 `dns resolve failed`，检查 `dns.proxy-server-nameserver`。节点域名解析不能依赖同一个尚未建立的代理组。
 
 ## 远程机器复用本地代理
 

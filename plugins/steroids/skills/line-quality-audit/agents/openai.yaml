@@ -1,0 +1,4 @@
+interface:
+  display_name: "Line Quality Audit"
+  short_description: "Evaluate VPS and proxy route quality."
+  default_prompt: "Use $line-quality-audit to evaluate these VPS or proxy nodes and produce a comparable report."
