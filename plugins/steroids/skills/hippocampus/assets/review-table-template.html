@@ -908,7 +908,7 @@
             <div class="hospital-mark" aria-hidden="true">签</div>
             <div>
               <h1><span class="title-main">Agent 记忆精神科</span><span class="title-type">治疗确认书</span></h1>
-              <p class="doc-subtitle">ReviewTable · Informed Consent · memory-clinic.review-table.v1</p>
+              <p class="doc-subtitle">ReviewTable · Informed Consent · hippocampus.review-table.v1</p>
             </div>
           </div>
 
@@ -1201,7 +1201,7 @@
 
     function buildPayload() {
       return {
-        schema: "memory-clinic.review-table.v1",
+        schema: "hippocampus.review-table.v1",
         generated_at: new Date().toISOString(),
         source_report: SOURCE_REPORT,
         projected_score: projectedScore(),
@@ -1227,7 +1227,7 @@
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "memory-clinic-review-table-v1.json";
+      link.download = "hippocampus-review-table-v1.json";
       document.body.appendChild(link);
       link.click();
       link.remove();

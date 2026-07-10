@@ -1,6 +1,6 @@
 {
   "name": "steroids",
-  "version": "2.5.3",
+  "version": "2.6.0",
   "description": "Core Agent Steroids skills and workflow helpers, including Skill inventory, proxy stack operations, and line quality audits",
   "author": {
     "name": "Kan"
@@ -19,7 +19,7 @@
   "interface": {
     "displayName": "Agent Steroids",
     "shortDescription": "Reusable productivity, document, paper, proxy operations, line audits, Skill audit, desktop workflow, and skill-learning guidance.",
-    "longDescription": "Core Agent Steroids plugin with document extraction, EPUB reading, HTML-to-PDF generation, web clipping, academic paper workflows, self-hosted proxy stack operations, VPS/proxy line quality audits, Skill inventory auditing, desktop workflow guidance, and meta-learning for improving skills from feedback.",
+    "longDescription": "Core Agent Steroids plugin with document extraction, EPUB reading, HTML-to-PDF generation, web clipping, academic paper workflows, self-hosted proxy stack operations, VPS/proxy line quality audits, Skill inventory auditing, desktop workflow guidance, and agent-memory management (diagnose, treat, and absorb new knowledge into the right place).",
     "developerName": "Kan",
     "category": "Productivity",
     "capabilities": [

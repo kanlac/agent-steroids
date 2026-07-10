@@ -19,7 +19,7 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 
 | Plugin | Runtime | 包含内容 | 硬依赖 | 可选 / capability 依赖 |
 |---|---|---|---|---|
-| [`steroids`](plugins/steroids/) | Claude + Codex + Hermes | 主体 Skills：文档处理、书籍阅读、PDF 导出、网页剪藏、论文下载、微信桌面 workflow、skill 学习方法论，以及 `/song` | 无 | `paper-download` / `clipping` 的登录态或 CAPTCHA 场景需要 `headed-browser`；`wechat-desktop` 需要 macOS + computer-use MCP |
+| [`steroids`](plugins/steroids/) | Claude + Codex + Hermes | 主体 Skills：文档处理、书籍阅读、PDF 导出、网页剪藏、论文下载、微信桌面 workflow、Agent 记忆管理（诊断/整理/吸收），以及 `/song` | 无 | `paper-download` / `clipping` 的登录态或 CAPTCHA 场景需要 `headed-browser`；`wechat-desktop` 需要 macOS + computer-use MCP |
 | [`telegram`](plugins/telegram/) | Claude Code only | `telegram-agents`、`/tg-*`、`/check-release`、`telegram-notify` MCP、Telegram time hook、`guard-payload-size` hook | Claude Code + official Telegram plugin；心跳 workflow 需 Telethon/tmux/launchd | 无 |
 | [`chrome`](plugins/chrome/) | Claude + Codex + Hermes | `cdp-chrome` 每 OS 用户一个进程的共享有头 Chrome provider；Claude/Codex 内置 `cdp-chrome` MCP 启动器，会读取当前用户 steroids 配置 | Chrome、`npx`；Hermes 使用时需在 `mcp_servers` 注册 | 提供 `headed-browser`，可被 Codex Chrome plugin / 原生 browser-use 替代 |
 | [`write-blog`](plugins/write-blog/) | Claude Code only | `write-blog` skill：选题/对话式挖掘/大纲迭代/按作者风格成文，附 voice-dna 与制图参考 | 无 | 无 |
@@ -38,9 +38,8 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 | [`airport-deploy`](plugins/steroids/skills/airport-deploy/SKILL.md) | `steroids` | 自建机场（服务端）搭建与运维：VPS 加固、3X-UI、Xray VLESS Reality/Vision 入站、多用户独立订阅、订阅 YAML 渲染、Profile 显示名与到期下发、域名/ACME 证书、测速与 IP 风险、备份。 |
 | [`clash-verge-config`](plugins/steroids/skills/clash-verge-config/SKILL.md) | `steroids` | Clash Verge Rev / mihomo 客户端配置即代码：保留字段与 enhance 管线、profiles.yaml 显示名/到期缓存、配置不生效排查、external controller/UI、DNS 泄漏与分流规则、节点突然超时先排查 IP 被墙/TUN 回环、远程复用本地代理。 |
 | [`line-quality-audit`](plugins/steroids/skills/line-quality-audit/SKILL.md) | `steroids` | VPS / 机场节点线路质量评估：区分去程/回程，识别 CN2 GIA、CTGNet、9929、CMI 与普通 transit，测延迟/丢包/抖动/单线程吞吐、端口/IP 风险和 Google 地理误判，并按模板输出可比较报告。 |
-| [`meta-learning`](plugins/steroids/skills/meta-learning/SKILL.md) | `steroids` | 将用户纠偏、样例和失败经验沉淀为更清晰的 skill 行为：提炼可迁移规则、重构决策结构，避免低密度资料堆叠。 |
 | [`skill-console`](plugins/steroids/skills/skill-console/SKILL.md) | `steroids` | 生成本地 Skill 清单控制台，审计 token 用量、description token、重复项路径、Skill 内容预览，并导出选中 Skill 的 `{name, path}` JSON。 |
-| [`memory-clinic`](plugins/steroids/skills/memory-clinic/SKILL.md) | `steroids` | Agent 记忆环境体检：扫描预置记忆（全局/项目 CLAUDE.md/AGENTS.md）与外部记忆（skills、文档），按体量/可用性/新鲜度/矛盾四维打分，产出「记忆精神科确诊书」HTML 报告 + 交互式「治疗确认书」（ReviewTable），人签字确认后再执行清理。承载 push/pull、稀缺、归位、何时不记的记忆管理品味。 |
+| [`hippocampus`](plugins/steroids/skills/hippocampus/SKILL.md) | `steroids` | 管理 Agent 记忆的一切，两件事：①诊断与治疗——扫描预置记忆（全局/项目 CLAUDE.md/AGENTS.md）与外部记忆（skills、文档），按体量/可用性/新鲜度/矛盾四维打分，产出「记忆精神科确诊书」HTML 报告 + 交互式「治疗确认书」（ReviewTable），人签字确认后再执行清理；②吸收新知识——把纠偏/教训/「记住这个」的请求路由到正确归属（预置/外部/进某 skill/不记）并重构进 skill 而非堆叠原始笔记。承载 push/pull、稀缺、归位、何时不记的记忆管理品味。 |
 | [`telegram-agents`](plugins/telegram/skills/telegram-agents/SKILL.md) | `telegram` | Telegram agent 配置与管理。包括 tmux 会话、Telethon 调度器、launchd 心跳定时任务。 |
 | [`cdp-chrome`](plugins/chrome/skills/cdp-chrome/SKILL.md) | `chrome` | 可选的共享有头 Chrome provider。适合需要持久登录态、用户手动 CAPTCHA、反 bot 页面或 live site inspection 的环境。 |
 | [`write-blog`](plugins/write-blog/skills/write-blog/SKILL.md) | `write-blog` | 写作全流程：从录音稿成文，或从零开始的对话式写作（选题、调研、提问漏斗、大纲迭代、初稿）。按作者 voice-dna 风格输出，附「图形为主、文字为辅」制图参考。 |

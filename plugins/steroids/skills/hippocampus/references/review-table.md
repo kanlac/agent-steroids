@@ -26,7 +26,7 @@ demo 把它做成一份「治疗确认书」——你逐条确认要执行哪些
 
 ```json
 {
-  "schema": "memory-clinic.review-table.v1",
+  "schema": "hippocampus.review-table.v1",
   "generated_at": "<ISO8601>",
   "source_report": "<诊断报告的路径或 id>",
   "projected_score": 84,
@@ -64,6 +64,6 @@ demo 把它做成一份「治疗确认书」——你逐条确认要执行哪些
 用户返回后，读 JSON，只对 `apply: true` 的行执行：
 
 - **高把握 / 机械**——直接执行。
-- **中低把握 / 判断**——按 `note` 执行；矛盾就朝用户选的那一侧改。若批了一条「PR 进 skill X」，那次重写交给 `meta-learning`，别把原始笔记钉上去。
+- **中低把握 / 判断**——按 `note` 执行；矛盾就朝用户选的那一侧改。若批了一条「PR 进 skill X」，那次重写走 `references/absorb-knowledge.md` 的方法论（重构而非追加），别把原始笔记钉上去。
 
 然后复述达成的变化（旧分 → 新分），让循环落在一个看得见的改善上。永远不执行用户没勾的行，也不越过一个决定所授权的范围去改。
