@@ -22,7 +22,7 @@ demo 把它做成一份「治疗确认书」——你逐条确认要执行哪些
 
 ## 保存 → 读回契约
 
-保存时落一份 Agent 能读的 JSON。对离线单文件页面，用下载（Blob）导出到一个已知路径——demo 放 Downloads 即可——用户告诉 Agent 它落在哪（或说「填好了」，Agent 去默认位置找）。schema：
+保存时用下载（Blob）导出一份 Agent 能读的 JSON，**文件名固定为 `hippocampus-treatment.json`**。浏览器 Blob 下载只能落到 Downloads 根目录（进不了报告的时间戳子目录），所以约定它就落在 `~/Downloads/hippocampus-treatment.json`（Windows：`%USERPROFILE%\Downloads\hippocampus-treatment.json`）。用户说「填好了」时，Agent 直接读这个固定路径。schema：
 
 ```json
 {
@@ -61,7 +61,7 @@ demo 把它做成一份「治疗确认书」——你逐条确认要执行哪些
 
 ## 治疗
 
-用户返回后，读 JSON，只对 `apply: true` 的行执行：
+用户返回后，读 `~/Downloads/hippocampus-treatment.json`。**先校验再执行**：`schema` 是否为 `hippocampus.review-table.v1`、`source_report` 是否对得上本次报告（防止串用上一次的旧确认书）、每条 `decisions[].id` 是否能映射回本次处方项。校验过了，只对 `apply: true` 的行执行：
 
 - **高把握 / 机械**——直接执行。
 - **中低把握 / 判断**——按 `note` 执行；矛盾就朝用户选的那一侧改。若批了一条「PR 进 skill X」，那次重写走 `references/absorb-knowledge.md` 的方法论（重构而非追加），别把原始笔记钉上去。

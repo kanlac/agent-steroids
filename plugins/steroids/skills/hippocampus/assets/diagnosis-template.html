@@ -4,6 +4,148 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>记忆健康度扫描报告 · 精神科确诊书</title>
+  <script>
+    const DATA = {
+      meta: {
+        id: "MHS-CLAUDE-0058",
+        date: "2026-07-02",
+        sampleDescription: "CLAUDE.md / skills / docs",
+        memoryFiles: [
+          { label: "全局记忆", path: "~/.claude/CLAUDE.md", lines: 892, size: "47 KB" },
+          { label: "项目记忆", path: "./CLAUDE.md", lines: 156, size: "12 KB" },
+          { label: "技能与文档", path: "skills / docs", lines: 608, size: "按需加载" }
+        ],
+        treatmentHref: "./review-table-template.html"
+      },
+      total: 58,
+      diagnosis: {
+        line: "伴 31% 上下文失忆",
+        complaint: "你的记忆约有 31% 每轮未产生有效价值，其中 12 条适合迁移到对应 skill，减少常驻负荷。",
+        summary: "约 31% 内容超出上下文预算，未能进入有效上下文，实际指导价值缺失。",
+        advice: "建议收敛 CLAUDE.md 常驻内容；每轮减少约 8000 token，降低记忆囤积复发风险。"
+      },
+      shocks: [
+        { label: "病灶体积", value: ["全局 CLAUDE.md", "47 KB"] },
+        { label: "每轮输液", value: ["~11,800", "tokens"] },
+        { label: "失忆脑区", value: ["约 31%", "未加载"], aria: "约 31% 从未进入有效上下文" }
+      ],
+      miniFindings: [
+        { label: "现病史", value: "约 31% 内容超出上下文预算，未能进入有效上下文，实际指导价值缺失。" },
+        { label: "初步医嘱", value: "建议收敛 CLAUDE.md 常驻内容；每轮减少约 8000 token，降低记忆囤积复发风险。" }
+      ],
+      surfaces: {
+        preset: {
+          score: 49,
+          title: "预置记忆",
+          note: "常驻负荷偏高",
+          items: [
+            { label: "全局记忆", ref: "~/.claude/CLAUDE.md", note: "过长，892 行", score: 42 },
+            { label: "项目记忆", ref: "./CLAUDE.md", note: "局部有用，但也开始粘锅", score: 63 }
+          ]
+        },
+        external: {
+          score: 67,
+          title: "外部记忆",
+          note: "像药房药柜，不该塞进脑袋",
+          items: [
+            { label: "技能", ref: "skills", note: "大体可用，有两个技能偏长", score: 71 },
+            { label: "文档", ref: "docs", note: "有断链、过期记录和命名口径冲突", score: 58 }
+          ]
+        }
+      },
+      dimensions: {
+        bloat: {
+          title: "体量 Bloat",
+          score: 38,
+          tagline: "常驻信息负荷过高，本项已进入红色化验值。",
+          evidence: [
+            { ref: "~/.claude/CLAUDE.md", quote: "892 行（超 200 行上限 4.5 倍）/ 47 KB / 每轮约 11,800 tokens" },
+            { ref: "上下文预算", quote: "约 31% 内容超出上下文预算，未能进入有效上下文，实际指导价值缺失" },
+            { ref: "skills/wechat-desktop/SKILL.md", quote: "340 行（建议拆分）" },
+            { ref: "skills/clash-verge-config/SKILL.md", quote: "268 行" }
+          ]
+        },
+        usability: {
+          title: "可用性 Usability",
+          score: 55,
+          tagline: "有些指令太含糊或太通用，Agent 根本无从执行。",
+          evidence: [
+            { ref: "~/.claude/CLAUDE.md:441", quote: "“写代码时注意处理好边界情况” → 太含糊，agent 无法据此做任何具体决策" },
+            { ref: "~/.claude/CLAUDE.md:203", quote: "“保持代码整洁、可维护” → 通用废话，不改变任何决策" },
+            { ref: "预置层", quote: "约 40% 的行可从 repo / package.json 直接推断（技术栈、显而易见的约定）" },
+            { ref: "含糊指令", quote: "7 处类似的含糊指令（“合理处理”“视情况而定”“注意性能”）" }
+          ]
+        },
+        freshness: {
+          title: "新鲜度 Freshness",
+          score: 61,
+          tagline: "临时方案久病成医嘱，容易误诊。",
+          evidence: [
+            { ref: "agent-steroids/CLAUDE.md:88", quote: "“guard-payload-size 临时方案……官方修复后可移除” → 上游 issue 已于两月前修复，此段已过期" },
+            { ref: "~/.claude/CLAUDE.md:127", quote: "引用 ~/.config/old-proxy.conf → 该文件已不存在（断链）" },
+            { ref: "工作记录", quote: "3 处 “临时方案 / WIP” 标记，对应工作均已 ship" },
+            { ref: "~/.claude/CLAUDE.md", quote: "2 条节点测速数据来自 4 个月前，已不代表现状" }
+          ]
+        },
+        contradiction: {
+          title: "矛盾 Contradiction",
+          score: 52,
+          tagline: "跨预置/外部打架，像左右脑互相开处方。",
+          evidence: [
+            { ref: "矛盾 #1", quote: "[~/.claude/CLAUDE.md:某行] 文档命名统一用 “yyMMdd-” 前缀 ⚔ [agent-steroids/CLAUDE.md:某行] 文件名统一用 “YYYYMMDD-” 前缀" },
+            { ref: "矛盾 #2", quote: "[~/.claude/CLAUDE.md] 读社交媒体直接用 CDP Chrome ⚔ [skills/web-access] 优先 WebSearch/WebFetch/Jina" },
+            { ref: "矛盾 #3", quote: "[~/.claude/CLAUDE.md] 默认用 github.com 作 git host ⚔ [项目 CLAUDE.md] 本项目一律走 mindfitgit" }
+          ]
+        }
+      },
+      contradictions: [
+        {
+          summary: "文档命名前缀口径不一致，值得你看一眼。",
+          left: { ref: "~/.claude/CLAUDE.md", line: "612", quote: "文档命名统一用 “yyMMdd-” 前缀（如 260603-）" },
+          right: { ref: "agent-steroids/CLAUDE.md", line: "24", quote: "文件名统一用 “YYYYMMDD-” 前缀" },
+          confidence: "中"
+        },
+        {
+          summary: "社交媒体读取路由互相打架，这条可以再斟酌。",
+          left: { ref: "~/.claude/CLAUDE.md", line: "388", quote: "读社交媒体直接用 CDP Chrome，不要先试 defuddle/WebFetch" },
+          right: { ref: "skills/web-access/SKILL.md", line: "41", quote: "优先 WebSearch/WebFetch/Jina，静态层无效才上 CDP" },
+          confidence: "中"
+        },
+        {
+          summary: "低置信：更像“特例覆盖”而非真冲突，由你定夺。",
+          left: { ref: "~/.claude/CLAUDE.md", line: "73", quote: "默认用 github.com 作 git host" },
+          right: { ref: "agent-steroids/CLAUDE.md", line: "19", quote: "本项目一律走 mindfitgit" },
+          confidence: "低"
+        }
+      ],
+      prescriptions: [
+        { id: "rx-global-split", title: "拆分全局 CLAUDE.md（892 → <200 行）", reason: "它大到有 31% 每轮根本没加载，拆完立刻恢复全量加载。", confidence: "高", effect: "恢复全量加载" },
+        { id: "rx-skill-move", title: "把约 12 条 skill 专属教训移回各自的 skill", reason: "它们塞在全局里给每轮交税，其实只在各自 skill 才用得上。", confidence: "高", effect: "减少常驻负荷" },
+        { id: "rx-conflicts", title: "调和 3 处自相矛盾的指令", reason: "让 Agent 不再在同一件事上收到相反命令。", confidence: "中", effect: "降低执行分叉" },
+        { id: "rx-stale", title: "删除过期临时方案与断链引用", reason: "过期医嘱会让后续 agent 按不存在的路径或已修复的问题行动。", confidence: "中", effect: "提高新鲜度" },
+        { id: "rx-vague", title: "删除无法改变决策的泛化句", reason: "“注意边界情况”这类句子占预算但不给判断条件。", confidence: "中", effect: "提高可用性" },
+        { id: "rx-docs", title: "把长期参考材料移出预置层", reason: "百科式背景适合按需检索，不适合每轮常驻。", confidence: "高", effect: "降低 token 税" },
+        { id: "rx-skill-length", title: "拆长技能到 references/", reason: "超长 SKILL.md 会稀释触发后的主流程。", confidence: "中", effect: "减少技能噪声" },
+        { id: "rx-review", title: "复查命名与路由规则作用域", reason: "保留明确覆盖关系，避免把特例误判成全局规则。", confidence: "低", effect: "减少伪冲突" }
+      ],
+      truncated: true,
+      truncation: { unloadedPercent: 31, estimatedTokens: 11800, recoverTokens: 3800 },
+      prognosis: {
+        projectedTotal: 89,
+        caption: "照方抓药后，脑内常驻噪声明显退烧",
+        items: [
+          { label: "每轮 token 税", value: "−68%（11,800 → ~3,800）" },
+          { label: "全局 CLAUDE.md", value: "47 KB → ~9 KB" },
+          { label: "加载状态", value: "恢复全量加载（不再被截断）" },
+          { label: "临床印象", value: "记忆囤积明显缓解，处方有效；复查时重点看预置层是否反弹。" }
+        ]
+      },
+      share: {
+        title: "我的 Agent 记忆体检",
+        footnote: "分数是方向性参考；真正有价值的是处方和证据。"
+      }
+    };
+  </script>
   <style>
     :root {
       --paper: #f4f6ed;
@@ -711,6 +853,40 @@
     .danger { color: var(--red-deep); }
     .warn { color: var(--orange); }
     .caution { color: #9b780d; }
+    .healthy { color: var(--green); }
+
+    .score-number.healthy,
+    .memory-score.healthy {
+      color: var(--green);
+    }
+
+    .surface-score.healthy { background: var(--green); }
+    .surface-score.caution {
+      color: var(--ink);
+      background: var(--yellow);
+    }
+    .surface-score.warn {
+      color: #fff;
+      background: var(--orange);
+    }
+    .surface-score.danger {
+      color: #fff;
+      background: var(--red-deep);
+    }
+
+    .severity-step.current.clear,
+    .severity-step.current.load {
+      border-color: var(--green);
+      background: rgba(71, 121, 106, .12);
+      color: var(--green);
+    }
+
+    .severity-step.current.clear::before,
+    .severity-step.current.load::before {
+      border-color: var(--green);
+      background: var(--green);
+      box-shadow: 0 0 0 5px rgba(71, 121, 106, .14);
+    }
 
     .finding-tagline {
       margin: 8px 0 0;
@@ -1030,6 +1206,39 @@
       box-shadow: 6px 6px 0 rgba(127, 21, 30, .18);
     }
 
+    .share-panel {
+      padding: 16px;
+      border-color: var(--red-deep);
+      background:
+        linear-gradient(135deg, rgba(180, 34, 43, .14), transparent 48%),
+        rgba(251, 244, 220, .78);
+    }
+
+    .share-button {
+      width: 100%;
+      min-height: 54px;
+      border: 2px solid var(--red-deep);
+      color: #fff;
+      background: var(--red);
+      font-family: var(--display);
+      font-size: 22px;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 7px 7px 0 rgba(127, 21, 30, .18);
+    }
+
+    .share-button:hover {
+      background: var(--red-deep);
+    }
+
+    .share-note {
+      margin: 10px 0 0;
+      color: var(--ink-muted);
+      font-size: 12px;
+      font-weight: 900;
+      line-height: 1.45;
+    }
+
     .prognosis {
       display: grid;
       grid-template-columns: minmax(260px, .75fr) minmax(0, 1.25fr);
@@ -1331,342 +1540,481 @@
   </style>
 </head>
 <body>
-  <div class="page">
-    <article class="medical-folder" aria-label="记忆健康度扫描报告">
-      <header class="hero">
-        <div class="hero-left">
-          <div class="form-head">
-            <div class="hospital-mark" aria-hidden="true">脑</div>
+  <div id="app" class="page"></div>
+  <script>
+    const LEVELS = [
+      { min: 90, max: 100, name: "认知清明（脑回清奇）", code: "CLEAR", className: "clear", guidance: "记忆结构清楚、常驻负担低；保持定期复查即可。" },
+      { min: 75, max: 89, name: "轻度信息过载", code: "LOAD", className: "load", guidance: "记忆环境总体可用；优先清理少量断链、矛盾和可外移参考。" },
+      { min: 60, max: 74, name: "记忆囤积倾向", code: "RISK", className: "risk", guidance: "常驻层开始发胖；先处理低价值预载内容和跨文件口径。" },
+      { min: 40, max: 59, name: "记忆囤积障碍", code: "CASE", className: "case", guidance: "需要先清理长期常驻、过期和互相冲突的记忆负荷。" },
+      { min: 0, max: 39, name: "重度脑雾", code: "CRIT", className: "crit", guidance: "上下文可用性严重受损；先止血、再重建预置记忆边界。" }
+    ];
+
+    const DIMENSION_ORDER = [
+      ["bloat", "①"],
+      ["usability", "②"],
+      ["freshness", "③"],
+      ["contradiction", "④"]
+    ];
+
+    const escapeHTML = (value) => String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+
+    const escapeXML = (value) => String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+
+    const clampScore = (score) => Math.max(0, Math.min(100, Number(score) || 0));
+    const currentLevel = (score) => LEVELS.find((level) => score >= level.min && score <= level.max) || LEVELS[LEVELS.length - 1];
+    const scoreTone = (score) => {
+      const value = clampScore(score);
+      if (value >= 75) return "healthy";
+      if (value >= 60) return "caution";
+      if (value >= 40) return "warn";
+      return "danger";
+    };
+    const countText = (count) => count === 0 ? "0" : String(count);
+    const lineRef = (side) => side.line ? `${side.ref}:${side.line}` : side.ref;
+
+    function renderMeta(meta) {
+      const fileList = (meta.memoryFiles || []).map((file) => file.path).join(" / ");
+      return `
+        <span>编号：${escapeHTML(meta.id)}</span>
+        <span>日期：${escapeHTML(meta.date)}</span>
+        <span>样本：${escapeHTML(meta.sampleDescription || fileList)}</span>
+      `;
+    }
+
+    function renderShockItems(items) {
+      return (items || []).map((item) => `
+        <div class="shock-item">
+          <span class="shock-label">${escapeHTML(item.label)}</span>
+          <span class="shock-value"${item.aria ? ` aria-label="${escapeHTML(item.aria)}"` : ""}>
+            ${(item.value || []).map((line) => `<span>${escapeHTML(line)}</span>`).join("")}
+          </span>
+        </div>
+      `).join("");
+    }
+
+    function renderSeverityRail(total) {
+      const selected = currentLevel(total);
+      return LEVELS.map((level) => `
+        <div class="severity-step ${level === selected ? `current ${level.className}` : ""}">
+          <span>${level.min}-${level.max}：${escapeHTML(level.name)}</span>
+          <span class="severity-code">${escapeHTML(level.code)}</span>
+        </div>
+      `).join("");
+    }
+
+    function renderMiniRows(data) {
+      const rows = data.miniFindings || [
+        { label: "现病史", value: data.diagnosis.summary },
+        { label: "初步医嘱", value: data.diagnosis.advice }
+      ];
+      return rows.map((row) => `
+        <div class="mini-row">
+          <b>${escapeHTML(row.label)}</b>
+          <span>${escapeHTML(row.value)}</span>
+        </div>
+      `).join("");
+    }
+
+    function renderMemoryCard(kind, group) {
+      const tone = scoreTone(group.score);
+      return `
+        <article class="memory-card ${kind}">
+          <div class="memory-top">
             <div>
-              <h1 class="doc-title"><span class="title-main">Agent 记忆精神科</span><span class="title-type">确诊书</span></h1>
-              <p class="doc-subtitle">Memory Health Scan Report · DSM-MHS-2026 · 病历首页</p>
+              <h3>${escapeHTML(group.title)}</h3>
+              <p>${escapeHTML(group.title)}（${kind === "preset" ? "每轮预载" : "按需取用"}）：${escapeHTML(group.score)} / 100，${escapeHTML(group.note)}</p>
             </div>
-            <div class="case-meta" aria-label="报告元信息">
-              <span>编号：MHS-CLAUDE-0058</span>
-              <span>日期：2026-07-02</span>
-              <span>样本：CLAUDE.md / skills / docs</span>
-            </div>
+            <div class="memory-score ${tone}">${escapeHTML(group.score)}</div>
           </div>
+          <ul class="surface-list">
+            ${(group.items || []).map((item) => `
+              <li>
+                <span class="surface-name">${escapeHTML(item.label)} <code>${escapeHTML(item.ref)}</code><span class="surface-note">${escapeHTML(item.note)}</span></span>
+                <span class="surface-score ${scoreTone(item.score)}">${escapeHTML(item.score)}</span>
+              </li>
+            `).join("")}
+          </ul>
+        </article>
+      `;
+    }
 
-          <div class="diagnosis-stamp" tabindex="0" aria-label="主诊断">
-            <span class="stamp-kicker">PRIMARY DIAGNOSIS</span>
-            <p class="diagnosis-title" aria-label="确诊：记忆囤积障碍 · 伴 31% 上下文失忆"><span class="diagnosis-line">确诊：记忆囤积障碍</span><span class="diagnosis-line">伴 31% 上下文失忆</span></p>
-          </div>
-
-          <dl class="primary-complaint">
-            <dt>主诉</dt>
-            <dd>你的记忆约有 31% 每轮未产生有效价值，其中 12 条<br>适合迁移到对应 skill，减少常驻负荷。</dd>
-          </dl>
-
-          <div class="shock-strip" aria-label="现病史震撼三连">
-            <div class="shock-item">
-              <span class="shock-label">病灶体积</span>
-              <span class="shock-value"><span>全局 CLAUDE.md</span><span>47 KB</span></span>
-            </div>
-            <div class="shock-item">
-              <span class="shock-label">每轮输液</span>
-              <span class="shock-value"><span>~11,800</span><span>tokens</span></span>
-            </div>
-            <div class="shock-item">
-              <span class="shock-label">失忆脑区</span>
-              <span class="shock-value" aria-label="约 31% 从未进入有效上下文"><span>约 31%</span><span>未加载</span></span>
-            </div>
-          </div>
-        </div>
-
-        <aside class="hero-right" aria-label="总分和病情分级">
-          <div class="chart-card score-card">
-            <div class="score-label">
-              <span>总分：58 / 100</span>
-              <span>Directional score</span>
-            </div>
-            <div class="score-number">58 <span>/ 100</span></div>
-            <p class="level-note"><strong>等级带：记忆囤积障碍（伴脑雾）</strong> — 本例 58 分，落在 40-59 分区间；需要先清理长期常驻、过期和互相冲突的记忆负荷。</p>
-          </div>
-
-          <div class="chart-card severity">
-            <h2>病情分级</h2>
-            <div class="severity-rail" aria-label="等级带">
-              <div class="severity-step"><span>90-100：认知清明（脑回清奇）</span><span class="severity-code">CLEAR</span></div>
-              <div class="severity-step"><span>75-89：轻度信息过载</span><span class="severity-code">LOAD</span></div>
-              <div class="severity-step"><span>60-74：记忆囤积倾向</span><span class="severity-code">RISK</span></div>
-              <div class="severity-step current"><span>40-59：记忆囤积障碍（伴脑雾）</span><span class="severity-code">CASE</span></div>
-              <div class="severity-step"><span>0-39：重度脑雾 · 上下文失忆</span><span class="severity-code">CRIT</span></div>
-            </div>
-          </div>
-
-          <div class="chart-card mini-findings">
-            <div class="mini-row">
-              <b>现病史</b>
-              <span>约 31% 内容超出上下文预算，未能进入有效上下文，实际指导价值缺失。</span>
-            </div>
-            <div class="mini-row">
-              <b>初步医嘱</b>
-              <span>建议收敛 CLAUDE.md 常驻内容；每轮减少约 8000 token，降低记忆囤积复发风险。</span>
-            </div>
-          </div>
-        </aside>
-      </header>
-
-      <main>
-        <section class="section" aria-labelledby="memory-scores">
-          <div class="section-header">
-            <span class="section-tag">病历 01</span>
-            <h2 id="memory-scores">两类记忆记分</h2>
-            <span class="section-caption">预置 : 外部 = 5 : 5，聚合总分 58</span>
-          </div>
-          <div class="section-body">
-            <div class="memory-grid">
-              <article class="memory-card preset">
-                <div class="memory-top">
-                  <div>
-                    <h3>预置记忆</h3>
-                    <p>预置记忆（每轮预载）：49 / 100，常驻负荷偏高</p>
-                  </div>
-                  <div class="memory-score">49</div>
-                </div>
-                <ul class="surface-list">
-                  <li>
-                    <span class="surface-name">全局记忆 <code>~/.claude/CLAUDE.md</code><span class="surface-note">过长，892 行</span></span>
-                    <span class="surface-score">42</span>
-                  </li>
-                  <li>
-                    <span class="surface-name">项目记忆 <code>./CLAUDE.md</code><span class="surface-note">局部有用，但也开始粘锅</span></span>
-                    <span class="surface-score">63</span>
-                  </li>
-                </ul>
-              </article>
-
-              <article class="memory-card external">
-                <div class="memory-top">
-                  <div>
-                    <h3>外部记忆</h3>
-                    <p>外部记忆（按需取用）：67 / 100，像药房药柜，不该塞进脑袋</p>
-                  </div>
-                  <div class="memory-score">67</div>
-                </div>
-                <ul class="surface-list">
-                  <li>
-                    <span class="surface-name">技能 <code>skills</code><span class="surface-note">大体可用，有两个技能偏长</span></span>
-                    <span class="surface-score">71</span>
-                  </li>
-                  <li>
-                    <span class="surface-name">文档 <code>docs</code><span class="surface-note">有断链、过期记录和命名口径冲突</span></span>
-                    <span class="surface-score">58</span>
-                  </li>
-                </ul>
-              </article>
-            </div>
-          </div>
-        </section>
-
-        <section class="section" aria-labelledby="findings">
-          <div class="section-header">
-            <span class="section-tag">辅助检查</span>
-            <h2 id="findings">四维诊断：分数即证据</h2>
-            <span class="section-caption">每条异常挂原始证据，不靠玄学把脉</span>
-          </div>
-          <div class="section-body">
-            <div class="diagnostic-grid">
-              <article class="finding-card">
-                <div class="finding-head">
-                  <div>
-                    <h3>① 体量 Bloat</h3>
-                    <p class="finding-tagline">常驻信息负荷过高，本项已进入红色化验值。</p>
-                  </div>
-                  <div class="finding-score danger">38</div>
-                </div>
-                <ul class="evidence-list">
-                  <li class="evidence"><strong>~/.claude/CLAUDE.md</strong><span>892 行（超 200 行上限 4.5 倍）/ 47 KB / 每轮约 11,800 tokens</span></li>
-                  <li class="evidence"><strong>上下文预算</strong><span>约 31% 内容超出上下文预算，未能进入有效上下文，实际指导价值缺失</span></li>
-                  <li class="evidence"><strong>skills/wechat-desktop/SKILL.md</strong><span>340 行（建议拆分）</span></li>
-                  <li class="evidence"><strong>skills/clash-verge-config/SKILL.md</strong><span>268 行</span></li>
-                </ul>
-              </article>
-
-              <article class="finding-card">
-                <div class="finding-head">
-                  <div>
-                    <h3>② 可用性 Usability</h3>
-                    <p class="finding-tagline">有些指令太含糊或太通用，Agent 根本无从执行。</p>
-                  </div>
-                  <div class="finding-score warn">55</div>
-                </div>
-                <ul class="evidence-list">
-                  <li class="evidence"><strong>~/.claude/CLAUDE.md:441</strong><span>“写代码时注意处理好边界情况” → 太含糊，agent 无法据此做任何具体决策</span></li>
-                  <li class="evidence"><strong>~/.claude/CLAUDE.md:203</strong><span>“保持代码整洁、可维护” → 通用废话，不改变任何决策</span></li>
-                  <li class="evidence"><strong>预置层</strong><span>约 40% 的行可从 repo / package.json 直接推断（技术栈、显而易见的约定）</span></li>
-                  <li class="evidence"><strong>含糊指令</strong><span>7 处类似的含糊指令（“合理处理”“视情况而定”“注意性能”）</span></li>
-                </ul>
-              </article>
-
-              <article class="finding-card">
-                <div class="finding-head">
-                  <div>
-                    <h3>③ 新鲜度 Freshness</h3>
-                    <p class="finding-tagline">临时方案久病成医嘱，容易误诊。</p>
-                  </div>
-                  <div class="finding-score caution">61</div>
-                </div>
-                <ul class="evidence-list">
-                  <li class="evidence"><strong>agent-steroids/CLAUDE.md:88</strong><span>“guard-payload-size 临时方案……官方修复后可移除” → 上游 issue 已于两月前修复，此段已过期</span></li>
-                  <li class="evidence"><strong>~/.claude/CLAUDE.md:127</strong><span>引用 <code>~/.config/old-proxy.conf</code> → 该文件已不存在（断链）</span></li>
-                  <li class="evidence"><strong>工作记录</strong><span>3 处 “临时方案 / WIP” 标记，对应工作均已 ship</span></li>
-                  <li class="evidence"><strong>~/.claude/CLAUDE.md</strong><span>2 条节点测速数据来自 4 个月前，已不代表现状</span></li>
-                </ul>
-              </article>
-
-              <article class="finding-card">
-                <div class="finding-head">
-                  <div>
-                    <h3>④ 矛盾 Contradiction</h3>
-                    <p class="finding-tagline">跨预置/外部打架，像左右脑互相开处方。</p>
-                  </div>
-                  <div class="finding-score warn">52</div>
-                </div>
-                <ul class="evidence-list">
-                  <li class="evidence"><strong>矛盾 #1</strong><span><code>[~/.claude/CLAUDE.md:某行]</code> 文档命名统一用 “yyMMdd-” 前缀 ⚔️ <code>[agent-steroids/CLAUDE.md:某行]</code> 文件名统一用 “YYYYMMDD-” 前缀</span></li>
-                  <li class="evidence"><strong>矛盾 #2</strong><span><code>[~/.claude/CLAUDE.md]</code> 读社交媒体直接用 CDP Chrome ⚔️ <code>[skills/web-access]</code> 优先 WebSearch/WebFetch/Jina</span></li>
-                  <li class="evidence"><strong>矛盾 #3</strong><span><code>[~/.claude/CLAUDE.md]</code> 默认用 github.com 作 git host ⚔️ <code>[项目 CLAUDE.md]</code> 本项目一律走 mindfitgit</span></li>
-                </ul>
-              </article>
-            </div>
-          </div>
-        </section>
-
-        <section class="section" aria-labelledby="contradictions">
-          <div class="section-header">
-            <span class="section-tag">鉴别诊断</span>
-            <h2 id="contradictions">矛盾专区</h2>
-            <span class="section-caption">这几处指令自相矛盾——你的 Agent 到底该听哪条？</span>
-          </div>
-          <div class="section-body">
-            <div class="vs-list">
-              <article class="conflict-card">
-                <div class="conflict-diagnosis"><b>矛盾 #1</b><span>文档命名前缀口径不一致，值得你看一眼。</span></div>
-                <div class="split-diff" aria-label="矛盾 #1 GitHub split diff">
-                  <div class="diff-panel old">
-                    <div class="diff-path"><span class="diff-badge">−</span><span>~/.claude/CLAUDE.md:612</span></div>
-                    <div class="diff-row">
-                      <span class="diff-gutter">612</span>
-                      <span class="diff-code"><del>文档命名统一用 “yyMMdd-” 前缀（如 260603-）</del></span>
-                    </div>
-                  </div>
-                  <div class="diff-panel new">
-                    <div class="diff-path"><span class="diff-badge">+</span><span>agent-steroids/CLAUDE.md:24</span></div>
-                    <div class="diff-row">
-                      <span class="diff-gutter">24</span>
-                      <span class="diff-code"><ins>文件名统一用 “YYYYMMDD-” 前缀</ins></span>
-                    </div>
-                  </div>
-                </div>
-              </article>
-
-              <article class="conflict-card">
-                <div class="conflict-diagnosis"><b>矛盾 #2</b><span>社交媒体读取路由互相打架，这条可以再斟酌。</span></div>
-                <div class="split-diff" aria-label="矛盾 #2 GitHub split diff">
-                  <div class="diff-panel old">
-                    <div class="diff-path"><span class="diff-badge">−</span><span>~/.claude/CLAUDE.md:388</span></div>
-                    <div class="diff-row">
-                      <span class="diff-gutter">388</span>
-                      <span class="diff-code"><del>读社交媒体直接用 CDP Chrome，不要先试 defuddle/WebFetch</del></span>
-                    </div>
-                  </div>
-                  <div class="diff-panel new">
-                    <div class="diff-path"><span class="diff-badge">+</span><span>skills/web-access/SKILL.md:41</span></div>
-                    <div class="diff-row">
-                      <span class="diff-gutter">41</span>
-                      <span class="diff-code"><ins>优先 WebSearch/WebFetch/Jina，静态层无效才上 CDP</ins></span>
-                    </div>
-                  </div>
-                </div>
-              </article>
-
-              <article class="conflict-card">
-                <div class="conflict-diagnosis"><b>矛盾 #3</b><span>低置信：更像“特例覆盖”而非真冲突，由你定夺。</span></div>
-                <div class="split-diff" aria-label="矛盾 #3 GitHub split diff">
-                  <div class="diff-panel old">
-                    <div class="diff-path"><span class="diff-badge">−</span><span>~/.claude/CLAUDE.md:73</span></div>
-                    <div class="diff-row">
-                      <span class="diff-gutter">73</span>
-                      <span class="diff-code"><del>默认用 github.com 作 git host</del></span>
-                    </div>
-                  </div>
-                  <div class="diff-panel new">
-                    <div class="diff-path"><span class="diff-badge">+</span><span>agent-steroids/CLAUDE.md:19</span></div>
-                    <div class="diff-row">
-                      <span class="diff-gutter">19</span>
-                      <span class="diff-code"><ins>本项目一律走 mindfitgit</ins></span>
-                    </div>
-                  </div>
-                </div>
-              </article>
-            </div>
-          </div>
-        </section>
-
-        <section class="section" aria-labelledby="prescription">
-          <div class="section-header">
-            <span class="section-tag">医嘱</span>
-            <h2 id="prescription">处方笺</h2>
-            <span class="section-caption">高置信项可直接执行；需判断项保留复核口径</span>
-          </div>
-          <div class="section-body">
-            <div class="prescription-grid">
-              <article class="prescription-preview">
-                <ul class="rx-list">
-                  <li class="rx-item rx-focus">
-                    <p class="rx-name">拆分全局 CLAUDE.md（892 → &lt;200 行）</p>
-                    <p class="rx-reason">它大到有 31% 每轮根本没加载，拆完立刻恢复全量加载。</p>
-                  </li>
-                  <li class="rx-item rx-focus">
-                    <p class="rx-name">把约 12 条 skill 专属教训移回各自的 skill</p>
-                    <p class="rx-reason">它们塞在全局里给每轮交税，其实只在各自 skill 才用得上。</p>
-                  </li>
-                  <li class="rx-item rx-focus">
-                    <p class="rx-name">调和 3 处自相矛盾的指令</p>
-                    <p class="rx-reason">让 Agent 不再在同一件事上收到相反命令。</p>
-                  </li>
-                </ul>
-                <p class="rx-footnote">完整处方（8 项）在治疗确认书里。</p>
-              </article>
-            </div>
-          </div>
-        </section>
-
-        <section class="section" aria-labelledby="prognosis">
-          <div class="section-header">
-            <span class="section-tag">预后</span>
-            <h2 id="prognosis">疗效预测 Before / After</h2>
-            <span class="section-caption">照方抓药后，脑内常驻噪声明显退烧</span>
-          </div>
-          <div class="section-body">
-            <div class="prognosis">
-              <div class="after-card">
-                <span>总分变化</span>
-                <strong>58 → 89</strong>
-                <p>等级带：记忆囤积障碍（伴脑雾） → 轻度信息过载</p>
+    function renderDimensionCards(dimensions) {
+      return DIMENSION_ORDER.map(([key, number]) => {
+        const item = dimensions[key];
+        if (!item) return "";
+        return `
+          <article class="finding-card">
+            <div class="finding-head">
+              <div>
+                <h3>${number} ${escapeHTML(item.title)}</h3>
+                <p class="finding-tagline">${escapeHTML(item.tagline)}</p>
               </div>
-              <ul class="prognosis-list">
-                <li><b>每轮 token 税</b><span>−68%（11,800 → ~3,800）</span></li>
-                <li><b>全局 CLAUDE.md</b><span>47 KB → ~9 KB</span></li>
-                <li><b>加载状态</b><span>恢复全量加载（不再被截断）</span></li>
-                <li><b>临床印象</b><span>记忆囤积明显缓解，处方有效；复查时重点看预置层是否反弹。</span></li>
-              </ul>
+              <div class="finding-score ${scoreTone(item.score)}">${escapeHTML(item.score)}</div>
+            </div>
+            <ul class="evidence-list">
+              ${(item.evidence || []).map((evidence) => `
+                <li class="evidence"><strong>${escapeHTML(evidence.ref)}</strong><span>${escapeHTML(evidence.quote)}</span></li>
+              `).join("")}
+            </ul>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function renderContradictions(contradictions) {
+      if (!contradictions || contradictions.length === 0) {
+        return `<article class="conflict-card"><div class="conflict-diagnosis"><b>未检出</b><span>本轮没有发现需要裁决的自相矛盾指令。</span></div></article>`;
+      }
+      return contradictions.map((item, index) => `
+        <article class="conflict-card">
+          <div class="conflict-diagnosis"><b>矛盾 #${index + 1} · ${escapeHTML(item.confidence)}置信</b><span>${escapeHTML(item.summary)}</span></div>
+          <div class="split-diff" aria-label="矛盾 #${index + 1} split diff">
+            <div class="diff-panel old">
+              <div class="diff-path"><span class="diff-badge">−</span><span>${escapeHTML(lineRef(item.left))}</span></div>
+              <div class="diff-row">
+                <span class="diff-gutter">${escapeHTML(item.left.line || "—")}</span>
+                <span class="diff-code"><del>${escapeHTML(item.left.quote)}</del></span>
+              </div>
+            </div>
+            <div class="diff-panel new">
+              <div class="diff-path"><span class="diff-badge">+</span><span>${escapeHTML(lineRef(item.right))}</span></div>
+              <div class="diff-row">
+                <span class="diff-gutter">${escapeHTML(item.right.line || "—")}</span>
+                <span class="diff-code"><ins>${escapeHTML(item.right.quote)}</ins></span>
+              </div>
             </div>
           </div>
-        </section>
+        </article>
+      `).join("");
+    }
 
-        <div class="treatment-cta">
-          <p>诊断只是建议，改不改由你签字确认。<span>下一页会逐条列出处方、证据和决定栏，保存后 agent 只执行你勾选的项目。</span></p>
-          <a class="treatment-link" href="./review-table-template.html">去签《治疗确认书》→</a>
+    function renderPrescriptions(prescriptions) {
+      if (!prescriptions || prescriptions.length === 0) {
+        return `<li class="rx-item rx-focus"><p class="rx-name">无需开方</p><p class="rx-reason">本轮没有足够证据支持修改记忆文件。</p></li>`;
+      }
+      return prescriptions.map((item) => `
+        <li class="rx-item rx-focus">
+          <p class="rx-name">${escapeHTML(item.title)}</p>
+          <p class="rx-reason">${escapeHTML(item.reason)}</p>
+          <div class="rx-meta">
+            <span><b>ID</b>${escapeHTML(item.id)}</span>
+            <span><b>CONF</b>${escapeHTML(item.confidence)}</span>
+            <span><b>EFFECT</b>${escapeHTML(item.effect)}</span>
+          </div>
+        </li>
+      `).join("");
+    }
+
+    function renderPrognosis(data, level) {
+      const projected = clampScore(data.prognosis.projectedTotal);
+      const projectedLevel = currentLevel(projected);
+      return `
+        <div class="prognosis">
+          <div class="after-card">
+            <span>总分变化</span>
+            <strong>${escapeHTML(data.total)} → ${escapeHTML(projected)}</strong>
+            <p>等级带：${escapeHTML(level.name)} → ${escapeHTML(projectedLevel.name)}</p>
+          </div>
+          <ul class="prognosis-list">
+            ${(data.prognosis.items || []).map((item) => `<li><b>${escapeHTML(item.label)}</b><span>${escapeHTML(item.value)}</span></li>`).join("")}
+          </ul>
         </div>
-      </main>
+      `;
+    }
 
-      <footer class="disclaimer">
-        小字免责：分数是方向性参考、不是精确度量；高置信项可复现，语义项取决于当次判断；真正有价值的是处方，不是数字。
-      </footer>
-    </article>
-  </div>
+    function renderReport(data) {
+      const total = clampScore(data.total);
+      const level = currentLevel(total);
+      const prescriptionCount = data.prescriptions ? data.prescriptions.length : 0;
+      const contradictionCount = data.contradictions ? data.contradictions.length : 0;
+      const diagnosisLine = data.diagnosis.line || (data.truncated ? `伴 ${data.truncation?.unloadedPercent || 0}% 上下文失忆` : "记忆文件全量加载");
+      const levelGuidance = data.diagnosis.levelNote || level.guidance;
+
+      document.getElementById("app").innerHTML = `
+        <article class="medical-folder" aria-label="记忆健康度扫描报告">
+          <header class="hero">
+            <div class="hero-left">
+              <div class="form-head">
+                <div class="hospital-mark" aria-hidden="true">脑</div>
+                <div>
+                  <h1 class="doc-title"><span class="title-main">Agent 记忆精神科</span><span class="title-type">确诊书</span></h1>
+                  <p class="doc-subtitle">Memory Health Scan Report · DSM-MHS-2026 · 病历首页</p>
+                </div>
+                <div class="case-meta" aria-label="报告元信息">${renderMeta(data.meta)}</div>
+              </div>
+
+              <div class="diagnosis-stamp" tabindex="0" aria-label="主诊断">
+                <span class="stamp-kicker">PRIMARY DIAGNOSIS</span>
+                <p class="diagnosis-title" aria-label="确诊：${escapeHTML(level.name)} · ${escapeHTML(diagnosisLine)}"><span class="diagnosis-line">确诊：${escapeHTML(level.name)}</span><span class="diagnosis-line">${escapeHTML(diagnosisLine)}</span></p>
+              </div>
+
+              <dl class="primary-complaint">
+                <dt>主诉</dt>
+                <dd>${escapeHTML(data.diagnosis.complaint)}</dd>
+              </dl>
+
+              <div class="shock-strip" aria-label="现病史震撼三连">${renderShockItems(data.shocks)}</div>
+            </div>
+
+            <aside class="hero-right" aria-label="总分和病情分级">
+              <div class="chart-card score-card">
+                <div class="score-label">
+                  <span>总分：${escapeHTML(total)} / 100</span>
+                  <span>Directional score</span>
+                </div>
+                <div class="score-number ${scoreTone(total)}">${escapeHTML(total)} <span>/ 100</span></div>
+                <p class="level-note"><strong>等级带：${escapeHTML(level.name)}</strong> — 本例 ${escapeHTML(total)} 分，落在 ${escapeHTML(level.min)}-${escapeHTML(level.max)} 分区间；${escapeHTML(levelGuidance)}</p>
+              </div>
+
+              <div class="chart-card severity">
+                <h2>病情分级</h2>
+                <div class="severity-rail" aria-label="等级带">${renderSeverityRail(total)}</div>
+              </div>
+
+              <div class="chart-card mini-findings">${renderMiniRows(data)}</div>
+
+              <div class="chart-card share-panel">
+                <button class="share-button" type="button" data-share>生成分享卡片</button>
+                <p class="share-note" data-share-status>小红书竖版 PNG · 1080×1440 · 离线生成</p>
+              </div>
+            </aside>
+          </header>
+
+          <main>
+            <section class="section" aria-labelledby="memory-scores">
+              <div class="section-header">
+                <span class="section-tag">病历 01</span>
+                <h2 id="memory-scores">两类记忆记分</h2>
+                <span class="section-caption">预置 : 外部 = 5 : 5，聚合总分 ${escapeHTML(total)}</span>
+              </div>
+              <div class="section-body">
+                <div class="memory-grid">
+                  ${renderMemoryCard("preset", data.surfaces.preset)}
+                  ${renderMemoryCard("external", data.surfaces.external)}
+                </div>
+              </div>
+            </section>
+
+            <section class="section" aria-labelledby="findings">
+              <div class="section-header">
+                <span class="section-tag">辅助检查</span>
+                <h2 id="findings">四维诊断：分数即证据</h2>
+                <span class="section-caption">每条异常挂原始证据，不靠玄学把脉</span>
+              </div>
+              <div class="section-body">
+                <div class="diagnostic-grid">${renderDimensionCards(data.dimensions)}</div>
+              </div>
+            </section>
+
+            <section class="section" aria-labelledby="contradictions">
+              <div class="section-header">
+                <span class="section-tag">鉴别诊断</span>
+                <h2 id="contradictions">矛盾专区</h2>
+                <span class="section-caption">这${escapeHTML(countText(contradictionCount))}处指令自相矛盾——记忆系统到底该听哪条？</span>
+              </div>
+              <div class="section-body">
+                <div class="vs-list">${renderContradictions(data.contradictions)}</div>
+              </div>
+            </section>
+
+            <section class="section" aria-labelledby="prescription">
+              <div class="section-header">
+                <span class="section-tag">医嘱</span>
+                <h2 id="prescription">处方笺</h2>
+                <span class="section-caption">高置信项可直接执行；需判断项保留复核口径</span>
+              </div>
+              <div class="section-body">
+                <div class="prescription-grid">
+                  <article class="prescription-preview">
+                    <ul class="rx-list">${renderPrescriptions(data.prescriptions)}</ul>
+                    <p class="rx-footnote">完整处方（${escapeHTML(prescriptionCount)} 项）在治疗确认书里。</p>
+                  </article>
+                </div>
+              </div>
+            </section>
+
+            <section class="section" aria-labelledby="prognosis">
+              <div class="section-header">
+                <span class="section-tag">预后</span>
+                <h2 id="prognosis">疗效预测 Before / After</h2>
+                <span class="section-caption">${escapeHTML(data.prognosis.caption)}</span>
+              </div>
+              <div class="section-body">${renderPrognosis(data, level)}</div>
+            </section>
+
+            <div class="treatment-cta">
+              <p>诊断只是建议，改不改由你签字确认。<span>下一页会逐条列出处方、证据和决定栏，保存后 agent 只执行你勾选的项目。</span></p>
+              <a class="treatment-link" href="${escapeHTML(data.meta.treatmentHref || "./review-table-template.html")}">去签《治疗确认书》→</a>
+            </div>
+          </main>
+
+          <footer class="disclaimer">
+            小字免责：分数是方向性参考、不是精确度量；高置信项可复现，语义项取决于当次判断；真正有价值的是处方，不是数字。本报告在本机生成、不联网；完整报告含你记忆文件的原文，对外分享请只用「分享卡」。
+          </footer>
+        </article>
+      `;
+
+      document.querySelector("[data-share]").addEventListener("click", () => downloadShareCard(data));
+    }
+
+    function wrapTextForSvg(text, maxChars) {
+      const chars = Array.from(String(text || ""));
+      const lines = [];
+      let line = "";
+      chars.forEach((char) => {
+        const next = line + char;
+        if (next.length > maxChars && line) {
+          lines.push(line);
+          line = char.trimStart();
+        } else {
+          line = next;
+        }
+      });
+      if (line) lines.push(line);
+      return lines;
+    }
+
+    function svgTextLines(text, x, y, options = {}) {
+      const size = options.size || 36;
+      const lineHeight = options.lineHeight || Math.round(size * 1.25);
+      const fill = options.fill || "#18211f";
+      const weight = options.weight || 800;
+      const family = options.family || `"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif`;
+      const anchor = options.anchor ? ` text-anchor="${options.anchor}"` : "";
+      const lines = options.lines || wrapTextForSvg(text, options.maxChars || 18);
+      return lines.map((line, index) => `<text x="${x}" y="${y + index * lineHeight}" font-family='${family}' font-size="${size}" font-weight="${weight}" fill="${fill}"${anchor}>${escapeXML(line)}</text>`).join("");
+    }
+
+    function createShareSvg(data) {
+      const width = 1080;
+      const height = 1440;
+      const total = clampScore(data.total);
+      const level = currentLevel(total);
+      const dimensions = DIMENSION_ORDER.map(([key]) => data.dimensions[key]).filter(Boolean);
+      const palette = {
+        ink: "#18211f",
+        muted: "#51605c",
+        paper: "#f4f6ed",
+        cool: "#e5f0e8",
+        warm: "#fbf4dc",
+        red: "#b4222b",
+        redDeep: "#7f151e",
+        blue: "#1f5876",
+        green: "#47796a",
+        yellow: "#d4a72c",
+        orange: "#c96a2b"
+      };
+      const toneColor = (score) => {
+        const tone = scoreTone(score);
+        if (tone === "healthy") return palette.green;
+        if (tone === "caution") return palette.yellow;
+        if (tone === "warn") return palette.orange;
+        return palette.redDeep;
+      };
+      const bars = dimensions.map((dimension, index) => {
+        const y = 840 + index * 96;
+        const score = clampScore(dimension.score);
+        return `
+          <text x="124" y="${y}" font-family='"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif' font-size="32" font-weight="900" fill="${palette.ink}">${escapeXML(dimension.title.split(" ")[0])}</text>
+          <rect x="300" y="${y - 26}" width="560" height="22" fill="rgba(24,33,31,.12)"/>
+          <rect x="300" y="${y - 26}" width="${Math.round(560 * score / 100)}" height="22" fill="${toneColor(score)}"/>
+          <text x="902" y="${y}" font-family='"Songti SC", "STSong", serif' font-size="42" font-weight="900" fill="${toneColor(score)}">${score}</text>
+        `;
+      }).join("");
+
+      return `
+        <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+          <defs>
+            <pattern id="grid" width="34" height="34" patternUnits="userSpaceOnUse">
+              <path d="M 34 0 L 0 0 0 34" fill="none" stroke="rgba(24,33,31,.08)" stroke-width="2"/>
+            </pattern>
+          </defs>
+          <rect width="${width}" height="${height}" fill="${palette.paper}"/>
+          <rect width="${width}" height="${height}" fill="url(#grid)"/>
+          <rect x="54" y="54" width="972" height="1332" fill="none" stroke="${palette.ink}" stroke-width="4"/>
+          <rect x="78" y="78" width="924" height="1284" fill="rgba(255,255,255,.36)" stroke="rgba(24,33,31,.25)" stroke-width="2"/>
+          <text x="124" y="164" font-family='"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif' font-size="30" font-weight="900" fill="${palette.muted}" letter-spacing="5">MEMORY HEALTH SCAN</text>
+          ${svgTextLines(data.share?.title || "我的 Agent 记忆体检", 124, 252, { size: 78, lineHeight: 88, weight: 900, family: `"Songti SC", "STSong", serif`, maxChars: 20 })}
+          <rect x="124" y="390" width="832" height="300" fill="rgba(180,34,43,.08)" stroke="${toneColor(total)}" stroke-width="10"/>
+          <text x="164" y="504" font-family='"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif' font-size="34" font-weight="900" fill="${palette.muted}">总分</text>
+          <text x="164" y="646" font-family='"Songti SC", "STSong", serif' font-size="190" font-weight="900" fill="${toneColor(total)}">${total}</text>
+          <text x="404" y="636" font-family='"SFMono-Regular", "Menlo", monospace' font-size="48" font-weight="900" fill="${palette.ink}">/ 100</text>
+          <rect x="638" y="478" width="250" height="72" fill="${toneColor(total)}"/>
+          <text x="763" y="526" font-family='"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif' font-size="30" font-weight="900" fill="#fff" text-anchor="middle">${escapeXML(level.code)}</text>
+          ${svgTextLines(level.name, 638, 604, { size: 40, lineHeight: 48, weight: 900, fill: palette.ink, maxChars: 8 })}
+          <text x="124" y="766" font-family='"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif' font-size="34" font-weight="900" fill="${palette.muted}">四维分数</text>
+          ${bars}
+          <rect x="124" y="1250" width="832" height="84" fill="${palette.warm}" stroke="rgba(24,33,31,.35)" stroke-width="2"/>
+          <text x="154" y="1305" font-family='"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif' font-size="34" font-weight="900" fill="${palette.ink}">处方 ${data.prescriptions?.length || 0} 项 · 矛盾 ${data.contradictions?.length || 0} 处</text>
+          <text x="124" y="1378" font-family='"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif' font-size="24" font-weight="800" fill="${palette.muted}">${escapeXML(data.share?.footnote || "")}</text>
+        </svg>
+      `;
+    }
+
+    function pngBlobFromSvg(svg) {
+      return new Promise((resolve, reject) => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 1080;
+        canvas.height = 1440;
+        const context = canvas.getContext("2d");
+        const image = new Image();
+        const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
+        image.onload = () => {
+          context.fillStyle = "#f4f6ed";
+          context.fillRect(0, 0, canvas.width, canvas.height);
+          context.drawImage(image, 0, 0);
+          URL.revokeObjectURL(url);
+          canvas.toBlob((blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error("PNG 生成失败"));
+          }, "image/png");
+        };
+        image.onerror = () => {
+          URL.revokeObjectURL(url);
+          reject(new Error("SVG 加载失败"));
+        };
+        image.src = url;
+      });
+    }
+
+    async function downloadShareCard(data) {
+      const status = document.querySelector("[data-share-status]");
+      const button = document.querySelector("[data-share]");
+      try {
+        if (button) button.disabled = true;
+        if (status) status.textContent = "正在生成 PNG…";
+        const svg = createShareSvg(data);
+        const blob = await pngBlobFromSvg(svg);
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "agent-memory-checkup.png";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        if (status) status.textContent = "已生成小红书竖版 PNG";
+        return blob;
+      } catch (error) {
+        if (status) status.textContent = error.message;
+        throw error;
+      } finally {
+        if (button) button.disabled = false;
+      }
+    }
+
+    window.__diagnosisTestGenerateSharePng = () => pngBlobFromSvg(createShareSvg(DATA));
+    document.addEventListener("DOMContentLoaded", () => renderReport(DATA));
+  </script>
 </body>
 </html>
