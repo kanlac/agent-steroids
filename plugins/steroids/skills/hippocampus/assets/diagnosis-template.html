@@ -119,7 +119,7 @@
         }
       ],
       prescriptions: [
-        { id: "rx-global-split", title: "拆分全局 CLAUDE.md（892 → <200 行）", reason: "它大到有 31% 每轮根本没加载，拆完立刻恢复全量加载。", confidence: "高", effect: "恢复全量加载" },
+        { id: "rx-global-split", title: "拆分全局 CLAUDE.md（892 → <200 行）", reason: "它大到有 31% 每轮根本没加载，拆完就不再超载、全部生效。", confidence: "高", effect: "不再超载" },
         { id: "rx-skill-move", title: "把约 12 条 skill 专属教训移回各自的 skill", reason: "它们塞在全局里给每轮交税，其实只在各自 skill 才用得上。", confidence: "高", effect: "减少常驻负荷" },
         { id: "rx-conflicts", title: "调和 3 处自相矛盾的指令", reason: "让 Agent 不再在同一件事上收到相反命令。", confidence: "中", effect: "降低执行分叉" },
         { id: "rx-stale", title: "删除过期临时方案与断链引用", reason: "过期医嘱会让后续 agent 按不存在的路径或已修复的问题行动。", confidence: "中", effect: "提高新鲜度" },
@@ -136,7 +136,7 @@
         items: [
           { label: "每轮 token 税", value: "−68%（11,800 → ~3,800）" },
           { label: "全局 CLAUDE.md", value: "47 KB → ~9 KB" },
-          { label: "加载状态", value: "恢复全量加载（不再被截断）" },
+          { label: "加载状态", value: "记忆不再超载、全部生效" },
           { label: "临床印象", value: "记忆囤积明显缓解，处方有效；复查时重点看预置层是否反弹。" }
         ]
       },
@@ -1737,7 +1737,7 @@
       const level = currentLevel(total);
       const prescriptionCount = data.prescriptions ? data.prescriptions.length : 0;
       const contradictionCount = data.contradictions ? data.contradictions.length : 0;
-      const diagnosisLine = data.diagnosis.line || (data.truncated ? `伴 ${data.truncation?.unloadedPercent || 0}% 上下文失忆` : "记忆文件全量加载");
+      const diagnosisLine = data.diagnosis.line || (data.truncated ? `伴 ${data.truncation?.unloadedPercent || 0}% 上下文失忆` : "记忆没超载");
       const levelGuidance = data.diagnosis.levelNote || level.guidance;
 
       document.getElementById("app").innerHTML = `
@@ -1896,69 +1896,115 @@
     }
 
     function createShareSvg(data) {
-      const width = 1080;
-      const height = 1440;
       const total = clampScore(data.total);
-      const level = currentLevel(total);
-      const dimensions = DIMENSION_ORDER.map(([key]) => data.dimensions[key]).filter(Boolean);
-      const palette = {
-        ink: "#18211f",
-        muted: "#51605c",
-        paper: "#f4f6ed",
-        cool: "#e5f0e8",
+      const fallbackLevel = currentLevel(total);
+      const levelName = data.diagnosis?.levelName || data.levelName || fallbackLevel.name;
+      const levelCode = data.diagnosis?.levelCode || data.levelCode || fallbackLevel.code;
+      const diagnosisLine = data.diagnosis?.subtitle
+        || data.diagnosis?.shortLine
+        || data.diagnosis?.line
+        || data.diagnosis?.summary
+        || (total >= 75 ? "记忆基本清明" : fallbackLevel.guidance);
+      const date = data.meta?.date || new Date().toISOString().slice(0, 10);
+      const prescriptionCount = Array.isArray(data.prescriptions) ? data.prescriptions.length : 0;
+      const contradictionCount = Array.isArray(data.contradictions) ? data.contradictions.length : 0;
+      const P = {
+        ink: "#18211f", muted: "#51605c", paper: "#f4f6ed",
         warm: "#fbf4dc",
-        red: "#b4222b",
-        redDeep: "#7f151e",
-        blue: "#1f5876",
-        green: "#47796a",
-        yellow: "#d4a72c",
-        orange: "#c96a2b"
+        red: "#b4222b", redDeep: "#7f151e", blue: "#1f5876",
+        green: "#47796a", yellow: "#d4a72c", orange: "#c96a2b", violet: "#44385d"
       };
-      const toneColor = (score) => {
-        const tone = scoreTone(score);
-        if (tone === "healthy") return palette.green;
-        if (tone === "caution") return palette.yellow;
-        if (tone === "warn") return palette.orange;
-        return palette.redDeep;
-      };
-      const bars = dimensions.map((dimension, index) => {
-        const y = 840 + index * 96;
-        const score = clampScore(dimension.score);
+      const SANS = "'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif";
+      const SERIF = "'Songti SC','STSong',serif";
+      const MONO = "'SFMono-Regular','Menlo','Consolas',monospace";
+      const dimensionNames = ["整体负荷", "废话含量", "过期程度", "自相矛盾"];
+      const dimensionKeys = ["bloat", "usability", "freshness", "contradiction"];
+      const dimensionScores = dimensionKeys.map((key, index) => {
+        const fromObject = data.dimensions && !Array.isArray(data.dimensions) ? data.dimensions[key]?.score : undefined;
+        const fromArray = Array.isArray(data.dimensions) ? data.dimensions[index]?.score : undefined;
+        return clampScore(fromObject ?? fromArray ?? 0);
+      });
+      const passedCount = dimensionScores.filter((score) => score >= 75).length;
+      const lowCount = dimensionScores.length - passedCount;
+      const priorityText = lowCount
+        ? "建议先处理偏低项"
+        : "建议保持定期复查";
+      const tone = (score) => score >= 75 ? P.green : score >= 60 ? P.yellow : P.red;
+      const verdictColor = (score) => score >= 75 ? P.green : P.yellow;
+      const verdictLabel = (score) => score >= 75 ? "达标" : "偏低";
+      const wrap = (inner) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1440" width="1080" height="1440">${inner}</svg>`;
+      const frame = () => `
+        <defs>
+          <pattern id="grid" width="34" height="34" patternUnits="userSpaceOnUse">
+            <path d="M 34 0 L 0 0 0 34" fill="none" stroke="rgba(24,33,31,.08)" stroke-width="2"/>
+          </pattern>
+        </defs>
+        <rect width="1080" height="1440" fill="${P.paper}"/>
+        <rect width="1080" height="1440" fill="url(#grid)"/>
+        <rect x="54" y="54" width="972" height="1332" fill="none" stroke="${P.ink}" stroke-width="4"/>
+        <rect x="78" y="78" width="924" height="1284" fill="rgba(255,255,255,.42)" stroke="rgba(24,33,31,.25)" stroke-width="2"/>
+      `;
+      const rowY = [712, 810, 908, 1006];
+      const barX = 470;
+      const barW = 258;
+      const barH = 16;
+      const idx = ["①", "②", "③", "④"];
+      const lines = dimensionScores.map((score, index) => {
+        const y = rowY[index];
+        const color = tone(score);
+        const verdict = verdictColor(score);
         return `
-          <text x="124" y="${y}" font-family='"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif' font-size="32" font-weight="900" fill="${palette.ink}">${escapeXML(dimension.title.split(" ")[0])}</text>
-          <rect x="300" y="${y - 26}" width="560" height="22" fill="rgba(24,33,31,.12)"/>
-          <rect x="300" y="${y - 26}" width="${Math.round(560 * score / 100)}" height="22" fill="${toneColor(score)}"/>
-          <text x="902" y="${y}" font-family='"Songti SC", "STSong", serif' font-size="42" font-weight="900" fill="${toneColor(score)}">${score}</text>
+          <text x="140" y="${y}" font-family="${SERIF}" font-size="42" font-weight="900" fill="${P.redDeep}">${idx[index]}</text>
+          <text x="200" y="${y}" font-family="${SANS}" font-size="35" font-weight="800" fill="${P.ink}">${dimensionNames[index]}</text>
+          <line x1="360" y1="${y - 9}" x2="${barX - 16}" y2="${y - 9}" stroke="rgba(24,33,31,.28)" stroke-width="2" stroke-dasharray="3 7"/>
+          <rect x="${barX}" y="${y - 22}" width="${barW}" height="${barH}" rx="3" fill="rgba(24,33,31,.10)"/>
+          <rect x="${barX}" y="${y - 22}" width="${Math.round(barW * score / 100)}" height="${barH}" rx="3" fill="${color}"/>
+          <text x="776" y="${y}" text-anchor="end" font-family="${SERIF}" font-size="46" font-weight="900" fill="${color}">${score}</text>
+          <rect x="804" y="${y - 35}" width="136" height="48" rx="8" fill="none" stroke="${verdict}" stroke-width="2.5"/>
+          <text x="872" y="${y - 1}" text-anchor="middle" font-family="${SANS}" font-size="27" font-weight="900" fill="${verdict}">${verdictLabel(score)}</text>
         `;
       }).join("");
-
-      return `
-        <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-          <defs>
-            <pattern id="grid" width="34" height="34" patternUnits="userSpaceOnUse">
-              <path d="M 34 0 L 0 0 0 34" fill="none" stroke="rgba(24,33,31,.08)" stroke-width="2"/>
-            </pattern>
-          </defs>
-          <rect width="${width}" height="${height}" fill="${palette.paper}"/>
-          <rect width="${width}" height="${height}" fill="url(#grid)"/>
-          <rect x="54" y="54" width="972" height="1332" fill="none" stroke="${palette.ink}" stroke-width="4"/>
-          <rect x="78" y="78" width="924" height="1284" fill="rgba(255,255,255,.36)" stroke="rgba(24,33,31,.25)" stroke-width="2"/>
-          <text x="124" y="164" font-family='"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif' font-size="30" font-weight="900" fill="${palette.muted}" letter-spacing="5">MEMORY HEALTH SCAN</text>
-          ${svgTextLines(data.share?.title || "我的 Agent 记忆体检", 124, 252, { size: 78, lineHeight: 88, weight: 900, family: `"Songti SC", "STSong", serif`, maxChars: 20 })}
-          <rect x="124" y="390" width="832" height="300" fill="rgba(180,34,43,.08)" stroke="${toneColor(total)}" stroke-width="10"/>
-          <text x="164" y="504" font-family='"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif' font-size="34" font-weight="900" fill="${palette.muted}">总分</text>
-          <text x="164" y="646" font-family='"Songti SC", "STSong", serif' font-size="190" font-weight="900" fill="${toneColor(total)}">${total}</text>
-          <text x="404" y="636" font-family='"SFMono-Regular", "Menlo", monospace' font-size="48" font-weight="900" fill="${palette.ink}">/ 100</text>
-          <rect x="638" y="478" width="250" height="72" fill="${toneColor(total)}"/>
-          <text x="763" y="526" font-family='"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif' font-size="30" font-weight="900" fill="#fff" text-anchor="middle">${escapeXML(level.code)}</text>
-          ${svgTextLines(level.name, 638, 604, { size: 40, lineHeight: 48, weight: 900, fill: palette.ink, maxChars: 8 })}
-          <text x="124" y="766" font-family='"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif' font-size="34" font-weight="900" fill="${palette.muted}">四维分数</text>
-          ${bars}
-          <rect x="124" y="1250" width="832" height="84" fill="${palette.warm}" stroke="rgba(24,33,31,.35)" stroke-width="2"/>
-          <text x="154" y="1305" font-family='"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif' font-size="34" font-weight="900" fill="${palette.ink}">处方 ${data.prescriptions?.length || 0} 项 · 矛盾 ${data.contradictions?.length || 0} 处</text>
-          <text x="124" y="1378" font-family='"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif' font-size="24" font-weight="800" fill="${palette.muted}">${escapeXML(data.share?.footnote || "")}</text>
-        </svg>
+      const cx = 828;
+      const cy = 402;
+      const seal = `
+        <circle cx="${cx}" cy="${cy}" r="133" fill="none" stroke="${P.redDeep}" stroke-width="6"/>
+        <circle cx="${cx}" cy="${cy}" r="118" fill="none" stroke="${P.redDeep}" stroke-width="2.5"/>
+        <text x="${cx}" y="${cy + 50}" text-anchor="middle" font-family="${SERIF}" font-size="168" font-weight="900" fill="${P.redDeep}">${total}</text>
+        <text x="${cx}" y="${cy + 106}" text-anchor="middle" font-family="${MONO}" font-size="26" font-weight="900" fill="${P.redDeep}">SCORE / 100</text>
+        <text x="${cx}" y="${cy - 84}" text-anchor="middle" font-family="${SANS}" font-size="25" font-weight="900" fill="${P.redDeep}" letter-spacing="2">总　分</text>
       `;
+
+      return wrap(`
+        ${frame()}
+        <text x="140" y="176" font-family="${SANS}" font-size="27" font-weight="900" fill="${P.muted}" letter-spacing="4">Agent 记忆精神科 · 处方笺</text>
+        <text x="940" y="176" text-anchor="end" font-family="${MONO}" font-size="24" font-weight="800" fill="${P.muted}">No. ${escapeXML(date)}</text>
+        <line x1="140" y1="202" x2="940" y2="202" stroke="${P.ink}" stroke-width="3"/>
+        <line x1="140" y1="210" x2="940" y2="210" stroke="${P.ink}" stroke-width="1"/>
+
+        <text x="140" y="512" font-family="${SERIF}" font-size="168" font-weight="900" fill="${P.redDeep}">℞</text>
+        <text x="316" y="362" font-family="${SANS}" font-size="30" font-weight="900" fill="${P.muted}">临床诊断</text>
+        <text x="316" y="440" font-family="${SERIF}" font-size="58" font-weight="900" fill="${P.ink}">${escapeXML(levelName)}</text>
+        <rect x="316" y="470" width="120" height="48" rx="7" fill="none" stroke="${P.redDeep}" stroke-width="2.5"/>
+        <text x="376" y="503" text-anchor="middle" font-family="${SANS}" font-size="26" font-weight="900" fill="${P.redDeep}">${escapeXML(levelCode)}</text>
+        <text x="458" y="503" font-family="${SANS}" font-size="27" font-weight="700" fill="${P.muted}">${escapeXML(String(diagnosisLine).slice(0, 18))}</text>
+
+        ${seal}
+        <line x1="140" y1="606" x2="940" y2="606" stroke="rgba(24,33,31,.35)" stroke-width="2" stroke-dasharray="6 8"/>
+
+        <text x="140" y="672" font-family="${SANS}" font-size="30" font-weight="900" fill="${P.muted}">处方明细</text>
+        <text x="940" y="672" text-anchor="end" font-family="${SANS}" font-size="24" font-weight="700" fill="${P.muted}">分数越高越好 · ≥75 达标</text>
+        ${lines}
+
+        <line x1="140" y1="1082" x2="940" y2="1082" stroke="rgba(24,33,31,.35)" stroke-width="2" stroke-dasharray="6 8"/>
+        <text x="140" y="1158" font-family="${SANS}" font-size="37" font-weight="900" fill="${P.ink}">共开处方 ${prescriptionCount} 项 · 待裁矛盾 ${contradictionCount} 处</text>
+        <text x="140" y="1208" font-family="${SANS}" font-size="26" font-weight="700" fill="${P.muted}">达标 ${passedCount} 项 · 偏低 ${lowCount} 项 · ${escapeXML(priorityText)}</text>
+
+        <g transform="rotate(-11 828 1176)">
+          <rect x="728" y="1130" width="200" height="92" rx="8" fill="none" stroke="${P.red}" stroke-width="4"/>
+          <text x="828" y="1166" text-anchor="middle" font-family="${SERIF}" font-size="34" font-weight="900" fill="${P.red}">已开方</text>
+          <text x="828" y="1200" text-anchor="middle" font-family="${SANS}" font-size="20" font-weight="800" fill="${P.red}" letter-spacing="2">MEMORY Rx</text>
+        </g>
+      `);
     }
 
     function pngBlobFromSvg(svg) {
