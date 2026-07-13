@@ -27,10 +27,14 @@
 - `email` / remark：可读用户标识。
 - `id`: UUID，每人唯一。
 - `subId`: 订阅链接标识，每人唯一；疑似泄露时只换它。
-- `expiryTime`: 到期时间；续期只改这个字段。
+- `expiryTime`: 到期时间；通过面板或 API 续期时，本质上只改变这个业务字段。
 - `enable`: 停用用户时优先关 enable 或删除该 client。
 
 3X-UI 的持久化模型会随版本演进，遇到「面板有用户但生成的 Xray config 里 `clients` 为空」之类问题，先确认当前版本源码和数据库关系，而不是直接改生成文件。以 3X-UI v3.2.x 为例，client 与 inbound 的关系由 `client_inbounds` 表维护，生成 Xray config 时再从该表关联 client；只改 `inbounds.settings` 可能会被重生成覆盖。修复顺序应是停服务、备份数据库、补齐权威关系表、重启后验证生成 config 和实际端口。更稳的做法：有面板 API Token 时直接用 API（`Authorization: Bearer <token>` 调 `/<webBasePath>/panel/api/inbounds/*`）建 inbound/client，由面板维护全部关系表，避免手搓漏表；v3.3.x 进一步把 client 拆进独立 `clients` 表，手改更易出错。
+
+**续期 / 恢复用户不要只改一张表。** 优先走面板或 API，让 3X-UI 自己同步各持久化位置。必须手改 SQLite 时，先停 `x-ui` 并备份 `/etc/x-ui/x-ui.db`，然后按当前 schema 同步检查这些位置：`clients.enable` / `clients.expiry_time`、对应 `inbounds.settings` 里每个匹配 client 的 `enable` / `expiryTime`、以及 `client_traffics.enable` / `client_traffics.expiry_time`。有多个入站（例如 Reality 直连 + WS/CDN）时，所有含该用户的入站 settings 都要同步；否则数据库看似已续期，生成的 Xray config 仍可能没有这个用户。
+
+续期验收不能只看 SQL 查询结果。重启 `x-ui` 后确认 `/usr/local/x-ui/bin/config.json` 或实际生成配置中包含该 client，`x-ui` / 订阅服务 active，订阅响应头的 `Subscription-Userinfo expire=<unix 秒>` 已更新；最后让客户端刷新订阅并实测工作节点。若自建订阅服务启动时缓存了用户清单，续期后还要重启订阅服务或触发其重新加载。
 
 ## 订阅服务
 
