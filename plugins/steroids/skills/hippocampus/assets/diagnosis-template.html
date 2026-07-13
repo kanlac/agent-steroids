@@ -94,7 +94,7 @@
           evidence: [
             { ref: "矛盾 #1", quote: "[~/.claude/CLAUDE.md:某行] 文档命名统一用 “yyMMdd-” 前缀 ⚔ [agent-steroids/CLAUDE.md:某行] 文件名统一用 “YYYYMMDD-” 前缀" },
             { ref: "矛盾 #2", quote: "[~/.claude/CLAUDE.md] 读社交媒体直接用 CDP Chrome ⚔ [skills/web-access] 优先 WebSearch/WebFetch/Jina" },
-            { ref: "矛盾 #3", quote: "[~/.claude/CLAUDE.md] 默认用 github.com 作 git host ⚔ [项目 CLAUDE.md] 本项目一律走 mindfitgit" }
+            { ref: "矛盾 #3", quote: "[~/.claude/CLAUDE.md] 默认用 github.com 作 git host ⚔ [项目 CLAUDE.md] 本项目一律走 company-git（内网）" }
           ]
         }
       },
@@ -114,7 +114,7 @@
         {
           summary: "低置信：更像“特例覆盖”而非真冲突，由你定夺。",
           left: { ref: "~/.claude/CLAUDE.md", line: "73", quote: "默认用 github.com 作 git host" },
-          right: { ref: "agent-steroids/CLAUDE.md", line: "19", quote: "本项目一律走 mindfitgit" },
+          right: { ref: "agent-steroids/CLAUDE.md", line: "19", quote: "本项目一律走 company-git（内网）" },
           confidence: "低"
         }
       ],
