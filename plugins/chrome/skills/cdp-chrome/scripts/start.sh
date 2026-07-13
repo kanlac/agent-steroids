@@ -44,17 +44,31 @@ fi
 
 echo "Starting CDP Chrome on port $CDP_PORT with profile $CDP_PROFILE_DIR..."
 
-nohup "$CHROME_BIN" \
-  --remote-debugging-port="$CDP_PORT" \
-  --user-data-dir="$CDP_PROFILE_DIR" \
-  --remote-allow-origins=* \
-  --no-first-run \
-  --no-default-browser-check \
-  --disable-sync \
-  --disable-background-networking \
-  --disable-default-apps \
-  --disable-component-extensions-with-background-pages \
-  >/dev/null 2>&1 &
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  nohup open -na "${CHROME_BIN%/Contents/MacOS/Google Chrome}" --args \
+    --remote-debugging-port="$CDP_PORT" \
+    --user-data-dir="$CDP_PROFILE_DIR" \
+    '--remote-allow-origins=*' \
+    --no-first-run \
+    --no-default-browser-check \
+    --disable-sync \
+    --disable-background-networking \
+    --disable-default-apps \
+    --disable-component-extensions-with-background-pages \
+    >/dev/null 2>&1 &
+else
+  nohup "$CHROME_BIN" \
+    --remote-debugging-port="$CDP_PORT" \
+    --user-data-dir="$CDP_PROFILE_DIR" \
+    '--remote-allow-origins=*' \
+    --no-first-run \
+    --no-default-browser-check \
+    --disable-sync \
+    --disable-background-networking \
+    --disable-default-apps \
+    --disable-component-extensions-with-background-pages \
+    >/dev/null 2>&1 &
+fi
 chrome_pid=$!
 
 # Wait for Chrome to start (try both IPv4 and IPv6 via cdp_http_ready).
