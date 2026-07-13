@@ -12,10 +12,10 @@ SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 cdp_apply_config
 
 if cdp_http_ready "$CDP_PORT"; then
-  cdp_validate_listener "$CDP_PORT" "$CDP_PROFILE_DIR" "MCP launcher" || exit 1
+  cdp_validate_listener "$CDP_PORT" "$CDP_PROFILE_DIR" "MCP launcher" >&2 || exit 1
 else
   # Detect occupied non-CDP ports before chrome-devtools-mcp starts.
-  cdp_validate_listener "$CDP_PORT" "$CDP_PROFILE_DIR" "MCP launcher" || exit 1
+  cdp_validate_listener "$CDP_PORT" "$CDP_PROFILE_DIR" "MCP launcher" >&2 || exit 1
   echo "ERROR: cdp-chrome is not running on configured port $CDP_PORT." >&2
   echo "Run: $SCRIPT_DIR/start.sh" >&2
   echo "Then run: $SCRIPT_DIR/doctor.sh" >&2

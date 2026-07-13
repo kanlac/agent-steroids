@@ -29,8 +29,10 @@ done
 
 touch "$CDP_PROFILE_DIR/First Run" 2>/dev/null
 
+CHROME_APP_NAME=""
 if [ -x "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]; then
   CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+  CHROME_APP_NAME="Google Chrome"
 elif command -v google-chrome >/dev/null 2>&1; then
   CHROME_BIN="$(command -v google-chrome)"
 elif command -v chromium >/dev/null 2>&1; then
@@ -44,24 +46,43 @@ fi
 
 echo "Starting CDP Chrome on port $CDP_PORT with profile $CDP_PROFILE_DIR..."
 
-nohup "$CHROME_BIN" \
-  --remote-debugging-port="$CDP_PORT" \
-  --user-data-dir="$CDP_PROFILE_DIR" \
-  --remote-allow-origins=* \
-  --no-first-run \
-  --no-default-browser-check \
-  --disable-sync \
-  --disable-background-networking \
-  --disable-default-apps \
-  --disable-component-extensions-with-background-pages \
-  >/dev/null 2>&1 &
-chrome_pid=$!
+chrome_pid=""
+if [ "$(uname -s 2>/dev/null || echo unknown)" = "Darwin" ] && [ -n "$CHROME_APP_NAME" ] && command -v open >/dev/null 2>&1; then
+  # LaunchServices keeps the GUI app attached to the user's session; direct
+  # shell-launched Chrome can exit after startup on some macOS versions.
+  open -na "$CHROME_APP_NAME" --args \
+    --remote-debugging-port="$CDP_PORT" \
+    --user-data-dir="$CDP_PROFILE_DIR" \
+    "--remote-allow-origins=*" \
+    --no-first-run \
+    --no-default-browser-check \
+    --disable-sync \
+    --disable-background-networking \
+    --disable-default-apps \
+    --disable-component-extensions-with-background-pages
+else
+  nohup "$CHROME_BIN" \
+    --remote-debugging-port="$CDP_PORT" \
+    --user-data-dir="$CDP_PROFILE_DIR" \
+    "--remote-allow-origins=*" \
+    --no-first-run \
+    --no-default-browser-check \
+    --disable-sync \
+    --disable-background-networking \
+    --disable-default-apps \
+    --disable-component-extensions-with-background-pages \
+    >/dev/null 2>&1 &
+  chrome_pid=$!
+fi
 
 # Wait for Chrome to start (try both IPv4 and IPv6 via cdp_http_ready).
 for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
   if cdp_http_ready "$CDP_PORT"; then
     cdp_validate_listener "$CDP_PORT" "$CDP_PROFILE_DIR" "startup" || exit 1
-    echo "CDP Chrome started on port $CDP_PORT (PID $chrome_pid)"
+    if [ -z "$chrome_pid" ]; then
+      chrome_pid="$(cdp_listener_pids "$CDP_PORT" | tr '\n' ' ' | sed 's/[[:space:]]*$//')"
+    fi
+    echo "CDP Chrome started on port $CDP_PORT (PID ${chrome_pid:-unknown})"
     exit 0
   fi
   sleep 0.5
