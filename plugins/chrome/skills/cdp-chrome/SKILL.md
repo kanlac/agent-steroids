@@ -78,6 +78,12 @@ curl -s "http://127.0.0.1:<port>/json/list"
 
 Pick the intended target from `/json/list` and operate through its `webSocketDebuggerUrl`, or report that the `cdp-chrome` MCP namespace is missing. A page list from any other tool is not proof that this skill is attached to the shared Chrome.
 
+## Profile-scoped Validation
+
+CDP Chrome 使用独立的 `profile_dir`。在这个实例里看到的 cookie、扩展、Preferences、WebRTC 或 DNS 结果只证明该 profile；`doctor.sh` 也只证明端口、进程与 user-data-dir 绑定正确，不能证明用户日常 Chrome 已修复。
+
+涉及浏览器 policy、WebRTC、DNS、扩展或登录态的结论时，先记录当前 binary、user-data-dir 与 `chrome://version` 的 Profile Path，并明确结论的作用域。profile preference 不得外推到其它 profile；只有 `chrome://policy` 中 Source=`Platform`、Level=`Mandatory`、Status=`OK` 的受管策略可以跨 profile，但仍要在实际出问题的浏览器和新开的无痕窗口复测。保持只读验收，不用 CDP Chrome 顺手修改 profile 设置。
+
 ## Agent Rules
 
 1. Use only MCP tools from server name `cdp-chrome` (`mcp__cdp-chrome__*` in Claude/Codex, `mcp_cdp_chrome_*` style in Hermes), or the direct configured CDP endpoint fallback above. Do not fall back to other Chrome/Playwright/Puppeteer MCP tools; they may launch automated Chrome or attach to a different Chrome target.

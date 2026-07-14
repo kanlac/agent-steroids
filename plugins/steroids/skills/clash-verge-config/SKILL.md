@@ -1,6 +1,6 @@
 ---
 name: clash-verge-config
-description: 以「配置即代码」管理、调试 Clash Verge Rev（mihomo 内核）客户端配置。涵盖：哪些字段扩展脚本能改 / 不能改（external-controller、secret、各端口、log-level 被内核接管）、改了为什么不生效、enhance 管线与字段归属、纯命令行让配置重新生成并生效、mihomo external controller RESTful API、external-ui 自托管面板、判断流量走没走代理 / 命中哪条规则、DNS 与浏览器 WebRTC 泄漏排查、profiles.yaml 里 profile 显示名与到期信息从哪来、节点突然全超时时先排除 IP 被墙与 TUN 回环、远程机器复用本地代理。用户在改 Clash Verge / mihomo 扩展脚本(script) / 扩展配置(merge) / 订阅规则、external-controller / secret / 端口，或抱怨「配置改了不生效」「规则不命中」「远程连不上面板」「DNS / WebRTC 泄漏」「profile 显示名 / 到期不对」「节点突然连不上 / 延迟测试超时」「想自动化更新代理配置」时用这个 skill。机场 / 订阅服务端搭建见 airport-deploy skill。
+description: Manage and debug Clash Verge Rev and Mihomo client configuration as code, including enhance-pipeline field ownership, scripts and merges, external controller/UI, profile metadata, routing, DNS and browser WebRTC leaks, TUN loops, blocked proxy IPs, and remote proxy reuse. Use when Clash changes do not apply, rules miss, DNS/WebRTC leaks, profiles show stale metadata, nodes time out, or proxy configuration needs automation. Use airport-deploy for server-side proxy and subscription deployment.
 ---
 
 ## 这个 Skill 解决什么
@@ -54,13 +54,19 @@ Stash 的远程 API 更接近运行时控制器，不是 profile 管理器。`PA
 
 规则同理：从上到下首命中。排查某站没走代理时，找第一条能匹配它的规则，而不是只看最终 IP。
 
-## WebRTC 泄漏：浏览器与 Mihomo 是两层
+## 浏览器 WebRTC / Secure DNS 旁路：与 Mihomo 分层验收
 
 WebRTC 的 ICE/STUN 候选地址由**浏览器**收集和发包；`dns.ipv6: false` 只控制 Mihomo DNS，运行时顶层 `ipv6: false` 也不是浏览器 WebRTC 的开关。即使 TUN 已接管流量，STUN UDP 仍可能命中 `DIRECT`（例如按目标 IP 的 GEOIP 规则），暴露本地公网 IPv4/IPv6。
 
-出现 WebRTC 泄漏时，先在实际出问题的浏览器 profile 用 `ip.net.coffee/webrtc` 或同类 STUN 检测复现，再同时看 Mihomo 最终配置、路由和 controller 的 UDP connections，确认是未接管还是已接管却走了 `DIRECT`。不要只看脚本模板；以浏览器实测和运行态链路为准。
+出现 WebRTC 泄漏时，先在实际出问题的浏览器 profile 用 `ip.net.coffee/webrtc` 或同类 STUN 检测复现，再同时看 Mihomo 最终配置、路由和 controller 的 UDP connections，确认是未接管还是已接管却走了 `DIRECT`。记录浏览器 binary、user-data-dir 和 `chrome://version` 的 Profile Path；独立 CDP/自动化 profile 的成功只能证明它自己，不能外推到用户日常 Chrome 或无痕窗口。
 
-对 Chromium，优先让浏览器层 fail closed：`webrtc.ip_handling_policy: disable_non_proxied_udp`，或使用等价且**真正持久化**的受管策略。普通 `defaults write`、随手放置的 plist、或只改 DNS 都不能当作已生效的证据；受管策略要在 `chrome://policy` 显示已加载，profile 偏好要经过完整浏览器重启后仍存在。最后重新跑 STUN 检测，结果必须不暴露本地公网地址。
+对 Chromium，优先让浏览器层 fail closed，并明确配置的作用域：
+
+- profile 偏好键 `webrtc.ip_handling_policy=disable_non_proxied_udp` 只保护该 profile，适合局部测试，不是全浏览器证明。
+- 企业策略键 `WebRtcIPHandling=disable_non_proxied_udp` 才是跨 profile 的受管方案。macOS 应用 `com.google.Chrome` configuration profile；普通 `defaults write`、随手放置 plist 或只改 DNS 都不能当作受管策略已生效。配置描述文件的安装/替换需要用户在系统设置中批准，不绕过确认。
+- 需要让浏览器 DNS 统一由 Mihomo 接管时，再用 `DnsOverHttpsMode=off` 关闭 Chrome 自建 Secure DNS；它解决的是 DNS 路径一致性，不是 WebRTC 开关。
+
+验收时完整退出并重开目标 Chrome，在同一实际 profile 的 `chrome://policy` 核对 policy 名和值、Source=`Platform`、Level=`Mandatory`、Status=`OK`；Scope 可以是当前用户或机器，取决于部署方式。再分别跑 STUN、DNS leak 和普通 HTTPS 出口探针，并用 Mihomo connections/log 交叉验证。三类结果不能互相替代：例如网页主动访问 `1.1.1.1:443` 得到的是普通 HTTPS 出口，不足以证明 Chrome Secure DNS 或 DNS 泄漏。
 
 这会使没有可用 UDP 代理的 WebRTC 失败关闭；需要实时音视频时，再单独验证所选代理链路支持的 UDP/TURN 行为，不能为恢复通话而回退为直连。
 
@@ -78,7 +84,7 @@ echo "$r" | grep -oE ',2,1,200,"[A-Z]{2,3}"'   # 引号里就是 Google 判定�
 
 `USA` 且"可用" = 此出口能用；`CHN`/"不可用" = **IP 被 Google 标错国**，改任何客户端/Clash/Xray 配置都救不了——只能换 IP、换节点、或给 Google 报地理纠错。买新节点先跑这条验。
 
-**只有**当出口 IP 的 Google 地理确实是支持国、却仍 not supported 时，才轮到查客户端泄露：浏览器走 IPv6 直连绕过代理，或浏览器 WebRTC 暴露网卡地址。前者看最终运行态 IPv6 与浏览器出口，后者按上面的「WebRTC 泄漏」单独在浏览器层处置；不要把关闭 Mihomo DNS IPv6 当作两者的修复。验证用 `browserleaks.com/ip` 与 `/webrtc`。
+**只有**当出口 IP 的 Google 地理确实是支持国、却仍 not supported 时，才轮到查客户端泄露：浏览器走 IPv6 直连绕过代理，或浏览器 WebRTC 暴露网卡地址。前者看最终运行态 IPv6 与浏览器出口，后者按上面的分层验收处置；不要把关闭 Mihomo DNS IPv6 当作两者的修复。
 
 ## 节点突然全超时：先排除 IP 被墙，再排除 TUN 回环
 
