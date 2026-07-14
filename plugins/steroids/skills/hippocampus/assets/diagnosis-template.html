@@ -9,9 +9,10 @@
       meta: {
         id: "MHS-CLAUDE-0058",
         date: "2026-07-02",
-        sampleDescription: "CLAUDE.md / skills / docs",
+        sampleDescription: "CLAUDE.md / skills / docs · rubric v2",
         memoryFiles: [
           { label: "全局记忆", path: "~/.claude/CLAUDE.md", lines: 892, size: "47 KB" },
+          { label: "auto-memory", path: "~/.claude/memory", size: "36 KB（载入上限 25 KB）" },
           { label: "项目记忆", path: "./CLAUDE.md", lines: 156, size: "12 KB" },
           { label: "技能与文档", path: "skills / docs", lines: 608, size: "按需加载" }
         ],
@@ -20,18 +21,18 @@
       total: 58,
       diagnosis: {
         line: "伴 31% 上下文失忆",
-        complaint: "你的记忆约有 31% 每轮未产生有效价值，其中 12 条适合迁移到对应 skill，减少常驻负荷。",
-        summary: "约 31% 内容超出上下文预算，未能进入有效上下文，实际指导价值缺失。",
-        advice: "建议收敛 CLAUDE.md 常驻内容；每轮减少约 8000 token，降低记忆囤积复发风险。"
+        complaint: "auto-memory 约 31% 从未被载入，另有 12 条 skill 专属教训放错位置、白白加重常驻负荷。",
+        summary: "auto-memory 36 KB 超出 25 KB 载入上限，约 31% 从未进入上下文；全局 CLAUDE.md 892 行，每轮 ~11,800 tokens 且遵循度下降。",
+        advice: "建议修剪 auto-memory 回载入上限内、收敛全局 CLAUDE.md；每轮减少约 8,000 token，恢复记忆全量生效。"
       },
       shocks: [
         { label: "病灶体积", value: ["全局 CLAUDE.md", "47 KB"] },
         { label: "每轮输液", value: ["~11,800", "tokens"] },
-        { label: "失忆脑区", value: ["约 31%", "未加载"], aria: "约 31% 从未进入有效上下文" }
+        { label: "失忆脑区", value: ["auto-memory", "31% 未加载"], aria: "auto-memory 约 31% 从未进入上下文" }
       ],
       miniFindings: [
-        { label: "现病史", value: "约 31% 内容超出上下文预算，未能进入有效上下文，实际指导价值缺失。" },
-        { label: "初步医嘱", value: "建议收敛 CLAUDE.md 常驻内容；每轮减少约 8000 token，降低记忆囤积复发风险。" }
+        { label: "现病史", value: "auto-memory 36 KB 超出 25 KB 载入上限，约 31% 从未进入上下文；全局 CLAUDE.md 892 行，每轮 ~11,800 tokens 且遵循度下降。" },
+        { label: "初步医嘱", value: "建议修剪 auto-memory 回载入上限内、收敛全局 CLAUDE.md；每轮减少约 8,000 token，恢复记忆全量生效。" }
       ],
       surfaces: {
         preset: {
@@ -59,8 +60,8 @@
           score: 38,
           tagline: "常驻信息负荷过高，本项已进入红色化验值。",
           evidence: [
-            { ref: "~/.claude/CLAUDE.md", quote: "892 行（超 200 行上限 4.5 倍）/ 47 KB / 每轮约 11,800 tokens" },
-            { ref: "上下文预算", quote: "约 31% 内容超出上下文预算，未能进入有效上下文，实际指导价值缺失" },
+            { ref: "~/.claude/CLAUDE.md", quote: "892 行（超 200 行上限 4.5 倍）/ 47 KB / 每轮约 11,800 tokens，遵循度随长度下降" },
+            { ref: "~/.claude/memory（auto-memory）", quote: "36 KB，超出 25 KB / 200 行载入上限，约 31% 从未进入上下文" },
             { ref: "skills/wechat-desktop/SKILL.md", quote: "340 行（建议拆分）" },
             { ref: "skills/clash-verge-config/SKILL.md", quote: "268 行" }
           ]
@@ -119,7 +120,7 @@
         }
       ],
       prescriptions: [
-        { id: "rx-global-split", title: "拆分全局 CLAUDE.md（892 → <200 行）", reason: "它大到有 31% 每轮根本没加载，拆完就不再超载、全部生效。", confidence: "高", effect: "不再超载" },
+        { id: "rx-global-split", title: "拆分全局 CLAUDE.md，并修剪 auto-memory", reason: "指令文件 892 行每轮白吃 ~11,800 tokens 且遵循度下降；auto-memory 36 KB 超出 25 KB 上限，31% 从未生效。", confidence: "高", effect: "恢复全量生效" },
         { id: "rx-skill-move", title: "把约 12 条 skill 专属教训移回各自的 skill", reason: "它们塞在全局里给每轮交税，其实只在各自 skill 才用得上。", confidence: "高", effect: "减少常驻负荷" },
         { id: "rx-conflicts", title: "调和 3 处自相矛盾的指令", reason: "让 Agent 不再在同一件事上收到相反命令。", confidence: "中", effect: "降低执行分叉" },
         { id: "rx-stale", title: "删除过期临时方案与断链引用", reason: "过期医嘱会让后续 agent 按不存在的路径或已修复的问题行动。", confidence: "中", effect: "提高新鲜度" },
@@ -129,14 +130,14 @@
         { id: "rx-review", title: "复查命名与路由规则作用域", reason: "保留明确覆盖关系，避免把特例误判成全局规则。", confidence: "低", effect: "减少伪冲突" }
       ],
       truncated: true,
-      truncation: { unloadedPercent: 31, estimatedTokens: 11800, recoverTokens: 3800 },
+      truncation: { source: "auto-memory", totalKB: 36, loadedKB: 25, unloadedPercent: 31, estimatedTokens: 11800, recoverTokens: 3800 },
       prognosis: {
         projectedTotal: 89,
         caption: "照方抓药后，脑内常驻噪声明显退烧",
         items: [
           { label: "每轮 token 税", value: "−68%（11,800 → ~3,800）" },
           { label: "全局 CLAUDE.md", value: "47 KB → ~9 KB" },
-          { label: "加载状态", value: "记忆不再超载、全部生效" },
+          { label: "加载状态", value: "auto-memory 修剪回 25 KB 内，记忆全量生效" },
           { label: "临床印象", value: "记忆囤积明显缓解，处方有效；复查时重点看预置层是否反弹。" }
         ]
       },
