@@ -235,7 +235,7 @@ def main() -> None:
         },
         # 各维度候选：机械生成，agent 逐条裁决（真缺陷记入账本，文档举例/误报丢弃）。
         "candidates": candidates,
-        "rubric_version": 2,
+        "rubric_version": "2.2",
         "note": "体量为纯机械项、可复现。candidates 是待裁决清单，不是缺陷判定；矛盾维度另需补充性自由扫描。语义裁决按 scoring-rubric.md。token 估算为粗略值。",
     }, ensure_ascii=False, indent=2))
 

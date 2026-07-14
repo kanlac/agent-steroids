@@ -1,14 +1,14 @@
 ---
 name: hippocampus
 description: |
-  Manage everything about an agent's memory — the always-loaded instruction files (global and project CLAUDE.md / AGENTS.md) and the on-demand layer (skills, docs). Two jobs: (1) diagnose & treat — audit, score, declutter, and prune a memory environment, and (2) absorb new knowledge — turn a correction, lesson, or a "remember this" request into a durable, well-placed skill update. Use whenever the user wants to check, grade, diagnose, declutter, prune, or health-check their agent memory / CLAUDE.md / skills, asks "is my CLAUDE.md too big / any good", says memory feels bloated or the agent ignores instructions, asks where a lesson should live, or wants to record a gotcha / lesson / feedback into a skill instead of piling up raw notes. Produces a "memory health" diagnosis report (HTML) plus an interactive confirmation table (ReviewTable) before executing any change. Trigger even when the user just says "整理一下记忆 / 给我的 CLAUDE.md 打个分 / 记忆体检 / 把这个教训记进 skill" without naming the skill.
+  Manage everything about an agent's memory — the always-loaded instruction files (global and project CLAUDE.md / AGENTS.md) and the on-demand layer (skills, docs). Two jobs with different flows: (1) diagnose & treat — audit and score a whole memory environment; ONLY this job produces the "memory health" diagnosis report (HTML) and the ReviewTable confirmation before bulk cleanup; (2) absorb new knowledge — route a single correction, lesson, or "remember this" request to where it belongs and refactor it into the owning skill directly, with NO report and NO confirmation table (the user's request itself is the authorization). Use whenever the user wants to check, grade, diagnose, declutter, prune, or health-check their agent memory / CLAUDE.md / skills, asks "is my CLAUDE.md too big / any good", says memory feels bloated or the agent ignores instructions, asks where a lesson should live, or wants to record a gotcha / lesson / feedback into a skill instead of piling up raw notes. Trigger even when the user just says "整理一下记忆 / 给我的 CLAUDE.md 打个分 / 记忆体检 / 把这个教训记进 skill" without naming the skill.
 ---
 
 # Hippocampus
 
 管理 Agent 记忆的一切——它是记忆的海马体。它握着「每一条记忆该住在哪里」的品味，用这份品味做两件事：**诊断与治疗**一个已有的记忆环境，以及**吸收新知识**、把它安放到正确的位置。
 
-不管做哪件事，永远不要不打招呼就改写用户的记忆。诊断 → 确认 → 治疗；吸收 → 判断归属 → 重构落地。
+两件事的授权模型不同，别混：**诊断与治疗**做的是批量清理，必须先出报告、经治疗确认书签字才动手；**吸收新知识**由用户的请求直接授权——判归属、重构落地、汇报改了哪，**不生成报告、不需要确认表**。报告和确认书是①的器械，不是每次动记忆的通用门槛。
 
 ## 哲学：每一条记忆该住在哪里
 
@@ -69,7 +69,7 @@ Agent 的记忆分两层，失效模式相反，这个 skill 做的每件事都�
 
 ### ② 吸收新知识
 
-把一条新知识安放进记忆。两个触发场景：**review 一段会话、提取可复用的教训**，或**用户中途主动要求记住某事**。核心动作是先跑一遍上面的**路由问题**——这条知识该住哪（预置 / 外部 / 进某个 skill / 根本不记）——再把它**重构**进目标（尤其进 skill 时，重写决策结构而非追加原始笔记）。
+把一条新知识安放进记忆。触发语如「把这个记住 / 把经验落进 skill / 沉淀方法论 / 从这次失败里总结」，或会话结束时 review 提取可复用教训。核心动作是先跑一遍上面的**路由问题**——这条知识该住哪（预置 / 外部 / 进某个 skill / 根本不记）——再把它**重构**进目标（尤其进 skill 时，重写决策结构而非追加原始笔记），然后汇报改了哪。**这条路不做记忆体检：不打分、不生成诊断报告、不需要治疗确认书**——用户没要体检就别体检。
 
 提炼可迁移规则、重构而非堆叠、何时不新建 reference、如何决定「不记」 → `references/absorb-knowledge.md`。
 
