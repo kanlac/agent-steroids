@@ -1,6 +1,6 @@
 ---
 name: clash-verge-config
-description: Manage and debug Clash Verge Rev and Mihomo client configuration as code, including enhance-pipeline field ownership, scripts and merges, external controller/UI, profile metadata, routing, DNS and browser WebRTC leaks, TUN loops, blocked proxy IPs, and remote proxy reuse. Use when Clash changes do not apply, rules miss, DNS/WebRTC leaks, profiles show stale metadata, nodes time out, or proxy configuration needs automation. Use airport-deploy for server-side proxy and subscription deployment.
+description: Manage and debug Clash Verge Rev, Mihomo, and Stash client configuration as code, including enhance-pipeline field ownership, scripts, merges and Stash overrides, runtime controllers, profile metadata, routing, DNS and browser leaks, TUN loops, blocked proxy IPs, and cross-profile rule automation. Use when configurations do not apply, rules miss, remote providers or overrides need verification, DNS/WebRTC leaks, profiles show stale metadata, nodes time out, or proxy configuration needs repeatable runtime testing. Use airport-deploy for server-side proxy and subscription deployment.
 ---
 
 ## 这个 Skill 解决什么
@@ -37,6 +37,15 @@ Clash Verge Rev 是个 Tauri GUI，底层跑 mihomo 内核。它的配置系统�
 ## 心智模型三：配置即代码
 
 推荐把全局扩展脚本当成个人规则和自建节点的**叠加层**：订阅提供机场节点，全局脚本幂等注入自建节点、策略组、前置规则和 DNS。换订阅时不重配个人规则，重新生成运行时配置即可。能纯命令行触发重新生成、用 external controller 读写运行时状态，就不依赖 GUI。
+
+## 先准备调试，再改规则
+
+规则或覆写改动前，必须先打通最终运行态读取、保存基线、准备可重复探针和回滚方法。调试通道未就绪时只做静态分析，不修改配置，也不声称已生效。
+
+- Clash Verge / mihomo：读取 `references/clash-runtime-debugging.md`。
+- Stash Override / Remote Controller：读取 `references/stash-runtime-debugging.md`。
+
+模板、生成 YAML、内核静态检查、运行态存在、真实连接命中是四层不同证据；最终结论以真实连接的 rule/policy/chains 为准。
 
 ## DNS 泄漏与分流规则
 
