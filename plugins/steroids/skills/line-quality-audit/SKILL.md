@@ -1,6 +1,6 @@
 ---
 name: line-quality-audit
-description: Evaluate VPS, proxy server, and commercial airport node quality for China-facing use. Use when comparing VPS providers or proxy nodes, diagnosing whether a route is CN2 GIA/CTGNet/9929/CMI or ordinary transit, checking packet loss/latency/jitter/single-thread throughput, validating IP blocking risk, and verifying whether Google geolocation misclassifies the exit IP.
+description: Evaluate VPS, proxy server, CDN relay, and commercial airport node quality for China-facing use. Use when comparing VPS providers or proxy nodes, diagnosing CN2 GIA/CTGNet/9929/CMI or ordinary transit, auditing Cloudflare Anycast ingress and origin paths, checking packet loss/latency/jitter/single-thread throughput, validating IP blocking risk, or verifying whether Google geolocation misclassifies the exit IP.
 ---
 
 ## 目标
@@ -14,6 +14,12 @@ description: Evaluate VPS, proxy server, and commercial airport node quality for
 - **可登录 VPS**：可以测本地去程、VPS 回程、VPS 自身出口、服务端资源、端口可达性、代理后体感。
 - **不可登录机场节点**：只能测客户端视角，包括节点延迟、经代理下载、出口 IP、Google 地理、目标站可用性；不能对服务端回程下强结论。
 - **CDN 中转节点**：客户端看到的是 CDN 边缘，不能用域名 `traceroute` 证明源站线路；要把“源 IP 直连”和“CDN 中转”分开评价。
+
+## CDN / Anycast 分段判断
+
+把 CDN 中转拆成「客户端 → CDN 入口」「CDN → 源站」「源站 → 目标」三段。以 Cloudflare 为例，`/cdn-cgi/trace` 的 `colo` 只说明请求进入哪个边缘 PoP，代理后的出口国家则由源站或后续出口决定；两者可能完全不同。
+
+探测入口 PoP 时清除显式代理还不够，TUN 仍可能接管流量。绑定物理接口，并把当前域名固定解析到实际 Anycast IP 后再读 `loc/colo`；否则测到的是已有代理出口的 Cloudflare 路径。橙云、端口、WS 路径、SNI 和源站国家不能指定普通 Anycast 的入口 PoP，改这些参数不能修复异常跨洲入口。比较“以前快、现在慢”时保留历史 `colo`、traceroute 和分时单线程样本；没有历史证据就只报告当前路径，不臆测旧 PoP。
 
 ## 线路识别口径
 

@@ -48,6 +48,8 @@ Clash Verge Rev 是个 Tauri GUI，底层跑 mihomo 内核。它的配置系统�
 - 国内域名走国内 DoH 或直连 DNS，国外域名和 AI 服务域名经代理解析，避免本地运营商 DNS 暴露访问意图。
 - 验证别只看检测网页结论，要读 mihomo `GET /connections`、日志和最终配置，确认 DNS 连接命中哪条规则、走哪个出站。
 
+临时 Mihomo 专测要隔离端口、controller、工作目录和 TUN，并确认节点入口走物理网卡；但绑定物理网卡后，系统里的 VPN/Tailscale DNS 可能反而不可达，制造 `dns resolve failed` 假故障。出现这种情况先读内核拨号日志，再为节点域名提供物理网络可达的 `proxy-server-nameserver`，或把本次解析结果固定为入口 IP 并保留原 SNI/Host。不要把测试脚手架的 DNS 超时算到节点协议上。
+
 跨客户端订阅不要照搬 DNS 片段。Stash 等客户端的 DNS 请求默认可能直连上游，不按普通代理规则走；mihomo 里可用的 `#PROXY`、海外 DoH、`nameserver-policy` 组合在手机端可能变成「基础 DNS 全超时」，进而让 DIRECT 和节点测速一起失败。遇到 Stash 更新订阅后所有节点超时，优先看订阅是否把桌面 Mihomo 的 `#PROXY/#LEGAL` DNS 原样下发给了 iOS；Stash 常见兜底是独立模板：`redir-host`、直连基础 DNS、入口域名 `hosts`、GEOIP 规则加 `no-resolve`。服务端应按客户端分模板，而不是改 Xray 入站参数。
 
 Stash 的远程 API 更接近运行时控制器，不是 profile 管理器。`PATCH /configs` 只能改 `mode`、`log-level`、端口等少量运行项，不能用 `payload` 替换整份 YAML；`/profiles` 这类 profile 更新接口也不一定存在。验证订阅模板修复时，必须让用户在 Stash 内执行订阅更新或重新导入，再用 `/proxies`、`/rules`、`/connections` 读实际运行态，别把 API 返回 `204` 误判为整份订阅已热加载。

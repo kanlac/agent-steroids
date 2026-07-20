@@ -17,6 +17,8 @@ description: 自建机场（代理服务端）搭建与运维。涵盖 VPS 初�
 - **订阅渲染层**：3X-UI 原生订阅常是 base64 裸节点；客户端要远程 YAML 时需服务端渲染成 Clash/Mihomo YAML，并用响应头控制显示名与到期。
 - **运营层**：独立订阅链接、到期/续期、泄露换 subId、IP 被墙判断、测速口径、备份恢复。
 
+控制面和数据面必须分别验收。订阅服务能返回 YAML，不代表 Xray 入站仍在监听；看到 Cloudflare `521`、节点全超时但订阅正常时，同时核对面板/Xray 服务、实际监听端口和服务退出原因。`Restart=on-failure` 不会拉起一次成功的人工 `stop`，所以要区分 clean stop、崩溃和 OOM，不能只看 unit 是否 enabled。
+
 ## 自建 3X-UI + Reality 的落地判断
 
 Reality 直连优先保持简单：借真实大站握手，本身不需要自有域名证书。域名只用于面板后台 HTTPS 和订阅链接 HTTPS（订阅里含 UUID/subId，走 HTTPS 避免被旁路看到）。DNS 或证书暂不可用时可临时用 `http://<SERVER_IP>:<sub-port>/...` 测试，但不要当长期分发方案。
@@ -34,6 +36,7 @@ Cloudflare 只做 DNS 时必须灰云。ACME 申请前先确认权威解析和�
 客户端入口期待远程 YAML 时，自建一个小 HTTP 服务监听订阅端口：按 subId 查用户 → 渲染 Clash/Mihomo YAML → 用响应头控制展示。渲染要同时管好三件事：
 
 - **节点字段完整**：`type: vless`、`tls: true`、`flow: xtls-rprx-vision`、Reality `public-key`/`short-id`/SNI/fingerprint 必须与入站一致。
+- **逐用户核对事实源**：订阅 HTTP `200` 不证明用户仍启用，也不证明 UUID 正确。3X-UI 版本、迁移脚本和自建渲染器可能让数据库、静态用户清单与 Xray 最终配置漂移；按 `subId → 启用/到期状态 → 渲染 UUID → 实际加载 UUID` 逐用户比对，不能只看总数或集合大部分相交。修正服务端后还要让客户端重新拉取订阅，旧 profile 不会自动换 UUID。
 - **规则、DNS 和 TUN 保护集中维护**：把 `dns`/`proxy-groups`/`rules` 写进订阅模板，或让客户端全局 Merge/Script 统一叠加，改一次全员刷新生效。订阅模板还应从本次实际生成的所有节点 `server` 字段推导 `tun.route-exclude-address`：IP 字面量转 `<ip>/32`，域名解析当前 A 记录后逐个转 `/32`。Mihomo/Clash Verge 里，节点域名用 `dns.proxy-server-nameserver` 直连解析，普通 `dns.nameserver` 用带代理组后缀的海外 DoH，避免 DNS leak；Stash 等移动端不要照搬这套 `#PROXY`/`#LEGAL` DNS，按客户端下发兼容模板，否则可能所有节点测速超时。不要维护一份会过期的静态入口 IP 清单；否则 DNS 切换、Cloudflare 边缘变化或前置替换后会把无关旧 IP 下发给用户。
 - **显示名和到期都靠响应头，不是 URL**，这是最容易翻车的地方：
 
