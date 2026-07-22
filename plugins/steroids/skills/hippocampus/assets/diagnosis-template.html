@@ -120,7 +120,7 @@
         }
       ],
       prescriptions: [
-        { id: "rx-global-split", title: "拆分全局 CLAUDE.md，并修剪 auto-memory", reason: "指令文件 892 行每轮白吃 ~11,800 tokens 且遵循度下降；auto-memory 36 KB 超出 25 KB 上限，31% 从未生效。", confidence: "高", effect: "恢复全量生效" },
+        { id: "rx-global-split", title: "拆分全局 CLAUDE.md，并修剪 auto-memory", reason: "全局 CLAUDE.md 892 行每轮白吃 ~11,800 tokens 且遵循度下降；auto-memory 36 KB 超出 25 KB 上限，31% 从未生效。", confidence: "高", effect: "恢复全量生效" },
         { id: "rx-skill-move", title: "把约 12 条 skill 专属教训移回各自的 skill", reason: "它们塞在全局里给每轮交税，其实只在各自 skill 才用得上。", confidence: "高", effect: "减少常驻负荷" },
         { id: "rx-conflicts", title: "调和 3 处自相矛盾的指令", reason: "让 Agent 不再在同一件事上收到相反命令。", confidence: "中", effect: "降低执行分叉" },
         { id: "rx-stale", title: "删除过期临时方案与断链引用", reason: "过期医嘱会让后续 agent 按不存在的路径或已修复的问题行动。", confidence: "中", effect: "提高新鲜度" },
