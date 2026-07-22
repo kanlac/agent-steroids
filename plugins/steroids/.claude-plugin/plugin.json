@@ -1,6 +1,6 @@
 {
   "name": "steroids",
-  "version": "2.7.3",
+  "version": "2.7.4",
   "description": "Core Agent Steroids skills and workflow helpers, including Skill inventory, proxy stack operations, and line quality audits",
   "author": {
     "name": "Kan"
