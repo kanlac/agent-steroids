@@ -1786,7 +1786,7 @@
 
               <div class="chart-card share-panel">
                 <button class="share-button" type="button" data-share>生成分享卡片</button>
-                <p class="share-note" data-share-status>小红书竖版 PNG · 1080×1440 · 离线生成</p>
+                <p class="share-note" data-share-status>竖版 PNG · 1080×1440 · 离线生成</p>
               </div>
             </aside>
           </header>
@@ -2050,7 +2050,7 @@
         link.click();
         link.remove();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
-        if (status) status.textContent = "已生成小红书竖版 PNG";
+        if (status) status.textContent = "已生成竖版 PNG";
         return blob;
       } catch (error) {
         if (status) status.textContent = error.message;

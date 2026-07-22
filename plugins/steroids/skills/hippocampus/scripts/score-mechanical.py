@@ -174,6 +174,95 @@ def _contradiction_topics(files: list[dict], cap: int = 25) -> list[dict]:
     return out[:cap]
 
 
+RULE_RE = re.compile(r"不要|禁止|必须|一律|统一使用|统一用|不超过|只能|永远|绝不|不得|only|never|must", re.I)
+
+
+def rule_inventory(files: list[dict], cap: int = 40) -> list[dict]:
+    """机械抽取规范性条款（规则 vs 实例核对的封闭清单）。"""
+    out = []
+    for path, i, line in _lines(files):
+        if RULE_RE.search(line) and len(line) > 8:
+            out.append({"id": f"rule-{len(out)+1:02d}", "file": path, "line": i, "text": line[:110]})
+            if len(out) >= cap:
+                return out
+    return out
+
+
+def slug_of(root: str) -> str:
+    return os.path.realpath(os.path.expanduser(root)).replace("/", "-")
+
+
+def auto_memory_files(projects: list[str]) -> list[dict]:
+    """探测各项目的 auto-memory 目录（~/.claude/projects/<slug>/memory/*.md）。"""
+    home = os.path.expanduser("~")
+    out = []
+    for root in projects:
+        d = os.path.join(home, ".claude", "projects", slug_of(root), "memory")
+        if not os.path.isdir(d):
+            continue
+        for name in sorted(os.listdir(d)):
+            if name.endswith(".md"):
+                st = file_stats(os.path.join(d, name))
+                if st:
+                    st.pop("_text", None); st.pop("_realpath", None)
+                    st["project"] = root
+                    out.append(st)
+    return out
+
+
+def pointed_docs(files: list[dict], repo_root: str, cap: int = 12) -> list[str]:
+    """指令文件里指向的、实际存在的本地文档（引用范围的封闭清单）。不含指令文件自身。"""
+    out, seen = [], set(os.path.realpath(os.path.expanduser(f["path"])) for f in files)
+    for f in files:
+        for m in PATH_RE.finditer(f["_text"]):
+            cand = (m.group(1) or m.group(2) or "").strip()
+            if not cand or not looks_like_path(cand):
+                continue
+            exp = os.path.expanduser(os.path.expandvars(cand))
+            probe = exp if os.path.isabs(exp) else os.path.join(repo_root, exp)
+            rp = os.path.realpath(probe)
+            if os.path.isfile(probe) and rp not in seen and probe.endswith((".md", ".txt")):
+                seen.add(rp)
+                out.append(cand)
+                if len(out) >= cap:
+                    return out
+    return out
+
+
+SKILL_REF_RE = re.compile(r"`([a-z][a-z0-9-]{1,30}):([a-z][a-z0-9-]{1,40})`")
+
+
+def skill_ref_candidates(files: list[dict], repo_root: str, cap: int = 20) -> list[dict]:
+    """指令文件里 `namespace:skill` 形式的引用，机械核对 namespace/skill 目录是否存在
+    （repo 的 plugins/<ns>/skills/<skill> 与本机插件缓存）。不存在的列为候选，agent 裁决。"""
+    import glob
+    home = os.path.expanduser("~")
+    out, seen = [], set()
+    for path, i, line in _lines(files):
+        for m in SKILL_REF_RE.finditer(line):
+            ns, name = m.group(1), m.group(2)
+            key = (ns, name)
+            if key in seen:
+                continue
+            seen.add(key)
+            in_repo = os.path.isdir(os.path.join(repo_root, "plugins", ns, "skills", name))
+            repo_authoritative = os.path.isdir(os.path.join(repo_root, "plugins"))
+            # 插件缓存可能滞留旧版本布局，会把死引用误判成活的；repo 存在时以 repo 为准
+            in_cache = (not repo_authoritative) and bool(
+                glob.glob(os.path.join(home, ".claude", "plugins", "cache", "*", ns, "*", "skills", name)) or
+                glob.glob(os.path.join(home, ".claude", "plugins", "cache", ns, "*", "skills", name)))
+            if not in_repo and not in_cache:
+                out.append({"file": path, "line": i, "ref": f"{ns}:{name}", "resolved": False})
+                if len(out) >= cap:
+                    return out
+    return out
+
+
+def skills_list(repo_root: str) -> list[str]:
+    import glob
+    return sorted(glob.glob(os.path.join(repo_root, "plugins", "*", "skills", "*", "SKILL.md")))
+
+
 def autodetect(kind: str) -> list[str]:
     home = os.path.expanduser("~")
     cands = {
@@ -190,6 +279,8 @@ def main() -> None:
                     help="指令文件 CLAUDE.md/AGENTS.md（可多次）")
     ap.add_argument("--auto-memory", default=None, help="Claude auto-memory 文件（可选）")
     ap.add_argument("--repo-root", default=".", help="解析相对路径引用的根")
+    ap.add_argument("--project", action="append", default=[],
+                    help="项目根目录（可多次），用于探测各自的 auto-memory（~/.claude/projects/<slug>/memory）")
     a = ap.parse_args()
 
     inst_paths = a.instruction or autodetect("instruction")
@@ -211,12 +302,22 @@ def main() -> None:
     op = overline_penalty(files)
     tr = truncation(auto_mem)
     bloat = max(0, round(100 - op - tr["penalty"]))
+    repo_root_abs = os.path.abspath(os.path.expanduser(a.repo_root))
     candidates = {
-        "broken_links": broken_links(files, os.path.abspath(os.path.expanduser(a.repo_root))),
+        "broken_links": broken_links(files, repo_root_abs),
         "staleness": _cue_candidates(files, STALE_RE, DATE_RE),
         "vagueness": _cue_candidates(files, VAGUE_RE),
         "contradiction_topics": _contradiction_topics(files),
+        "skill_refs_unresolved": skill_ref_candidates(files, repo_root_abs),
     }
+    projects = a.project or [repo_root_abs]
+    scope = {
+        "instruction_files": [f["path"] for f in files],
+        "auto_memory_files": auto_memory_files(projects),
+        "pointed_docs": pointed_docs(files, repo_root_abs),
+        "skills": skills_list(repo_root_abs),
+    }
+    rules = rule_inventory(files)
 
     for f in files:
         f.pop("_text", None)
@@ -235,7 +336,11 @@ def main() -> None:
         },
         # 各维度候选：机械生成，agent 逐条裁决（真缺陷记入账本，文档举例/误报丢弃）。
         "candidates": candidates,
-        "rubric_version": "2.2",
+        # 范围清单：打分只覆盖这些文件，不越界、不漏（范围机械化，治 scope 漂移）
+        "scope_manifest": scope,
+        # 规则清单：「规则 vs 实例」只core对这些条款 × scope 内文件，不做开放搜索
+        "rule_inventory": rules,
+        "rubric_version": "2.5",
         "note": "体量为纯机械项、可复现。candidates 是待裁决清单，不是缺陷判定；矛盾维度另需补充性自由扫描。语义裁决按 scoring-rubric.md。token 估算为粗略值。",
     }, ensure_ascii=False, indent=2))
 
