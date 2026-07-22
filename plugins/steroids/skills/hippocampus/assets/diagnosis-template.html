@@ -131,16 +131,6 @@
       ],
       truncated: true,
       truncation: { source: "auto-memory", totalKB: 36, loadedKB: 25, unloadedPercent: 31, estimatedTokens: 11800, recoverTokens: 3800 },
-      prognosis: {
-        projectedTotal: 89,
-        caption: "照方抓药后，脑内常驻噪声明显退烧",
-        items: [
-          { label: "每轮 token 税", value: "−68%（11,800 → ~3,800）" },
-          { label: "全局 CLAUDE.md", value: "47 KB → ~9 KB" },
-          { label: "加载状态", value: "auto-memory 修剪回 25 KB 内，记忆全量生效" },
-          { label: "临床印象", value: "记忆囤积明显缓解，处方有效；复查时重点看预置层是否反弹。" }
-        ]
-      },
       share: {
         title: "我的 Agent 记忆体检",
         footnote: "分数是方向性参考；真正有价值的是处方和证据。"
@@ -861,7 +851,7 @@
       color: var(--green);
     }
 
-    .surface-score.healthy { background: var(--green); }
+    .surface-score.healthy { color: #fff; background: var(--green); }
     .surface-score.caution {
       color: var(--ink);
       background: var(--yellow);
@@ -1699,40 +1689,6 @@
       `).join("");
     }
 
-    function renderPrescriptions(prescriptions) {
-      if (!prescriptions || prescriptions.length === 0) {
-        return `<li class="rx-item rx-focus"><p class="rx-name">无需开方</p><p class="rx-reason">本轮没有足够证据支持修改记忆文件。</p></li>`;
-      }
-      return prescriptions.map((item) => `
-        <li class="rx-item rx-focus">
-          <p class="rx-name">${escapeHTML(item.title)}</p>
-          <p class="rx-reason">${escapeHTML(item.reason)}</p>
-          <div class="rx-meta">
-            <span><b>ID</b>${escapeHTML(item.id)}</span>
-            <span><b>CONF</b>${escapeHTML(item.confidence)}</span>
-            <span><b>EFFECT</b>${escapeHTML(item.effect)}</span>
-          </div>
-        </li>
-      `).join("");
-    }
-
-    function renderPrognosis(data, level) {
-      const projected = clampScore(data.prognosis.projectedTotal);
-      const projectedLevel = currentLevel(projected);
-      return `
-        <div class="prognosis">
-          <div class="after-card">
-            <span>总分变化</span>
-            <strong>${escapeHTML(data.total)} → ${escapeHTML(projected)}</strong>
-            <p>等级带：${escapeHTML(level.name)} → ${escapeHTML(projectedLevel.name)}</p>
-          </div>
-          <ul class="prognosis-list">
-            ${(data.prognosis.items || []).map((item) => `<li><b>${escapeHTML(item.label)}</b><span>${escapeHTML(item.value)}</span></li>`).join("")}
-          </ul>
-        </div>
-      `;
-    }
-
     function renderReport(data) {
       const total = clampScore(data.total);
       const level = currentLevel(total);
@@ -1826,31 +1782,6 @@
               <div class="section-body">
                 <div class="vs-list">${renderContradictions(data.contradictions)}</div>
               </div>
-            </section>
-
-            <section class="section" aria-labelledby="prescription">
-              <div class="section-header">
-                <span class="section-tag">医嘱</span>
-                <h2 id="prescription">处方笺</h2>
-                <span class="section-caption">高置信项可直接执行；需判断项保留复核口径</span>
-              </div>
-              <div class="section-body">
-                <div class="prescription-grid">
-                  <article class="prescription-preview">
-                    <ul class="rx-list">${renderPrescriptions(data.prescriptions)}</ul>
-                    <p class="rx-footnote">完整处方（${escapeHTML(prescriptionCount)} 项）在治疗确认书里。</p>
-                  </article>
-                </div>
-              </div>
-            </section>
-
-            <section class="section" aria-labelledby="prognosis">
-              <div class="section-header">
-                <span class="section-tag">预后</span>
-                <h2 id="prognosis">疗效预测 Before / After</h2>
-                <span class="section-caption">${escapeHTML(data.prognosis.caption)}</span>
-              </div>
-              <div class="section-body">${renderPrognosis(data, level)}</div>
             </section>
 
             <div class="treatment-cta">
@@ -1947,7 +1878,7 @@
       `;
       const rowY = [712, 810, 908, 1006];
       const barX = 470;
-      const barW = 258;
+      const barW = 180;
       const barH = 16;
       const idx = ["①", "②", "③", "④"];
       const lines = dimensionScores.map((score, index) => {
@@ -1967,11 +1898,13 @@
       }).join("");
       const cx = 828;
       const cy = 402;
+      const totalStr = String(total);
+      const totalFont = totalStr.length >= 4 ? 108 : totalStr.length === 3 ? 132 : 168;
+      const totalY = totalStr.length >= 3 ? cy + 44 : cy + 50;
       const seal = `
         <circle cx="${cx}" cy="${cy}" r="133" fill="none" stroke="${P.redDeep}" stroke-width="6"/>
         <circle cx="${cx}" cy="${cy}" r="118" fill="none" stroke="${P.redDeep}" stroke-width="2.5"/>
-        <text x="${cx}" y="${cy + 50}" text-anchor="middle" font-family="${SERIF}" font-size="168" font-weight="900" fill="${P.redDeep}">${total}</text>
-        <text x="${cx}" y="${cy + 106}" text-anchor="middle" font-family="${MONO}" font-size="26" font-weight="900" fill="${P.redDeep}">SCORE / 100</text>
+        <text x="${cx}" y="${totalY}" text-anchor="middle" font-family="${SERIF}" font-size="${totalFont}" font-weight="900" fill="${P.redDeep}">${escapeXML(totalStr)}</text>
         <text x="${cx}" y="${cy - 84}" text-anchor="middle" font-family="${SANS}" font-size="25" font-weight="900" fill="${P.redDeep}" letter-spacing="2">总　分</text>
       `;
 
@@ -1987,7 +1920,7 @@
         <text x="316" y="440" font-family="${SERIF}" font-size="58" font-weight="900" fill="${P.ink}">${escapeXML(levelName)}</text>
         <rect x="316" y="470" width="120" height="48" rx="7" fill="none" stroke="${P.redDeep}" stroke-width="2.5"/>
         <text x="376" y="503" text-anchor="middle" font-family="${SANS}" font-size="26" font-weight="900" fill="${P.redDeep}">${escapeXML(levelCode)}</text>
-        <text x="458" y="503" font-family="${SANS}" font-size="27" font-weight="700" fill="${P.muted}">${escapeXML(String(diagnosisLine).slice(0, 18))}</text>
+        <text x="316" y="572" font-family="${SANS}" font-size="27" font-weight="700" fill="${P.muted}">${escapeXML(String(diagnosisLine).slice(0, 22))}</text>
 
         ${seal}
         <line x1="140" y1="606" x2="940" y2="606" stroke="rgba(24,33,31,.35)" stroke-width="2" stroke-dasharray="6 8"/>
@@ -2050,7 +1983,7 @@
         link.click();
         link.remove();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
-        if (status) status.textContent = "已生成竖版 PNG";
+        if (status) status.textContent = "已导出分享图片";
         return blob;
       } catch (error) {
         if (status) status.textContent = error.message;
