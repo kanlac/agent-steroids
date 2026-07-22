@@ -715,22 +715,6 @@
 
     .ev-quote { margin: 2px 0 0; }
 
-    .ev-hint {
-      margin: 16px 0 0;
-      padding-top: 12px;
-      border-top: 1px dashed var(--line-strong);
-      color: var(--ink-muted);
-      font-size: 12px;
-      font-weight: 800;
-      line-height: 1.6;
-    }
-
-    .ev-hint code {
-      padding: 1px 5px;
-      background: rgba(31, 88, 118, .10);
-      font-family: var(--utility);
-      font-weight: 900;
-    }
 
     .confidence-pill {
       display: inline-grid;
@@ -745,18 +729,6 @@
     .confidence-pill.medium { background: var(--orange); }
     .confidence-pill.low { background: var(--violet); }
 
-    .confidence-hint {
-      display: block;
-      margin-top: 8px;
-      color: var(--ink-muted);
-      font-size: 12px;
-      font-weight: 900;
-      line-height: 1.4;
-    }
-
-    .confidence-hint.needs-look {
-      color: var(--red-deep);
-    }
 
     .decision-box {
       display: grid;
@@ -1345,7 +1317,6 @@
         <p class="ev-finding">${escapeHtml(item.finding)}</p>
         <div class="ev-paths">${pathBlocks}</div>
         ${quoteBlock}
-        <p class="ev-hint">复制的是 <code>路径:行号</code>，可直接粘进编辑器跳到那一行。</p>
       `;
       if (typeof evidenceDialog.showModal === "function") evidenceDialog.showModal();
       else evidenceDialog.setAttribute("open", "");
@@ -1376,18 +1347,11 @@
       ta.remove();
     }
 
-    function confidenceHint(item) {
-      if (item.confidence === "high") {
-        return "高置信项，可直接执行。";
-      }
-      return "值得看一眼；勾选前可在批注里写清口径。";
-    }
 
     function renderRows() {
       rowsEl.innerHTML = prescriptions.map((item) => {
         const checked = item.defaultApply ? "checked" : "";
         const rowClass = item.defaultApply ? "is-selected" : "";
-        const hintClass = item.confidence === "high" ? "" : "needs-look";
         return `
           <tr class="${rowClass}" data-id="${item.id}">
             <td data-label="病灶">
@@ -1405,7 +1369,6 @@
             </td>
             <td data-label="置信度">
               <span class="confidence-pill ${item.confidence}">${item.confidenceLabel}</span>
-              <span class="confidence-hint ${hintClass}">${confidenceHint(item)}</span>
             </td>
             <td data-label="决定">
               <div class="decision-box">
