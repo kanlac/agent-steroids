@@ -6,15 +6,18 @@ demo 把它做成一份「治疗确认书」——你逐条确认要执行哪些
 
 ## 结构
 
-报告里处方的每一项对应一行。列：
+诊断页只给分数；一处缺陷长什么样、证据是什么，全在这一页。报告里处方的每一项对应一行。**列数压到四列**（列太多会挤到字小、路径撑爆），把长内容移出表格：
 
-- **病灶 / finding**——问题，用大白话说。
-- **证据 evidence**——`file:line` 和原文引用（和报告里同一份凭据）。
+- **病灶 / finding**——先两枚彩色标签点明「这是哪类问题」：**记忆类型**（预置记忆 / 外部记忆 / 跨两侧的写「预置 ⚔ 外部」）+ **维度**（体量 / 可用性 / 新鲜度 / 矛盾，四色各一）。下面是大白话的问题描述、疗效（+X），以及一个「查看证据」按钮。
 - **建议 action**——Agent 打算做什么（删 / 拆 / 移进 skill X / 调和 / 导入）。
 - **把握程度 confidence**——高 / 中 / 低。高＝机械，可放心照做。中/低＝需要判断的，视觉上标出来，让视线落在最需要用户看一眼的行上。
 - **决定 decision**——唯一属于用户的列：执行 / 跳过，加一栏自由填写。矛盾行的这栏，用来写以哪条为准。
 
+**证据放进弹窗**，不占表格：点「查看证据」弹出，含 `file:line` 与原文引用；矛盾这类有两处证据的，两侧各自成块。每条路径是一枚**可一键复制的 `路径:行号` 芯片**——复制出来能直接粘进编辑器跳到那一行。颜色映射（维度四色、记忆类型）写死在模板，运行时只产数据。
+
 行的默认值取合理动作（高把握默认执行，中低默认待定），但在用户保存并返回之前，什么都不执行。
+
+**数据字段**：每条处方在原有字段外，带上 `memoryType`（`preset` / `external` / `cross`）和 `dimension`（`bloat` / `usability` / `freshness` / `contradiction`）——标签与弹窗都由它们驱动。
 
 ## 实时疗效分
 
@@ -34,6 +37,8 @@ demo 把它做成一份「治疗确认书」——你逐条确认要执行哪些
     {
       "id": "rx-001",
       "finding": "guard-payload-size 临时方案段已过期",
+      "memory_type": "preset",
+      "dimension": "freshness",
       "evidence": "agent-steroids/CLAUDE.md:88",
       "action": "delete",
       "confidence": "high",
@@ -43,6 +48,8 @@ demo 把它做成一份「治疗确认书」——你逐条确认要执行哪些
     {
       "id": "rx-007",
       "finding": "yyMMdd vs YYYYMMDD 命名矛盾",
+      "memory_type": "preset",
+      "dimension": "contradiction",
       "evidence": "~/.claude/CLAUDE.md ⚔ agent-steroids/CLAUDE.md",
       "action": "reconcile-naming",
       "confidence": "medium",

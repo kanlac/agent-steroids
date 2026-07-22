@@ -464,16 +464,15 @@
 
     table {
       width: 100%;
-      min-width: 1100px;
+      min-width: 940px;
       border-collapse: collapse;
       table-layout: fixed;
     }
 
-    col.finding { width: 20%; }
-    col.evidence { width: 27%; }
-    col.action { width: 18%; }
-    col.confidence { width: 12%; }
-    col.decision { width: 23%; }
+    col.finding { width: 34%; }
+    col.action { width: 28%; }
+    col.confidence { width: 13%; }
+    col.decision { width: 25%; }
 
     th,
     td {
@@ -571,6 +570,166 @@
       font-size: 14px;
       font-weight: 800;
       line-height: 1.5;
+    }
+
+    .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 9px 0; }
+
+    .tag {
+      display: inline-block;
+      padding: 3px 8px;
+      color: #fff;
+      font-family: var(--utility);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .04em;
+      border-radius: 2px;
+      white-space: nowrap;
+    }
+
+    .tag--mem-preset { background: var(--ink); }
+    .tag--mem-external { background: var(--green); }
+    .tag--mem-cross { background: linear-gradient(100deg, var(--ink) 0 52%, var(--green) 52% 100%); }
+    .tag--dim-bloat { background: var(--violet); }
+    .tag--dim-usability { background: var(--blue); }
+    .tag--dim-freshness { background: var(--orange); }
+    .tag--dim-contradiction { background: var(--red); }
+
+    .finding-foot {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .evidence-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 11px;
+      border: 1px solid var(--blue-deep);
+      color: var(--blue-deep);
+      background: rgba(31, 88, 118, .08);
+      cursor: pointer;
+      font-family: var(--utility);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .evidence-btn:hover { color: #fff; background: var(--blue-deep); }
+
+    .evidence-dialog {
+      width: min(560px, 92vw);
+      max-height: 82vh;
+      padding: 0;
+      border: 3px solid var(--ink);
+      background: var(--paper);
+      color: var(--ink);
+      box-shadow: var(--shadow);
+    }
+
+    .evidence-dialog::backdrop { background: rgba(15, 25, 25, .52); }
+
+    .ev-body {
+      position: relative;
+      padding: 24px clamp(18px, 4vw, 30px) 26px;
+      overflow-y: auto;
+      max-height: 82vh;
+    }
+
+    .ev-close {
+      position: absolute;
+      top: 8px;
+      right: 12px;
+      width: 34px;
+      height: 34px;
+      border: 0;
+      background: transparent;
+      color: var(--ink-muted);
+      cursor: pointer;
+      font-size: 26px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .ev-close:hover { color: var(--red-deep); }
+
+    .ev-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .ev-finding {
+      margin: 0 0 16px;
+      font-size: 17px;
+      font-weight: 900;
+      line-height: 1.5;
+    }
+
+    .ev-paths { display: grid; gap: 12px; }
+
+    .ev-path-row {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      border: 1px solid var(--line-strong);
+      background: rgba(255, 255, 255, .5);
+    }
+
+    .ev-path-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .ev-path {
+      flex: 1 1 auto;
+      padding: 6px 8px;
+      background: rgba(31, 88, 118, .10);
+      color: var(--blue-deep);
+      font-family: var(--utility);
+      font-size: 13px;
+      font-weight: 900;
+      overflow-wrap: anywhere;
+    }
+
+    .copy-btn {
+      flex: 0 0 auto;
+      padding: 6px 12px;
+      border: 1px solid var(--blue-deep);
+      color: #fff;
+      background: var(--blue-deep);
+      cursor: pointer;
+      font-family: var(--utility);
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .copy-btn:hover { background: var(--blue); }
+    .copy-btn.copied { border-color: var(--green); background: var(--green); }
+
+    .ev-quote { margin: 2px 0 0; }
+
+    .ev-hint {
+      margin: 16px 0 0;
+      padding-top: 12px;
+      border-top: 1px dashed var(--line-strong);
+      color: var(--ink-muted);
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.6;
+    }
+
+    .ev-hint code {
+      padding: 1px 5px;
+      background: rgba(31, 88, 118, .10);
+      font-family: var(--utility);
+      font-weight: 900;
     }
 
     .confidence-pill {
@@ -933,7 +1092,6 @@
               <table>
                 <colgroup>
                   <col class="finding">
-                  <col class="evidence">
                   <col class="action">
                   <col class="confidence">
                   <col class="decision">
@@ -941,7 +1099,6 @@
                 <thead>
                   <tr>
                     <th scope="col">病灶 / finding</th>
-                    <th scope="col">证据 evidence</th>
                     <th scope="col">建议 action</th>
                     <th scope="col">置信度</th>
                     <th scope="col">决定 decision</th>
@@ -1000,6 +1157,13 @@
       <footer class="disclaimer">
         小字免责：分数是方向性参考、不是精确度量；保存后得到的是人机确认清单，不会自动修改任何文件；最终执行以你勾选并批注的项目为准。
       </footer>
+
+      <dialog class="evidence-dialog" id="evidenceDialog" aria-label="证据详情">
+        <div class="ev-body">
+          <button class="ev-close" type="button" id="evidenceClose" aria-label="关闭">×</button>
+          <div id="evidenceBody"></div>
+        </div>
+      </dialog>
     </article>
   </div>
 
@@ -1009,6 +1173,8 @@
     const prescriptions = [
       {
         id: "rx-001",
+        memoryType: "preset",
+        dimension: "freshness",
         finding: "guard-payload-size 临时方案段已过期",
         evidencePath: "agent-steroids/CLAUDE.md:88",
         evidenceQuote: "“guard-payload-size 临时方案……官方修复后可移除” → 上游 issue 已于两月前修复，此段已过期",
@@ -1022,6 +1188,8 @@
       },
       {
         id: "rx-002",
+        memoryType: "preset",
+        dimension: "usability",
         finding: "项目 CLAUDE.md 与 AGENTS.md 约定重复",
         evidencePath: "./CLAUDE.md:1",
         evidenceQuote: "项目记忆 ./CLAUDE.md：63；处方为“项目 ./CLAUDE.md 收敛为一行 @AGENTS.md 导入，约定只写一份”",
@@ -1035,6 +1203,8 @@
       },
       {
         id: "rx-003",
+        memoryType: "preset",
+        dimension: "bloat",
         finding: "全局 CLAUDE.md 过长，且后段失效",
         evidencePath: "~/.claude/CLAUDE.md:892",
         evidenceQuote: "892 行（超 200 行上限 4.5 倍）/ 47 KB / 每轮约 11,800 tokens；约 31% 内容超出上下文预算，未能进入有效上下文",
@@ -1048,6 +1218,8 @@
       },
       {
         id: "rx-004",
+        memoryType: "preset",
+        dimension: "freshness",
         finding: "old-proxy.conf 断链引用",
         evidencePath: "~/.claude/CLAUDE.md:127",
         evidenceQuote: "引用 ~/.config/old-proxy.conf → 该文件已不存在（断链）",
@@ -1061,6 +1233,8 @@
       },
       {
         id: "rx-005",
+        memoryType: "preset",
+        dimension: "usability",
         finding: "约 12 条专题教训住错地方",
         evidencePath: "~/.claude/CLAUDE.md:340",
         evidenceQuote: "12 条其实是放错地方、本该住进某个 skill 的教训；把「解压中文 zip」「Clash 自建节点」「机场部署」等专题教训 PR 回各自的 skill",
@@ -1074,6 +1248,8 @@
       },
       {
         id: "rx-006",
+        memoryType: "preset",
+        dimension: "contradiction",
         finding: "yyMMdd vs YYYYMMDD 命名矛盾",
         evidencePath: "~/.claude/CLAUDE.md:612 ⚔ agent-steroids/CLAUDE.md:24",
         evidenceQuote: "文档命名统一用 “yyMMdd-” 前缀（如 260603-） ⚔ 文件名统一用 “YYYYMMDD-” 前缀",
@@ -1087,6 +1263,8 @@
       },
       {
         id: "rx-007",
+        memoryType: "cross",
+        dimension: "contradiction",
         finding: "CDP-vs-WebFetch 社媒读取路由矛盾",
         evidencePath: "~/.claude/CLAUDE.md:388 ⚔ skills/web-access/SKILL.md:41",
         evidenceQuote: "读社交媒体直接用 CDP Chrome，不要先试 defuddle/WebFetch ⚔ 优先 WebSearch/WebFetch/Jina，静态层无效才上 CDP",
@@ -1100,6 +1278,8 @@
       },
       {
         id: "rx-008",
+        memoryType: "preset",
+        dimension: "freshness",
         finding: "3 处已过期的临时方案 / WIP 标记",
         evidencePath: "~/.claude/CLAUDE.md:512",
         evidenceQuote: "3 处 “临时方案 / WIP” 标记，对应工作均已 ship",
@@ -1119,6 +1299,82 @@
     const saveButton = document.getElementById("saveButton");
     const saveStatus = document.getElementById("saveStatus");
     const signedDate = document.getElementById("signedDate");
+    const evidenceDialog = document.getElementById("evidenceDialog");
+    const evidenceBody = document.getElementById("evidenceBody");
+    const evidenceClose = document.getElementById("evidenceClose");
+
+    const DIMENSIONS = {
+      bloat: { label: "体量", cls: "dim-bloat" },
+      usability: { label: "可用性", cls: "dim-usability" },
+      freshness: { label: "新鲜度", cls: "dim-freshness" },
+      contradiction: { label: "矛盾", cls: "dim-contradiction" }
+    };
+    const MEMORY = {
+      preset: { label: "预置记忆", cls: "mem-preset" },
+      external: { label: "外部记忆", cls: "mem-external" },
+      cross: { label: "预置 ⚔ 外部", cls: "mem-cross" }
+    };
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    }
+
+    function tagsHtml(item) {
+      const m = MEMORY[item.memoryType] || MEMORY.preset;
+      const d = DIMENSIONS[item.dimension] || DIMENSIONS.usability;
+      return `<span class="tag tag--${m.cls}">${m.label}</span><span class="tag tag--${d.cls}">${d.label}</span>`;
+    }
+
+    function openEvidence(id) {
+      const item = prescriptions.find((x) => x.id === id);
+      if (!item) return;
+      const paths = String(item.evidencePath).split("⚔").map((t) => t.trim()).filter(Boolean);
+      const quotes = String(item.evidenceQuote).split("⚔").map((t) => t.trim()).filter(Boolean);
+      const paired = paths.length > 1 && quotes.length === paths.length;
+      const pathBlocks = paths.map((pth, i) => `
+        <div class="ev-path-row">
+          <div class="ev-path-head">
+            <code class="ev-path">${escapeHtml(pth)}</code>
+            <button class="copy-btn" type="button" data-copy="${escapeHtml(pth)}">复制路径</button>
+          </div>
+          ${paired ? `<p class="quote ev-quote">${escapeHtml(quotes[i])}</p>` : ""}
+        </div>`).join("");
+      const quoteBlock = paired ? "" : `<p class="quote ev-quote">${escapeHtml(item.evidenceQuote)}</p>`;
+      evidenceBody.innerHTML = `
+        <div class="ev-head"><span class="rx-id">${escapeHtml(item.id)}</span>${tagsHtml(item)}</div>
+        <p class="ev-finding">${escapeHtml(item.finding)}</p>
+        <div class="ev-paths">${pathBlocks}</div>
+        ${quoteBlock}
+        <p class="ev-hint">复制的是 <code>路径:行号</code>，可直接粘进编辑器跳到那一行。</p>
+      `;
+      if (typeof evidenceDialog.showModal === "function") evidenceDialog.showModal();
+      else evidenceDialog.setAttribute("open", "");
+    }
+
+    function copyText(text, btn) {
+      const label = btn.textContent;
+      const done = () => {
+        btn.textContent = "已复制 ✓";
+        btn.classList.add("copied");
+        setTimeout(() => { btn.textContent = label; btn.classList.remove("copied"); }, 1400);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+      } else {
+        fallbackCopy(text, done);
+      }
+    }
+
+    function fallbackCopy(text, done) {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); done(); } catch (e) { /* noop */ }
+      ta.remove();
+    }
 
     function confidenceHint(item) {
       if (item.confidence === "high") {
@@ -1136,12 +1392,12 @@
           <tr class="${rowClass}" data-id="${item.id}">
             <td data-label="病灶">
               <span class="rx-id">${item.id}</span>
+              <div class="tag-row">${tagsHtml(item)}</div>
               <p class="finding-title">${item.finding}</p>
-              <span class="effect">疗效 +${item.effect}</span>
-            </td>
-            <td data-label="证据">
-              <span class="evidence-path">${item.evidencePath}</span>
-              <p class="quote">${item.evidenceQuote}</p>
+              <div class="finding-foot">
+                <span class="effect">疗效 +${item.effect}</span>
+                <button class="evidence-btn" type="button" data-role="evidence" data-id="${item.id}">查看证据 ›</button>
+              </div>
             </td>
             <td data-label="建议">
               <span class="action-code">${item.action}</span>
@@ -1211,6 +1467,8 @@
           return {
             id: item.id,
             finding: item.finding,
+            memory_type: item.memoryType,
+            dimension: item.dimension,
             evidence: `${item.evidencePath} — ${item.evidenceQuote}`,
             action: item.action,
             confidence: item.confidence,
@@ -1253,6 +1511,21 @@
     });
 
     saveButton.addEventListener("click", saveJson);
+
+    rowsEl.addEventListener("click", (event) => {
+      const btn = event.target.closest('[data-role="evidence"]');
+      if (btn) openEvidence(btn.dataset.id);
+    });
+
+    evidenceBody.addEventListener("click", (event) => {
+      const btn = event.target.closest(".copy-btn");
+      if (btn) copyText(btn.dataset.copy, btn);
+    });
+
+    evidenceClose.addEventListener("click", () => evidenceDialog.close());
+    evidenceDialog.addEventListener("click", (event) => {
+      if (event.target === evidenceDialog) evidenceDialog.close();
+    });
   </script>
 </body>
 </html>
