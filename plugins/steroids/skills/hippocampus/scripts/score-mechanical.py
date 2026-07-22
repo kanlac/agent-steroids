@@ -263,14 +263,28 @@ def skills_list(repo_root: str) -> list[str]:
     return sorted(glob.glob(os.path.join(repo_root, "plugins", "*", "skills", "*", "SKILL.md")))
 
 
-def autodetect(kind: str) -> list[str]:
+def detect_instruction_files(cwd: str) -> list[str]:
+    """按 Claude Code 的真实加载行为推导预置指令文件：
+    全局 ~/.claude/CLAUDE.md（及 AGENTS.md），加上从 cwd 向上爬升到根、
+    沿途每层目录的 CLAUDE.md / CLAUDE.local.md / AGENTS.md。
+    跑在哪里，就只算哪里真正会被加载的——不手工挑选。"""
     home = os.path.expanduser("~")
-    cands = {
-        "instruction": [f"{home}/.claude/CLAUDE.md", f"{home}/.claude/AGENTS.md",
-                        "CLAUDE.md", "AGENTS.md"],
-        "auto_memory": [f"{home}/.claude/memory/MEMORY.md", f"{home}/.claude/MEMORY.md"],
-    }[kind]
-    return [c for c in cands if os.path.isfile(os.path.expanduser(c))]
+    out = [p for p in (f"{home}/.claude/CLAUDE.md", f"{home}/.claude/AGENTS.md")
+           if os.path.isfile(p)]
+    d = os.path.realpath(os.path.expanduser(cwd))
+    chain = []
+    while True:
+        chain.append(d)
+        parent = os.path.dirname(d)
+        if parent == d:
+            break
+        d = parent
+    for directory in reversed(chain):          # 根 → cwd，与加载顺序一致
+        for name in ("AGENTS.md", "CLAUDE.md", "CLAUDE.local.md"):
+            p = os.path.join(directory, name)
+            if os.path.isfile(p):
+                out.append(p)
+    return out
 
 
 def main() -> None:
@@ -278,12 +292,15 @@ def main() -> None:
     ap.add_argument("--instruction", action="append", default=[],
                     help="指令文件 CLAUDE.md/AGENTS.md（可多次）")
     ap.add_argument("--auto-memory", default=None, help="Claude auto-memory 文件（可选）")
-    ap.add_argument("--repo-root", default=".", help="解析相对路径引用的根")
+    ap.add_argument("--repo-root", default=None, help="解析相对路径引用/skills 清单的根（默认 = --cwd）")
     ap.add_argument("--project", action="append", default=[],
-                    help="项目根目录（可多次），用于探测各自的 auto-memory（~/.claude/projects/<slug>/memory）")
+                    help="项目根目录（可多次），用于探测各自的 auto-memory；默认 = --cwd")
+    ap.add_argument("--cwd", default=".", help="Agent 实际运行目录；预置文件按此向上爬升自动发现")
     a = ap.parse_args()
+    if a.repo_root is None:
+        a.repo_root = a.cwd
 
-    inst_paths = a.instruction or autodetect("instruction")
+    inst_paths = a.instruction or detect_instruction_files(a.cwd)
     files, _seen_rp = [], set()
     for s in (file_stats(p) for p in inst_paths):
         if not s:
@@ -296,7 +313,7 @@ def main() -> None:
         print(json.dumps({"error": "未找到任何指令文件（CLAUDE.md/AGENTS.md）"}, ensure_ascii=False))
         sys.exit(0)
 
-    am_path = a.auto_memory or (autodetect("auto_memory")[:1] or [None])[0]
+    am_path = a.auto_memory
     auto_mem = file_stats(am_path) if am_path else None
 
     op = overline_penalty(files)
@@ -310,7 +327,7 @@ def main() -> None:
         "contradiction_topics": _contradiction_topics(files),
         "skill_refs_unresolved": skill_ref_candidates(files, repo_root_abs),
     }
-    projects = a.project or [repo_root_abs]
+    projects = a.project or [os.path.realpath(os.path.expanduser(a.cwd))]
     scope = {
         "instruction_files": [f["path"] for f in files],
         "auto_memory_files": auto_memory_files(projects),

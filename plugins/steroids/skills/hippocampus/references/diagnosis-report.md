@@ -72,10 +72,10 @@ Agent 运行时**只产出那个 DATA 对象**（分数、证据、矛盾对、�
 
 ## 扫描范围与跨 agent 探测
 
-扫的是**此时此地这个 Agent** 的记忆，不跑去扫别的项目。自动探测存在哪些记忆文件，有啥扫啥，别假设一定是 Claude：
+扫的是**此时此地这个 Agent** 的记忆——范围**不手工挑选**，由脚本从运行目录机械推导（`score-mechanical.py --cwd <运行目录>`），推导规则与 Claude Code 的真实加载行为一致：
 
-- 预置层：全局 `~/.claude/CLAUDE.md`、项目根的 `CLAUDE.md` / `AGENTS.md`（Codex 等 agent 读 AGENTS.md）、Claude 的 auto-memory（存在才算）。
-- 外部层：可触达的 skill 及其 description、指令文件指向的文档。
+- 预置层：全局 `~/.claude/CLAUDE.md`（及 AGENTS.md），加上**从 cwd 向上爬升**沿途每层的 `CLAUDE.md` / `CLAUDE.local.md` / `AGENTS.md`（Codex 等 agent 读 AGENTS.md；软链接按 realpath 去重）；该 cwd 对应项目的 auto-memory（存在才算）。跑在哪里，就只算哪里真正会被加载的——别的项目的 CLAUDE.md 不会被这个 agent 加载，就不在体检范围内。
+- 外部层：scope_manifest 里的 skills 清单及其 description、预置文件指向的文档。
 
 环境很大时按 SKILL.md 的「并行取证 + 单点综合」扇出 subagent，且对文档**抽样**而非逐字读全，给成本兜底。
 
