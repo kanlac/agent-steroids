@@ -35,9 +35,7 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 | [`clipping`](plugins/steroids/skills/clipping/SKILL.md) | `steroids` | 将网页文章保存为本地 Markdown 笔记。支持微信公众号等 JS 渲染页面；对信息图/表格截图可使用 PaddleOCR 提取文本并重构为 Markdown 表格。 |
 | [`paper-download`](plugins/steroids/skills/paper-download/SKILL.md) | `steroids` | 学术论文检索与下载。三级策略：HTTP/OA 直链、headless 解析、headed browser 登录/CAPTCHA。`cdp-chrome` 只是可选 provider。 |
 | [`wechat-desktop`](plugins/steroids/skills/wechat-desktop/SKILL.md) | `steroids` | 通过 computer-use MCP 在 macOS 上读取、浏览和总结微信群聊消息。 |
-| [`airport-deploy`](plugins/steroids/skills/airport-deploy/SKILL.md) | `steroids` | 自建机场（服务端）搭建与运维：VPS 加固、3X-UI、Xray VLESS Reality/Vision 入站、多用户独立订阅、订阅 YAML 渲染、Profile 显示名与到期下发、域名/ACME 证书、测速与 IP 风险、备份。 |
 | [`clash-verge-config`](plugins/steroids/skills/clash-verge-config/SKILL.md) | `steroids` | Clash Verge Rev / mihomo / Stash 客户端配置即代码：保留字段与 enhance 管线、Stash Override、配置不生效排查、运行态 controller 调试门槛、规则/provider/真实连接闭环、DNS 与浏览器泄漏分层验收、TUN 回环。 |
-| [`line-quality-audit`](plugins/steroids/skills/line-quality-audit/SKILL.md) | `steroids` | VPS / 机场节点线路质量评估：区分去程/回程，识别 CN2 GIA、CTGNet、9929、CMI 与普通 transit，测延迟/丢包/抖动/单线程吞吐、端口/IP 风险和 Google 地理误判，并按模板输出可比较报告。 |
 | [`skill-console`](plugins/steroids/skills/skill-console/SKILL.md) | `steroids` | 生成本地 Skill 清单控制台，审计 token 用量、description token、重复项路径、Skill 内容预览，并导出选中 Skill 的 `{name, path}` JSON。 |
 | [`hippocampus`](plugins/steroids/skills/hippocampus/SKILL.md) | `steroids` | 管理 Agent 记忆的一切，两件事：①诊断与治疗——扫描预置记忆（全局/项目 CLAUDE.md/AGENTS.md）与外部记忆（skills、文档），按体量/可用性/新鲜度/矛盾四维打分，产出「记忆精神科确诊书」HTML 报告 + 交互式「治疗确认书」（ReviewTable），人签字确认后再执行清理；②吸收新知识——把纠偏/教训/「记住这个」的请求路由到正确归属（预置/外部/进某 skill/不记）并重构进 skill 而非堆叠原始笔记。承载 push/pull、稀缺、归位、何时不记的记忆管理品味。 |
 | [`telegram-agents`](plugins/telegram/skills/telegram-agents/SKILL.md) | `telegram` | Telegram agent 配置与管理。包括 tmux 会话、Telethon 调度器、launchd 心跳定时任务。 |

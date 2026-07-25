@@ -1,13 +1,13 @@
 ---
 name: clash-verge-config
-description: Manage and debug Clash Verge Rev, Mihomo, and Stash client configuration as code, including enhance-pipeline field ownership, scripts, merges and Stash overrides, runtime controllers, profile metadata, routing, DNS and browser leaks, TUN loops, blocked proxy IPs, and cross-profile rule automation. Use when configurations do not apply, rules miss, remote providers or overrides need verification, DNS/WebRTC leaks, profiles show stale metadata, nodes time out, or proxy configuration needs repeatable runtime testing. Use airport-deploy for server-side proxy and subscription deployment.
+description: Manage and debug Clash Verge Rev, Mihomo, and Stash client configuration as code, including enhance-pipeline field ownership, scripts, merges and Stash overrides, runtime controllers, profile metadata, routing, DNS and browser leaks, TUN loops, blocked proxy IPs, and cross-profile rule automation. Use when configurations do not apply, rules miss, remote providers or overrides need verification, DNS/WebRTC leaks, profiles show stale metadata, nodes time out, or proxy configuration needs repeatable runtime testing. Server-side proxy/airport build and subscription deployment are out of scope for this client-side skill.
 ---
 
 ## 这个 Skill 解决什么
 
 Clash Verge Rev 是个 Tauri GUI，底层跑 mihomo 内核。它的配置系统有几个**反直觉但有据可查**的行为，不了解会浪费大量时间瞎试。这个 skill 把这些行为的「方向」沉淀下来，让你改配置、做自动化、排查路由时直接走对路，而不是凭印象猜。
 
-核心原则贯穿全篇：**遇到不确定的工具行为，去查一手来源（官方文档 + 源码），不靠猜。** 每条结论都可以、也应该在当前版本上复核。服务端（机场 / 订阅渲染）侧的问题见 [[airport-deploy]]。
+核心原则贯穿全篇：**遇到不确定的工具行为，去查一手来源（官方文档 + 源码），不靠猜。** 每条结论都可以、也应该在当前版本上复核。服务端（机场 / 订阅渲染）侧的问题不在本篇范围，属服务端机场运维方法论。
 
 ## 心智模型一：字段归属（最重要）
 
@@ -101,7 +101,7 @@ echo "$r" | grep -oE ',2,1,200,"[A-Z]{2,3}"'   # 引号里就是 Google 判定�
 
 某个一直能用的节点突然延迟测试全 timeout，**先别怀疑订阅格式或节点参数**。两个客户端侧的优先排查：
 
-- **IP 被墙**：从本机网络直接对节点落地 `<server-ip>:<port>` 做 TCP 连接测试（绕开 mihomo）。连不上、而换一条已有代理从墙外能连上 = 落地 IP 被封；这时改节点参数、重导订阅都没用，问题在服务端 IP（见 [[airport-deploy]] 的「连不上的分层诊断」）。
+- **IP 被墙**：从本机网络直接对节点落地 `<server-ip>:<port>` 做 TCP 连接测试（绕开 mihomo）。连不上、而换一条已有代理从墙外能连上 = 落地 IP 被封；这时改节点参数、重导订阅都没用，问题在服务端 IP（属服务端机场运维范畴，不在本篇）。
 - **TUN 回环**：开 TUN/fake-ip 时，mihomo 的自动分流路由会把「连代理服务器自己那个入口地址」也吞进 TUN，形成回环超时。用 `route-exclude-address` 把本次订阅实际节点 `server` 对应的 IPv4 排除走物理网关：IP 字面量直接排 `<ip>/32`，域名解析当前 A 记录后逐个排 `/32`；macOS 上 `route get <resolved-ip>` 应回到 Wi-Fi 网关而非 `198.18.x.x`。不要只排域名，也不要维护一份旧的入口 IP 清单，尤其是面向别的用户环境时不能假设他们已有本地兜底脚本。
 - **代理域名 DNS 递归**：如果 TCP 直连入口成功、`route get` 也走物理网关，但 mihomo 日志出现 DoH 经代理组解析节点 server 并最终 `dns resolve failed`，检查 `dns.proxy-server-nameserver`。节点域名解析不能依赖同一个尚未建立的代理组。
 

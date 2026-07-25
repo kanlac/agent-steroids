@@ -1,7 +1,7 @@
 {
   "name": "steroids",
   "version": "2.8.2",
-  "description": "Core Agent Steroids skills and workflow helpers, including Skill inventory, proxy stack operations, and line quality audits",
+  "description": "Core Agent Steroids skills and workflow helpers, including Skill inventory, Clash/Mihomo client config, and document/paper workflows",
   "author": {
     "name": "Kan"
   },

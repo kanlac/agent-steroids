@@ -1,6 +1,6 @@
 manifest_version: 1
 name: steroids
 version: 2.8.2
-description: Core Agent Steroids skills and workflow helpers for Hermes, including proxy stack operations.
+description: Core Agent Steroids skills and workflow helpers for Hermes, including Clash/Mihomo client config.
 author: Kan
 kind: standalone
