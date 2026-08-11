@@ -1,6 +1,6 @@
 manifest_version: 1
 name: steroids
-version: 2.9.0
+version: 2.9.1
 description: Core Agent Steroids skills and workflow helpers for Hermes, including Clash/Mihomo client config.
 author: Kan
 kind: standalone

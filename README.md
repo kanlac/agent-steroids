@@ -37,7 +37,7 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 | [`wechat-desktop`](plugins/steroids/skills/wechat-desktop/SKILL.md) | `steroids` | 通过 computer-use MCP 在 macOS 上读取、浏览和总结微信群聊消息。 |
 | [`clash-verge-config`](plugins/steroids/skills/clash-verge-config/SKILL.md) | `steroids` | Clash Verge Rev / mihomo / Stash 客户端配置即代码：保留字段与 enhance 管线、Stash Override、配置不生效排查、运行态 controller 调试门槛、规则/provider/真实连接闭环、DNS 与浏览器泄漏分层验收、TUN 回环。 |
 | [`skill-console`](plugins/steroids/skills/skill-console/SKILL.md) | `steroids` | 生成本地 Skill 清单控制台，审计 token 用量、description token、重复项路径、Skill 内容预览，并导出选中 Skill 的 `{name, path}` JSON。 |
-| [`hippocampus`](plugins/steroids/skills/hippocampus/SKILL.md) | `steroids` | 管理 Agent 记忆的一切，两件事：①诊断与治疗——扫描预置记忆（全局/项目 CLAUDE.md/AGENTS.md）与外部记忆（skills、文档），按体量/可用性/新鲜度/矛盾四维打分，产出「记忆精神科确诊书」HTML 报告 + 交互式「治疗确认书」（ReviewTable），人签字确认后再执行清理；②吸收新知识——把纠偏/教训/「记住这个」的请求路由到正确归属（预置/外部/进某 skill/不记）并重构进 skill 而非堆叠原始笔记。承载 push/pull、稀缺、归位、何时不记的记忆管理品味。 |
+| [`hippocampus`](plugins/steroids/skills/hippocampus/SKILL.md) | `steroids` | 管理 Agent 记忆与上下文：①诊断与治疗——扫描全局/项目指令、auto-memory、当前工具定义、skills 与文档，按体量/可用性/新鲜度/矛盾四维打分，生成「记忆精神科确诊书」和逐项确认的 ReviewTable；②吸收新知识——把教训路由到唯一归属并重构，而非追加笔记。内置最短充分表达、渐进披露、工具描述去噪和 auto-memory 中性原则。 |
 | [`telegram-agents`](plugins/telegram/skills/telegram-agents/SKILL.md) | `telegram` | Telegram agent 配置与管理。包括 tmux 会话、Telethon 调度器、launchd 心跳定时任务。 |
 | [`cdp-chrome`](plugins/chrome/skills/cdp-chrome/SKILL.md) | `chrome` | 可选的共享有头 Chrome provider。适合需要持久登录态、用户手动 CAPTCHA、反 bot 页面或 live site inspection 的环境；明确独立 CDP profile 与日常 Chrome 的验证边界。 |
 | [`write-blog`](plugins/write-blog/skills/write-blog/SKILL.md) | `write-blog` | 写作全流程：从录音稿成文，或从零开始的对话式写作（选题、调研、提问漏斗、大纲迭代、初稿）。按作者 voice-dna 风格输出，附「图形为主、文字为辅」制图参考。 |

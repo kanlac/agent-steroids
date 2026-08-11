@@ -9,11 +9,12 @@
       meta: {
         id: "MHS-CLAUDE-0058",
         date: "2026-07-02",
-        sampleDescription: "CLAUDE.md / skills / docs · rubric v2",
+        sampleDescription: "CLAUDE.md / tools / skills / docs · rubric v2.6",
         memoryFiles: [
           { label: "全局记忆", path: "~/.claude/CLAUDE.md", lines: 892, size: "47 KB" },
           { label: "auto-memory", path: "~/.claude/memory", size: "36 KB（载入上限 25 KB）" },
           { label: "项目记忆", path: "./CLAUDE.md", lines: 156, size: "12 KB" },
+          { label: "工具定义", path: "当前会话", size: "提前加载约 3,600 tokens" },
           { label: "技能与文档", path: "skills / docs", lines: 608, size: "按需加载" }
         ],
         treatmentHref: "./review-table-template.html"
@@ -41,7 +42,8 @@
           note: "常驻负荷偏高",
           items: [
             { label: "全局记忆", ref: "~/.claude/CLAUDE.md", note: "过长，892 行", score: 42 },
-            { label: "项目记忆", ref: "./CLAUDE.md", note: "局部有用，但也开始粘锅", score: 63 }
+            { label: "项目记忆", ref: "./CLAUDE.md", note: "局部有用，但也开始粘锅", score: 63 },
+            { label: "工具定义", ref: "当前会话", note: "2 个描述可明显压缩", score: 72 }
           ]
         },
         external: {
@@ -63,7 +65,8 @@
             { ref: "~/.claude/CLAUDE.md", quote: "892 行（超 200 行上限 4.5 倍）/ 47 KB / 每轮约 11,800 tokens，遵循度随长度下降" },
             { ref: "~/.claude/memory（auto-memory）", quote: "36 KB，超出 25 KB / 200 行载入上限，约 31% 从未进入上下文" },
             { ref: "skills/wechat-desktop/SKILL.md", quote: "340 行（建议拆分）" },
-            { ref: "skills/clash-verge-config/SKILL.md", quote: "268 行" }
+            { ref: "skills/clash-verge-config/SKILL.md", quote: "268 行" },
+            { ref: "当前会话工具定义", quote: "2 个提前加载的工具描述超过 200 个估算 token" }
           ]
         },
         usability: {
@@ -74,7 +77,8 @@
             { ref: "~/.claude/CLAUDE.md:441", quote: "“写代码时注意处理好边界情况” → 太含糊，agent 无法据此做任何具体决策" },
             { ref: "~/.claude/CLAUDE.md:203", quote: "“保持代码整洁、可维护” → 通用废话，不改变任何决策" },
             { ref: "预置层", quote: "约 40% 的行可从 repo / package.json 直接推断（技术栈、显而易见的约定）" },
-            { ref: "含糊指令", quote: "7 处类似的含糊指令（“合理处理”“视情况而定”“注意性能”）" }
+            { ref: "含糊指令", quote: "7 处类似的含糊指令（“合理处理”“视情况而定”“注意性能”）" },
+            { ref: "工具描述", quote: "参数 schema 已经表达的内容又用长教程重复一遍" }
           ]
         },
         freshness: {
@@ -1599,7 +1603,7 @@
           </main>
 
           <footer class="disclaimer">
-            小字免责：分数是方向性参考、不是精确度量；高置信项可复现，语义项取决于当次判断；真正有价值的是处方，不是数字。本报告在本机生成、不联网；完整报告含你记忆文件的原文，对外分享请只用「分享卡」。
+            小字免责：分数是方向性参考、不是精确度量；机械项可复现，语义项取决于当次判断；真正有价值的是处方，不是数字。本报告在本机生成、不联网；完整报告含你记忆文件的原文，对外分享请只用「分享卡」。
           </footer>
         </article>
       `;

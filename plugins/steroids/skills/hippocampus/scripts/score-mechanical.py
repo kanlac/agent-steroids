@@ -2,8 +2,8 @@
 """hippocampus 机械评分器 —— 把评分卡里"能确定计算"的部分算出来，供 agent 直接用。
 
 对应评分卡三段式管线的前两段（跨模型/多次运行完全一致），不做语义判断：
-  1. 机械盘点：体量分（指令文件超行扣分 + auto-memory 截断扣分，软链接去重）
-  2. 候选生成：断链候选、时效标记候选、含糊线索候选、同主题矛盾候选对
+  1. 机械盘点：体量分（指令文件、auto-memory、可选的工具描述清单）
+  2. 候选生成：断链、时效标记、含糊线索、同主题矛盾、过长工具描述
 
 第三段（语义裁决：逐条候选判真伪并记账）由 agent 按 scoring-rubric.md 做。
 
@@ -11,6 +11,7 @@
   python3 score-mechanical.py \
       --instruction ~/.claude/CLAUDE.md --instruction ./CLAUDE.md \
       --auto-memory ~/.claude/memory/MEMORY.md \
+      --tool-manifest /tmp/current-tools.json \
       --repo-root .
 所有参数可选：不传时自动探测常见位置。输出 JSON 到 stdout。
 仅用 Python 3 标准库。
@@ -23,6 +24,9 @@ CAP_BYTES = 25 * 1024    # 或 25KB，谁先到
 LINE_BUDGET = 200        # 单个指令文件的建议行数上限
 OVERLINE_CAP = 45        # 超行扣分封顶
 TRUNC_WEIGHT = 60        # 截断扣分权重
+TOOL_DESC_BUDGET = 200  # 单个提前加载工具描述的估算 token 启发式
+TOOL_DESC_STEP = 100    # 每超 100 token 扣 1
+TOOL_DESC_CAP = 24      # 工具描述扣分封顶
 
 
 def est_tokens(text: str) -> int:
@@ -77,6 +81,43 @@ def truncation(auto_mem: dict | None) -> dict:
         "dropped_fraction": round(dropped, 3),
         "penalty": round(TRUNC_WEIGHT * dropped),
     }
+
+
+def tool_manifest(path: str | None) -> list[dict]:
+    """读取可选工具清单。格式为数组或 {"tools": [...]}；不把完整描述回显进输出。"""
+    if not path:
+        return []
+    p = os.path.expanduser(path)
+    with open(p, encoding="utf-8") as f:
+        raw = json.load(f)
+    entries = raw.get("tools", []) if isinstance(raw, dict) else raw
+    if not isinstance(entries, list):
+        raise ValueError("tool manifest 必须是数组或包含 tools 数组的对象")
+    out = []
+    for i, item in enumerate(entries):
+        if not isinstance(item, dict):
+            continue
+        description = str(item.get("description") or "")
+        schema = item.get("input_schema", item.get("schema", {}))
+        schema_text = json.dumps(schema, ensure_ascii=False, separators=(",", ":")) if schema else ""
+        out.append({
+            "name": str(item.get("name") or f"tool-{i + 1}"),
+            "source": str(item.get("source") or "runtime"),
+            "deferred": bool(item.get("deferred", False)),
+            "description_tokens": est_tokens(description),
+            "description_bytes": len(description.encode("utf-8")),
+            "schema_tokens": est_tokens(schema_text),
+            "description_preview": description[:120].replace("\n", " "),
+        })
+    return out
+
+
+def tool_description_penalty(tools: list[dict]) -> float:
+    total = sum(
+        max(0, (t["description_tokens"] - TOOL_DESC_BUDGET) / TOOL_DESC_STEP)
+        for t in tools if not t["deferred"]
+    )
+    return round(min(TOOL_DESC_CAP, total), 1)
 
 
 # 只认"明显是本地文件路径"的引用，保守，尽量不误报
@@ -292,6 +333,8 @@ def main() -> None:
     ap.add_argument("--instruction", action="append", default=[],
                     help="指令文件 CLAUDE.md/AGENTS.md（可多次）")
     ap.add_argument("--auto-memory", default=None, help="Claude auto-memory 文件（可选）")
+    ap.add_argument("--tool-manifest", default=None,
+                    help="当前可见工具 JSON（可选；name/description/input_schema/deferred/source）")
     ap.add_argument("--repo-root", default=None, help="解析相对路径引用/skills 清单的根（默认 = --cwd）")
     ap.add_argument("--project", action="append", default=[],
                     help="项目根目录（可多次），用于探测各自的 auto-memory；默认 = --cwd")
@@ -318,7 +361,9 @@ def main() -> None:
 
     op = overline_penalty(files)
     tr = truncation(auto_mem)
-    bloat = max(0, round(100 - op - tr["penalty"]))
+    tools = tool_manifest(a.tool_manifest)
+    tool_penalty = tool_description_penalty(tools)
+    bloat = max(0, round(100 - op - tr["penalty"] - tool_penalty))
     repo_root_abs = os.path.abspath(os.path.expanduser(a.repo_root))
     candidates = {
         "broken_links": broken_links(files, repo_root_abs),
@@ -326,6 +371,10 @@ def main() -> None:
         "vagueness": _cue_candidates(files, VAGUE_RE),
         "contradiction_topics": _contradiction_topics(files),
         "skill_refs_unresolved": skill_ref_candidates(files, repo_root_abs),
+        "tool_descriptions_verbose": [
+            t for t in tools
+            if not t["deferred"] and t["description_tokens"] > TOOL_DESC_BUDGET
+        ],
     }
     projects = a.project or [os.path.realpath(os.path.expanduser(a.cwd))]
     scope = {
@@ -333,6 +382,7 @@ def main() -> None:
         "auto_memory_files": auto_memory_files(projects),
         "pointed_docs": pointed_docs(files, repo_root_abs),
         "skills": skills_list(repo_root_abs),
+        "tool_definitions": tools,
     }
     rules = rule_inventory(files)
 
@@ -350,14 +400,22 @@ def main() -> None:
             "truncation": tr,
             "instruction_files": files,
             "auto_memory": {k: v for k, v in (auto_mem or {}).items()} or None,
+            "tool_descriptions": {
+                "applicable": a.tool_manifest is not None,
+                "eager_count": sum(not t["deferred"] for t in tools),
+                "deferred_count": sum(t["deferred"] for t in tools),
+                "description_tokens": sum(t["description_tokens"] for t in tools if not t["deferred"]),
+                "schema_tokens": sum(t["schema_tokens"] for t in tools if not t["deferred"]),
+                "penalty": tool_penalty,
+            },
         },
         # 各维度候选：机械生成，agent 逐条裁决（真缺陷记入账本，文档举例/误报丢弃）。
         "candidates": candidates,
         # 范围清单：打分只覆盖这些文件，不越界、不漏（范围机械化，治 scope 漂移）
         "scope_manifest": scope,
-        # 规则清单：「规则 vs 实例」只core对这些条款 × scope 内文件，不做开放搜索
+        # 规则清单：「规则 vs 实例」只核对这些条款 × scope 内文件，不做开放搜索
         "rule_inventory": rules,
-        "rubric_version": "2.5",
+        "rubric_version": "2.6",
         "note": "体量为纯机械项、可复现。candidates 是待裁决清单，不是缺陷判定；矛盾维度另需补充性自由扫描。语义裁决按 scoring-rubric.md。token 估算为粗略值。",
     }, ensure_ascii=False, indent=2))
 
