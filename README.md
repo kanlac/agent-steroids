@@ -6,8 +6,9 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 - `telegram`：Claude Code 专用的 Telegram agent 运维、通知 MCP、Telegram hook，并包含 `guard-payload-size`。
 - `chrome`：可选的每 OS 用户一个进程的共享有头 Chrome provider；Claude Code / Codex 安装后随插件提供 `cdp-chrome` MCP 启动器。
 - `write-blog`：Claude Code 专用的写作流程 skill 插件——选题构思、对话式挖掘、大纲迭代、按作者风格成文，附信息图/制图参考。
+- `taskdag`：仓库原生的 ADR + Task DAG 控制面——结构化任务/决策文档、vendor 进项目的零依赖生命周期 CLI、生成式 DAG 看板、跨 agent 派发。
 
-`steroids` 和 `chrome` 的 canonical skills 位于 `plugins/<plugin>/skills/` 并可跨 runtime 复用；Claude Code / Codex 通过各自 marketplace 安装，Hermes 通过根目录 shim 仅暴露 `steroids` 与 `chrome`。`telegram` 和 `write-blog` 保持 Claude Code 专用，不提供 Codex marketplace 条目或 Hermes shim。
+`steroids`、`chrome` 和 `taskdag` 的 canonical skills 位于 `plugins/<plugin>/skills/` 并可跨 runtime 复用；Claude Code / Codex 通过各自 marketplace 安装，Hermes 通过根目录 shim 仅暴露 `steroids` 与 `chrome`。`telegram` 和 `write-blog` 保持 Claude Code 专用，不提供 Codex marketplace 条目或 Hermes shim。
 
 ## 安装
 
@@ -23,6 +24,7 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 | [`telegram`](plugins/telegram/) | Claude Code only | `telegram-agents`、`/tg-*`、`/check-release`、`telegram-notify` MCP、Telegram time hook、`guard-payload-size` hook | Claude Code + official Telegram plugin；心跳 workflow 需 Telethon/tmux/launchd | 无 |
 | [`chrome`](plugins/chrome/) | Claude + Codex + Hermes | `cdp-chrome` 每 OS 用户一个进程的共享有头 Chrome provider；Claude/Codex 内置 `cdp-chrome` MCP 启动器，会读取当前用户 steroids 配置 | Chrome、`npx`；Hermes 使用时需在 `mcp_servers` 注册 | 提供 `headed-browser`，可被 Codex Chrome plugin / 原生 browser-use 替代 |
 | [`write-blog`](plugins/write-blog/) | Claude Code only | `write-blog` skill：选题/对话式挖掘/大纲迭代/按作者风格成文，附 voice-dna 与制图参考 | 无 | 无 |
+| [`taskdag`](plugins/taskdag/) | Claude + Codex | `orchestrator` skill：ADR + Task DAG 控制面，含 vendor 进项目的 `taskdag.py`（validate/query/transition/board）与派发/复审参考 | Python 3（仅标准库） | 派发映射到本机可用的 agent CLI（Claude Code / Codex / OpenCode 等） |
 
 ## Skills
 
@@ -41,6 +43,7 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 | [`telegram-agents`](plugins/telegram/skills/telegram-agents/SKILL.md) | `telegram` | Telegram agent 配置与管理。包括 tmux 会话、Telethon 调度器、launchd 心跳定时任务。 |
 | [`cdp-chrome`](plugins/chrome/skills/cdp-chrome/SKILL.md) | `chrome` | 可选的共享有头 Chrome provider。适合需要持久登录态、用户手动 CAPTCHA、反 bot 页面或 live site inspection 的环境；明确独立 CDP profile 与日常 Chrome 的验证边界。 |
 | [`write-blog`](plugins/write-blog/skills/write-blog/SKILL.md) | `write-blog` | 写作全流程：从录音稿成文，或从零开始的对话式写作（选题、调研、提问漏斗、大纲迭代、初稿）。按作者 voice-dna 风格输出，附「图形为主、文字为辅」制图参考。 |
+| [`orchestrator`](plugins/taskdag/skills/orchestrator/SKILL.md) | `taskdag` | 仓库原生的 ADR + Task DAG 控制面：任务按「一次派发」粒度拆分并标注 priority/model-tier/effort，零依赖 `taskdag.py` 管 schema 校验、runnable 推导、状态机与单文件 DAG 看板（可发布到仓库外路径）；含初始化/迁移、跨 agent 派发映射两份参考。 |
 
 ## Commands（Claude Code）
 
@@ -79,7 +82,7 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 agent-steroids/
   INSTALL.md            # 唯一安装手册：给 human/agent 安装时读取
   .agents/plugins/      # Codex marketplace 配置（只列跨运行时 skill 插件）
-  .claude-plugin/       # Claude marketplace 配置（列三个插件）
+  .claude-plugin/       # Claude marketplace 配置（列全部插件）
   steroids/              # Hermes shim：agent-steroids/steroids
   chrome/               # Hermes shim：agent-steroids/chrome
   scripts/              # 独立 CLI 工具
@@ -88,6 +91,7 @@ agent-steroids/
     telegram/           # Telegram skill/commands/MCP/hooks（含 guard-payload-size）
     chrome/             # cdp-chrome provider（含 Claude/Codex MCP launcher 配置）
     write-blog/         # 写作流程 skill（Claude Code only）
+    taskdag/            # ADR + Task DAG 控制面（Claude + Codex）
   docs/
     tech/               # 技术方案和架构设计
     research/           # 调研、对比分析

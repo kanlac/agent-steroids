@@ -1,0 +1,28 @@
+{
+  "name": "taskdag",
+  "version": "0.2.1",
+  "description": "Repo-native ADR + Task DAG control plane: structured task/decision docs, vendored lifecycle CLI, generated DAG board, cross-agent dispatch",
+  "author": {
+    "name": "Kan"
+  },
+  "license": "MIT",
+  "keywords": [
+    "tasks",
+    "dag",
+    "adr",
+    "orchestration",
+    "planning"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Agent Steroids TaskDAG",
+    "shortDescription": "Repo-native ADR + Task DAG control plane.",
+    "longDescription": "Structured task and architecture-decision docs governed by a vendored zero-dependency CLI (validate/query/transition/board), with a generated single-file DAG board and model-tier/effort annotations for dispatching tasks to any agent CLI.",
+    "developerName": "Kan",
+    "category": "Developer Tools",
+    "defaultPrompt": [
+      "Use $orchestrator to adopt the task DAG system in this repository.",
+      "Use $orchestrator to pick and dispatch the next runnable task batch."
+    ]
+  }
+}

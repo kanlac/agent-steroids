@@ -1,0 +1,9 @@
+{
+  "name": "taskdag",
+  "version": "0.2.1",
+  "description": "Repo-native ADR + Task DAG control plane: structured task/decision docs, vendored lifecycle CLI, generated DAG board, cross-agent dispatch",
+  "author": {
+    "name": "Kan"
+  },
+  "license": "MIT"
+}
