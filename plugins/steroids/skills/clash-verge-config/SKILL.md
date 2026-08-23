@@ -1,6 +1,6 @@
 ---
 name: clash-verge-config
-description: Manage and debug Clash Verge Rev, Mihomo, and Stash client configuration as code, including enhance-pipeline field ownership, scripts, merges and Stash overrides, runtime controllers, profile metadata, routing, DNS and browser leaks, TUN loops, blocked proxy IPs, and cross-profile rule automation. Use when configurations do not apply, rules miss, remote providers or overrides need verification, DNS/WebRTC leaks, profiles show stale metadata, nodes time out, or proxy configuration needs repeatable runtime testing. Server-side proxy/airport build and subscription deployment are out of scope for this client-side skill.
+description: Manage and debug Clash Verge Rev, Mihomo, and Stash client configuration as code, including enhance-pipeline field ownership, scripts, merges and Stash overrides, runtime controllers, non-disruptive provider refresh, profile metadata, routing, DNS and browser leaks, TUN loops, blocked proxy IPs, and isolated runtime testing. Use when configurations do not apply, rules miss, remote providers or overrides need verification, a live control session must not lose its proxy, DNS/WebRTC leaks, profiles show stale metadata, nodes time out, or proxy configuration needs repeatable runtime testing. Server-side proxy/airport build and subscription deployment are out of scope for this client-side skill.
 ---
 
 ## 这个 Skill 解决什么
@@ -32,7 +32,7 @@ Clash Verge Rev 是个 Tauri GUI，底层跑 mihomo 内核。它的配置系统�
 由此推出两个实操结论：
 
 - **服务端改了响应头，旧 profile 不会自动变**。显示名或到期不对时，要让客户端重新拉取一次（强制 auto-update 到期 / 重新导入 / 删除重加），缓存才刷新。
-- **Clash Verge 不热重载 `profiles.yaml`**。要手改（配置即代码）就先退出 app，再改文件，再重启——退出在前是为了避免退出时把内存里的旧值刷回、覆盖你的修改。改完用「app 重启后实际加载的值」验证，而不是只看你写进文件的值。
+- **Clash Verge 不热重载 `profiles.yaml`**。要手改（配置即代码）只能在 app 停止时进行，避免退出时把内存旧值刷回。但先判断当前 agent、终端或远程控制是否依赖这条代理链：依赖时禁止为“应用配置”直接退出 Clash Verge，应暂缓到维护窗口，或先建立独立管理通道并告知用户。改完用「app 重启后实际加载的值」验证，而不是只看写入文件的值。
 
 ## 心智模型三：配置即代码
 
@@ -46,6 +46,8 @@ Clash Verge Rev 是个 Tauri GUI，底层跑 mihomo 内核。它的配置系统�
 - Stash Override / Remote Controller：读取 `references/stash-runtime-debugging.md`。
 
 模板、生成 YAML、内核静态检查、运行态存在、真实连接命中是四层不同证据；最终结论以真实连接的 rule/policy/chains 为准。
+
+把当前 Clash Verge 进程视为可能承载控制面的基础设施。节点/provider 内容变化优先通过 Unix socket 热刷新，不为刷新节点重启应用；扩展 Script/Merge 需要重新执行 `enhance()` 时，先静态生成并验收，应用级重启留到不会切断当前会话的维护窗口。节点真实流量用独立工作目录、端口和 controller 的临时 mihomo 验收，不停止、不替换当前内核。
 
 ## DNS 泄漏与分流规则
 

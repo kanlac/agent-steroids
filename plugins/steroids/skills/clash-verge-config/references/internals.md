@@ -46,7 +46,7 @@ merge_default_config   # ★ 用 clash 配置覆盖保留字段（external-contr
 apply_builtin_scripts → cleanup_proxy_groups → use_tun → use_sort → apply_dns_settings
 ```
 
-- 启动时 `config/config.rs` 的 `generate_and_validate()` → `Config::generate()` → `enhance::enhance()` → 写 `clash-verge.yaml` → 校验 → 内核加载。**所以重启 = 重新生成。**
+- 启动时 `config/config.rs` 的 `generate_and_validate()` → `Config::generate()` → `enhance::enhance()` → 写 `clash-verge.yaml` → 校验 → 内核加载。**所以重启 = 重新生成**，但不是运行中任务的默认热更新手段；当前控制会话依赖 Clash 时应暂缓到维护窗口。
 - 触发 `enhance()` 的命令：`feat::enhance_profiles()` / `CoreManager::update_config_forced()` 等，都由 Tauri 命令（前端 IPC）或 App 事件调起，**无对外 HTTP/CLI 入口**。
 - deeplink `clash://install-config?url=...`（`utils/resolve/scheme.rs`）只导入订阅。
 - `enable_dns_settings` 为真时，`apply_dns_settings` 会用应用数据目录里的 `dns_config.yaml` **覆盖** dns 段——所以 dns 也半受 Verge 管，脚本里设的 dns 可能被盖。
@@ -83,7 +83,7 @@ curl -s -X PUT -H "Authorization: Bearer $SECRET" "$BASE/configs?force=true" -d 
    cp -R "$tmp"/metacubexd-*/. "$APPDIR/ui"/      # 注意用 /. 拷贝目录内容
    ```
 2. 在持久化 clash 配置文件里加 `external-ui: ui`（相对路径相对内核 `-d` 目录，即应用数据目录）。
-3. 重启 App（触发重新生成 + 内核加载）。
+3. 在不承载当前控制会话的维护窗口重启 App（触发重新生成 + 内核加载）。
 4. 访问 `http://<host>:<port>/ui/`，面板里填 secret（地址同源自动带出）。
 
 验证：`curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:9097/ui/` 应为 `200`。
@@ -93,4 +93,4 @@ curl -s -X PUT -H "Authorization: Bearer $SECRET" "$BASE/configs?force=true" -d 
 - **混合内容**：HTTPS 在线面板（yacd.metacubex.one 等）连 HTTP 控制器会被浏览器拦截，需手动「允许不安全内容」。用第 5 节的 `/ui/` 自托管可绕开。
 - **连自身 VPN IP 的 hairpin**：在同一台机器上 curl 它自己的 Tailscale IP 常超时（用户态 netstack 自连不可靠），**不代表服务没起**——socket 绑 `0.0.0.0` 时局域网/别的设备能连就说明正常，换别的设备验证。
 - **TUN 与 VPN 路由共存**：Clash TUN 常用 `0.0.0.0/1` + `128.0/1` 拆分劫持默认路由；Tailscale 的 `100.64.0.0/10` 是更具体路由、不被劫持，二者可共存。排查时 `netstat -rn` 看具体网段落到哪个接口。
-- **改 config.yaml 没生效**：多半是在 App 运行时改的、被回写覆盖了。先退出 App 再改。
+- **改 config.yaml 没生效**：多半是在 App 运行时改的、被回写覆盖了。只能在 App 停止时改；若当前 agent/终端依赖这条代理链，先暂缓或建立独立管理通道，不要直接退出造成控制会话断线。

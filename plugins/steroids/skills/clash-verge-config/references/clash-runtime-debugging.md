@@ -1,5 +1,11 @@
 # Clash Verge / mihomo 运行态调试
 
+## 先保护控制通道
+
+开始前判断当前 agent、远程终端、下载或通知链路是否依赖 Clash Verge。依赖时把现有 app 与 mihomo 视为不可重启基础设施：不退出 app、不停止当前内核、不改占用中的 controller/端口。先保存关键策略组选择；provider 内容用 controller 热刷新，扩展 Script/Merge 只做渲染与静态检查，待独立维护窗口再触发 `enhance()`。
+
+确实必须重启时，先建立不依赖当前 Clash 进程的管理通道，并提前告知用户会有短暂中断。不能把“重启通常能生效”当成当前任务中可无条件执行的动作。
+
 ## 调试门槛
 
 修改规则前必须先建立可观测闭环。至少确认：
@@ -79,6 +85,22 @@ curl -fsS -H "$AUTH" "$BASE/connections"
 
 不要把 secret、订阅 URL、完整节点对象或未脱敏快照写进公开仓库和日志。自动化摘要只保留 provider 名、规则索引、policy、节点逻辑名、时间和计数。
 
+## Provider 热刷新与选择保护
+
+远端 provider 内容变化不需要重启 Clash Verge。保存相关策略组的当前选择后，通过当前内核 controller 刷新指定 provider，再确认节点数量、稳定名称和 `alive`；刷新失败时核对旧缓存是否保留，不能自动降级到 `DIRECT`。
+
+```bash
+curl --unix-socket "$SOCKET" -fsS -X PUT \
+  http://localhost/providers/proxies/<provider>
+
+curl --unix-socket "$SOCKET" -fsS -X PUT \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"<node>"}' \
+  http://localhost/proxies/<group>
+```
+
+provider 刷新只更新 provider 数据，不会重新执行 Clash Verge 的 `enhance()`。入口地址变化时，若 Script 还负责 `route-exclude-address` 等静态字段，分别记录“provider 已热更新”和“Script 尚待维护窗口应用”，不要混为同一生效状态。
+
 ## 规则调试判断
 
 规则从上到下首命中。对每个目标同时回答：
@@ -103,7 +125,22 @@ Clash Verge 的扩展 Script/Merge 只有在 `enhance()` 重新执行时才进�
 - 最终 YAML 生成时间。
 - controller 中 provider/连接的运行时间。
 
-只更新前两者而 controller 没变化，不能声称已经应用。
+只更新前两者而 controller 没变化，不能声称已经应用。当前代理承载控制会话时，不用重启来弥补证据缺口；保留生成物并明确标记待应用，或在独立 mihomo 中验证完整最终 YAML。
+
+## 独立 Mihomo 验收
+
+临时内核必须使用独立工作目录、mixed-port、controller、缓存和配置文件，关闭 TUN，并绑定预期物理接口；启动和停止都只针对该临时进程。不要复用 Clash Verge 应用目录或用宽泛 `pkill mihomo` 收尾。
+
+controller 请求可用 `--noproxy 127.0.0.1`；经临时代理访问公网目标时不要使用 `--noproxy '*'`，它会连显式 `--proxy` 一起绕过，制造“HTTP 成功但出口不匹配”的本机直连假象。目标探针应清除继承的代理与 NO_PROXY 环境，再显式指定临时 mixed-port：
+
+```bash
+env -u http_proxy -u https_proxy -u all_proxy \
+    -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY \
+    -u no_proxy -u NO_PROXY \
+  curl --proxy http://127.0.0.1:<mixed-port> https://api.ipify.org
+```
+
+逐个选择节点并同时验证：controller 当前选择等于目标节点、低副作用 HTTP 探针成功、出口 IP 严格等于该链路预期最终出口。`alive=true` 或延迟成功只能证明探针可达，不能替代真实业务流量和出口核对。
 
 ## 真实流量闭环
 
@@ -125,5 +162,6 @@ Clash Verge 的扩展 Script/Merge 只有在 `enhance()` 重新执行时才进�
 - 域名请求、已有 IP 连接和新建连接。
 - provider 正常、缓存命中、更新失败三种状态。
 - 目标流量与一个不应受影响的对照流量。
+- provider 入口变更时，旧入口已从运行态排除、新入口均已加入。运行态可能合并订阅与 Script 的排除项，按“必须包含/必须不存在”做语义比较，不要求与私密 registry 数组逐项完全相等。
 
 完成后保留脱敏快照和失败样本；关闭临时 controller 暴露、日志 debug 级别和测试代理。
