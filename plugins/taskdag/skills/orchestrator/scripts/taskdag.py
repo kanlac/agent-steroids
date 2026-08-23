@@ -38,11 +38,11 @@ BOARD_TITLE = "Task DAG"
 # 看板头部的目标/背景一行（当前目标不是任务、不进 DAG，用这行保持可见；空串则不显示）
 BOARD_NOTE = ""
 # 浏览器标签页图标（data URI，内联 SVG；项目可换成自己的以便在标签栏定位）
+# 默认：层叠任务卡·蓝双调（后卡浅蓝、前卡主蓝白描边，透明背景，浅/深标签栏均可辨）
 BOARD_ICON = ("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E"
-              "%3Crect width='32' height='32' rx='7' fill='%232a78d6'/%3E"
-              "%3Ccircle cx='9' cy='10' r='4' fill='%23fff'/%3E%3Ccircle cx='23' cy='10' r='4' fill='%23fff'/%3E"
-              "%3Ccircle cx='16' cy='23' r='4' fill='%23fff'/%3E"
-              "%3Cpath d='M11 13l4 6M21 13l-4 6' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E")
+              "%3Crect x='13.2' y='2' width='17' height='15' rx='3.4' fill='%238dbdf0'/%3E"
+              "%3Crect x='1.8' y='15' width='17' height='15' rx='3.4' fill='%232a78d6'"
+              " stroke='%23ffffff' stroke-width='2.2'/%3E%3C/svg%3E")
 
 TASK_ID_RE = re.compile(r"\AT-\d{3}\Z")
 ADR_ID_RE = re.compile(r"\AD-\d{3}\Z")
