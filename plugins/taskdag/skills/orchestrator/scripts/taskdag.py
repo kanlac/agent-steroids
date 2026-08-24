@@ -1038,7 +1038,7 @@ footer { color: var(--muted); font-size: 11.5px; margin-top: 12px; }
 </div>
 <div id="view-tasks">
   <div class="toolbar" id="toolbar">
-    <input type="search" id="search" placeholder="搜索编号或标题…" aria-label="搜索任务">
+    <input type="search" id="search" placeholder="搜索编号或标题，回车直达…" aria-label="搜索任务">
   </div>
   <div class="layout">
     <div>
@@ -1157,6 +1157,29 @@ footer { color: var(--muted); font-size: 11.5px; margin-top: 12px; }
   });
   const search = document.getElementById('search');
   search.addEventListener('input', applyFilters);
+  // 回车：把输入解析成编号直接定位（12 / t12 / T-012 → T-012；d3 → D-003），
+  // 不是编号就打开第一个标题匹配的任务
+  function resolveId(q) {
+    const m = q.trim().match(/^([td])?[-\s]*0*(\d+)$/i);
+    if (m) {
+      const n = m[2].padStart(3, '0');
+      const cands = m[1] ? [m[1].toUpperCase() + '-' + n] : ['T-' + n, 'D-' + n];
+      return cands.find(id => byId.has(id) || adrById.has(id)) || null;
+    }
+    const ql = q.trim().toLowerCase();
+    if (!ql) return null;
+    const hit = tasks.find(t => visible(t)) ||
+      adrs.find(a => a.id.toLowerCase().includes(ql) || a.title.toLowerCase().includes(ql));
+    return hit ? hit.id : null;
+  }
+  search.addEventListener('keydown', ev => {
+    if (ev.key !== 'Enter') return;
+    ev.preventDefault();
+    const id = resolveId(search.value);
+    if (!id) return;
+    if (byId.has(id)) { showTab('tasks'); selectTask(id, true); }
+    else { showTab('adrs'); selectAdr(id); }
+  });
   function visible(t) {
     if (filters.prio.size && !filters.prio.has(t.priority)) return false;
     if (filters.status.size && !filters.status.has(t.status)) return false;
@@ -1194,11 +1217,12 @@ footer { color: var(--muted); font-size: 11.5px; margin-top: 12px; }
     return `<span class="pill"><span class="dot" style="background:var(--st-${s.replace('_','-')})"></span>` +
       `${statusLabel[s]}</span>`;
   }
-  function selectTask(id) {
+  function selectTask(id, center) {
     const t = byId.get(id);
     if (!t) return;
     nodeEls.forEach((el, nid) => el.classList.toggle('sel', nid === id));
-    nodeEls.get(id).scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    nodeEls.get(id).scrollIntoView(center ? { block: 'center', inline: 'center' }
+                                          : { block: 'nearest', inline: 'nearest' });
     const chips = [statusChip(t.status), chip(t.priority), chip(ownerLabel[t.owner])];
     if (t.owner === 'agent') chips.push(chip(`model-tier: ${t.tier}`), chip(`effort: ${t.effort}`));
     if (t.runnable) chips.push(chip('可开跑'));
@@ -1218,8 +1242,10 @@ footer { color: var(--muted); font-size: 11.5px; margin-top: 12px; }
   function selectAdr(id) {
     const a = adrById.get(id);
     if (!a) return;
-    document.querySelectorAll('.adr-list li').forEach(li =>
-      li.classList.toggle('sel', li.dataset.doc === id));
+    document.querySelectorAll('.adr-list li').forEach(li => {
+      li.classList.toggle('sel', li.dataset.doc === id);
+      if (li.dataset.doc === id) li.scrollIntoView({ block: 'nearest' });
+    });
     const rel = [];
     if (a.supersedes.length) rel.push('取代 ' + a.supersedes.map(linkTo).join('、'));
     if (a.superseded_by.length) rel.push('被 ' + a.superseded_by.map(linkTo).join('、') + ' 取代');
