@@ -1038,7 +1038,7 @@ footer { color: var(--muted); font-size: 11.5px; margin-top: 12px; }
 </div>
 <div id="view-tasks">
   <div class="toolbar" id="toolbar">
-    <input type="search" id="search" placeholder="搜索编号或标题，回车直达…" aria-label="搜索任务">
+    <input type="search" id="search" placeholder="搜索编号或标题，回车直达（F 聚焦）…" aria-label="搜索任务">
   </div>
   <div class="layout">
     <div>
@@ -1179,6 +1179,18 @@ footer { color: var(--muted); font-size: 11.5px; margin-top: 12px; }
     if (!id) return;
     if (byId.has(id)) { showTab('tasks'); selectTask(id, true); }
     else { showTab('adrs'); selectAdr(id); }
+  });
+  // 全局快捷键：F 或 / 聚焦搜索框并全选；Esc 离开搜索框
+  document.addEventListener('keydown', ev => {
+    const inField = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName) ||
+      document.activeElement?.isContentEditable;
+    if (ev.key === 'Escape' && document.activeElement === search) { search.blur(); return; }
+    if (inField || ev.metaKey || ev.ctrlKey || ev.altKey) return;
+    if (ev.key === 'f' || ev.key === 'F' || ev.key === '/') {
+      ev.preventDefault();
+      showTab('tasks');
+      search.focus(); search.select();
+    }
   });
   function visible(t) {
     if (filters.prio.size && !filters.prio.has(t.priority)) return false;
