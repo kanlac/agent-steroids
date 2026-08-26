@@ -24,7 +24,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 
 # ───────────────────────── 常量区（项目级约定） ─────────────────────────
 
@@ -73,8 +73,14 @@ HUMAN_CHECKPOINT = ["next"]
 TASK_KEYS = {
     "type", "id", "title", "status", "priority", "owner", "model-tier", "effort",
     "manual_acceptance", "human_checkpoint", "depends_on", "related_adrs",
-    "source", "area", "phase", "updated",
+    "source", "area", "phase", "updated", "lane",
 }
+# lane：写入面互斥的串行泳道。同 lane = 声明写入面重叠，必须串行、共用一个
+# worktree（worktree 名 = lane 名）；不同 lane / 无 lane = 声明写入面不重叠，可并行。
+# 值须可作 git 分支/目录名（小写字母数字连字符）。
+LANE_RE = re.compile(r"\A[a-z0-9][a-z0-9-]*\Z")
+# lane 的「单写者」占用状态：处于这些状态的任务占着 lane 的 worktree
+LANE_ACTIVE_STATUSES = {"in_progress", "review"}
 ADR_KEYS = {
     "type", "id", "title", "status", "date", "updated", "area",
     "supersedes", "superseded_by", "related_adrs", "source",
@@ -319,6 +325,9 @@ def validate(docs):
             errors.append(f"{path}: manual_acceptance must be none or required")
         if "human_checkpoint" in data and data["human_checkpoint"] not in HUMAN_CHECKPOINT:
             errors.append(f"{path}: human_checkpoint must be next when present")
+        lane = data.get("lane")
+        if lane is not None and (isinstance(lane, list) or not LANE_RE.match(lane)):
+            errors.append(f"{path}: lane must be a lowercase slug ([a-z0-9-], branch/dir-safe)")
         if not isinstance(data.get("depends_on"), list):
             errors.append(f"{path}: depends_on must be a list (use [] when empty)")
         else:
@@ -384,6 +393,18 @@ def validate(docs):
                         or not actions[0].strip() or not standards[0].strip():
                     errors.append(f"{path}: manual_acceptance required needs exactly one "
                                   "`- 最小动作：...` and one `- 通过标准：...`")
+
+    # lane 单写者：同一 lane 内同时最多一个任务处于占用状态（一个 worktree 一个写者）
+    lane_active = {}
+    for doc in tasks:
+        if doc.error or not isinstance(doc.data.get("lane"), str):
+            continue
+        if doc.status in LANE_ACTIVE_STATUSES:
+            lane_active.setdefault(doc.data["lane"], []).append(doc.id)
+    for lane, ids in sorted(lane_active.items()):
+        if len(ids) > 1:
+            errors.append(f"lane {lane}: multiple active tasks (single-writer violated): "
+                          + ", ".join(sorted(ids)))
 
     checkpoints = [d for d in tasks if not d.error and d.data.get("human_checkpoint") == "next"]
     if len(checkpoints) > 1:
@@ -473,8 +494,16 @@ def validate(docs):
 # ───────────────────────── query ─────────────────────────
 
 
+def busy_lanes(docs):
+    """处于占用状态的任务所占的 lane 集合。"""
+    return {d.data["lane"] for d in tasks_of(docs)
+            if not d.error and isinstance(d.data.get("lane"), str)
+            and d.status in LANE_ACTIVE_STATUSES}
+
+
 def query(docs, filters, as_json=False):
     index = by_id(docs)
+    occupied = busy_lanes(docs)
     rows = []
     for doc in docs:
         if doc.error:
@@ -482,6 +511,9 @@ def query(docs, filters, as_json=False):
         computed = dict(doc.data)
         if doc.type == "task":
             computed["runnable"] = "true" if is_runnable(doc, index) else "false"
+            lane = computed.get("lane")
+            computed["lane_busy"] = ("true" if lane in occupied
+                                     and doc.status not in LANE_ACTIVE_STATUSES else "false")
         matched = True
         for key, value in filters.items():
             actual = computed.get(key)
@@ -504,6 +536,9 @@ def query(docs, filters, as_json=False):
             flags = []
             if computed["runnable"] == "true":
                 flags.append("runnable")
+            if computed.get("lane"):
+                flags.append(f"lane:{computed['lane']}"
+                             + ("(busy)" if computed["lane_busy"] == "true" else ""))
             if computed.get("human_checkpoint") == "next":
                 flags.append("checkpoint")
             if computed.get("manual_acceptance") == "required":
@@ -587,7 +622,7 @@ title: {title}
 status: planned
 priority: {priority}
 owner: {owner}
-{gear}manual_acceptance: {manual}
+{gear}{lane}manual_acceptance: {manual}
 depends_on:{deps}
 {adrs}updated: {today}
 ---
@@ -650,7 +685,7 @@ def next_id(kind):
     return f"{prefix}{highest + 1:03d}"
 
 
-def new_doc(kind, title, owner, tier, effort, manual, deps, adrs, priority):
+def new_doc(kind, title, owner, tier, effort, manual, deps, adrs, priority, lane=None):
     doc_id = next_id(kind)
     if kind == "task":
         if owner == "agent":
@@ -659,11 +694,12 @@ def new_doc(kind, title, owner, tier, effort, manual, deps, adrs, priority):
             gear = f"model-tier: {tier}\neffort: {effort}\n"
         else:
             gear = ""
+        lane_value = f"lane: {lane}\n" if lane else ""
         deps_value = " []" if not deps else "\n" + "\n".join(f"  - {d}" for d in deps)
         adr_value = "" if not adrs else "related_adrs:\n" + "\n".join(f"  - {a}" for a in adrs) + "\n"
         manual_body = "无。" if manual == "none" else "- 最小动作：（一步动作）\n- 通过标准：（一条标准）"
         content = TASK_TEMPLATE.format(
-            id=doc_id, title=title, owner=owner, gear=gear, manual=manual,
+            id=doc_id, title=title, owner=owner, gear=gear, lane=lane_value, manual=manual,
             deps=deps_value, adrs=adr_value, today=today(), priority=priority,
             start_condition=DEFAULT_START_CONDITION, manual_body=manual_body)
         path = ROOT / TASK_DIR / f"{doc_id}.md"
@@ -821,6 +857,7 @@ def board():
             "owner": doc.data.get("owner"), "tier": doc.data.get("model-tier"),
             "effort": doc.data.get("effort"),
             "manual": doc.data.get("manual_acceptance"),
+            "lane": doc.data.get("lane"),
             "checkpoint": doc.data.get("human_checkpoint") == "next",
             "deps": as_list(doc.data.get("depends_on")),
             "adrs": as_list(doc.data.get("related_adrs")),
@@ -850,6 +887,8 @@ def board():
         if row["checkpoint"]:
             badges.append("检查点")
         badges.append("人" if row["owner"] == "human" else f"{row['tier']}/{row['effort']}")
+        if row["lane"]:
+            badges.append(row["lane"])
         if row["manual"] == "required":
             badges.append("人工验收")
         avail = node_w - 28
@@ -988,6 +1027,7 @@ header { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: baseline; 
 .badge { font-size: 10px; border-radius: 3px; padding: 0 5px; border: 1px solid var(--border);
   color: var(--ink-2); white-space: nowrap; }
 .badge.ckpt { color: var(--accent); border-color: var(--accent); font-weight: 650; }
+.badge.lane { font-style: italic; }
 .badge.prio { font-weight: 650; }
 .detail { padding: 14px 16px; max-height: 74vh; overflow: auto; font-size: 13px; }
 .detail .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 10px; }
@@ -1104,6 +1144,7 @@ footer { color: var(--muted); font-size: 11.5px; margin-top: 12px; }
     if (t.checkpoint) badges.push('<span class="badge ckpt">检查点</span>');
     if (t.owner === 'human') badges.push('<span class="badge">人</span>');
     else badges.push(`<span class="badge">${t.tier}/${t.effort}</span>`);
+    if (t.lane) badges.push(`<span class="badge lane">${esc(t.lane)}</span>`);
     if (t.manual === 'required') badges.push('<span class="badge">人工验收</span>');
     el.innerHTML = `<div class="nid"><span class="tid">${t.id}</span>${badges.join('')}</div>` +
       `<div class="ntitle" title="${esc(t.title)}">${esc(t.title)}</div>`;
@@ -1237,6 +1278,7 @@ footer { color: var(--muted); font-size: 11.5px; margin-top: 12px; }
                                           : { block: 'nearest', inline: 'nearest' });
     const chips = [statusChip(t.status), chip(t.priority), chip(ownerLabel[t.owner])];
     if (t.owner === 'agent') chips.push(chip(`model-tier: ${t.tier}`), chip(`effort: ${t.effort}`));
+    if (t.lane) chips.push(chip(`lane: ${esc(t.lane)}`));
     if (t.runnable) chips.push(chip('可开跑'));
     if (t.checkpoint) chips.push(chip('下一检查点', 'ckpt'));
     if (t.manual === 'required') chips.push(chip('需人工验收'));
@@ -1342,7 +1384,7 @@ status 只能用 transition 改；看板由 board 生成，不是编辑入口。
                                     状态迁移（写 status + updated，终态自动摘除
                                     human_checkpoint，并在 ## 执行记录 追加一行）
   new task --title 标题 [--owner agent|human] [--model-tier ...] [--effort ...]
-           [--priority p0|p1|p2] [--manual none|required]
+           [--priority p0|p1|p2] [--manual none|required] [--lane 泳道名]
            [--deps T-001,T-002] [--adrs D-001]
   new adr --title 标题
   board                             生成 {board}
@@ -1360,6 +1402,11 @@ Task frontmatter（唯一事实源）
   effort: mid|high|xhigh|max
   manual_acceptance: none|required
   human_checkpoint: next   全仓最多一个；须 manual_acceptance: required
+  lane: 小写slug        可选。写入面互斥的串行泳道：同 lane = 写入面重叠，必须
+                        串行、共用一个 worktree（worktree 名 = lane 名）；不同
+                        lane / 无 lane = 写入面不重叠，可并行。validate 强制同
+                        lane 内同时至多一个任务 in_progress/review（单写者）。
+                        依赖边表达顺序，lane 表达互斥资源，两者正交。
   depends_on: []        依赖的任务 id 列表；runnable = planned 且依赖全 done
   related_adrs / source / area / phase   可选
 
@@ -1415,6 +1462,7 @@ def main():
     n.add_argument("--effort", choices=EFFORTS)
     n.add_argument("--manual", choices=MANUAL_ACCEPTANCE, default="none")
     n.add_argument("--priority", choices=PRIORITIES, default="p2")
+    n.add_argument("--lane")
     n.add_argument("--deps", default="")
     n.add_argument("--adrs", default="")
     sub.add_parser("board")
@@ -1449,7 +1497,7 @@ def main():
         deps = [d.strip() for d in args.deps.split(",") if d.strip()]
         adrs = [a.strip() for a in args.adrs.split(",") if a.strip()]
         new_doc(args.kind, args.title, args.owner, args.tier, args.effort,
-                args.manual, deps, adrs, args.priority)
+                args.manual, deps, adrs, args.priority, args.lane)
         return
     if args.command == "board":
         board()

@@ -31,14 +31,16 @@ agent 任务在规划时另标两个字段（人类任务不标）：
 - `model-tier: high | mid` — 抽象档位，**不写具体模型名**（模型常换，映射表只维护一处）。high = 需要强推理/高质量产出；mid = 机械、明确、量大的活。没有 top 档：顶级模型只由用户在交互中亲自选用，凡是委派出去的任务都用不到。
 - `effort: mid | high | xhigh | max` — 推理努力档位，派发时映射到各家 CLI 的对应参数。
 
-档位到具体模型与命令的映射见 `references/dispatch.md`。
+任务还可标 `lane`（可选，人类任务也可标）：**写入面互斥的串行泳道**。依赖边表达顺序约束，lane 表达资源互斥，两者正交（有依赖不一定写同一片文件，写同一片文件的不一定有依赖）。规划时判断：这个任务会不会和另一个未完成任务写同一片文件？会，就标同一个 lane——这声明它们必须串行、共用一个 worktree；不同 lane / 无 lane 即声明写入面不重叠、可并行。lane 名用小写 slug（可作分支/目录名），`validate` 强制同 lane 内同时至多一个任务 in_progress/review（单写者）。
+
+档位到具体模型与命令的映射、worktree 的开设与收回见 `references/dispatch.md`。
 
 ## 日常驱动循环
 
 1. `python3 scripts/taskdag.py validate` — 先保证仓库合法。
 2. `query type=task status=in_progress`、`status=review`、`status=blocked` — 先收口在途的，再开新的。
-3. `query type=task runnable=true` — 得到可开跑集合。**runnable ≠ 该跑**：先按 `priority`（p0 在前），同级内再比——通往下一个人工检查点的最短路径 > 解锁的下游数量 > 证据可独立拿到 > 写入面不重叠（重叠的不并行）。
-4. 派发（见 `references/dispatch.md`）：prompt = 任务文件全文 + 关联的 accepted ADR + 项目 CLAUDE.md 要点；要求执行者不 commit、产出落在任务约定的位置；并行任务各开独立 worktree。
+3. `query type=task runnable=true` — 得到可开跑集合。**runnable ≠ 该跑**：lane 被占的先排队（query 输出标 `lane:…(busy)`）；再按 `priority`（p0 在前），同级内比——通往下一个人工检查点的最短路径 > 解锁的下游数量 > 证据可独立拿到。
+4. 派发（见 `references/dispatch.md`）：prompt = 任务文件全文 + 关联的 accepted ADR + 项目 CLAUDE.md 要点；要求执行者不 commit、产出落在任务约定的位置；worktree 按 lane 开/复用，worktree 内串行、并行只在 worktree 之间。
 5. 验收：对照任务的「验收与证据」拿一手证据，不信执行者自报。
 6. `transition <id> <status> --reason "…"` — 状态只走脚本；证据摘要写进 `--reason`（脚本会追加到执行记录，最新在上）。
 7. `board` — 重新生成看板（输出路径是脚本 `BOARD_FILE` 常量，可指向仓库外的发布目录）。看板是只读视图，不是编辑入口。
@@ -49,6 +51,7 @@ agent 任务在规划时另标两个字段（人类任务不标）：
 - `blocked` 只用于**外部条件或缺决策**（等一个日期、等一个账号、等用户拍板）。普通"依赖没完成"就是 planned 未 runnable，不算 blocked。blocked 任务的「启动条件」必须写清具体缺什么。
 - `manual_acceptance` 判定：可重复测试、数据、日志、截图能客观判定 → `none`；需要负责人的主观判断或权限（体验质量、合规、花钱、发布授权）→ `required`，且「人工验收」小节恰好一条最小动作 + 一条通过标准。环境、凭据、账号属于**启动条件**，不因为"要人给"就算人工验收。
 - `human_checkpoint: next` 全仓最多一个，标当前批次冲刺的里程碑；它关闭后先选定下一个再开新批次。
+- **控制面只在主工作区改**：`docs/tasks/`、`docs/adr/`、transition、board 一律由 orchestrator 在主工作区操作；worker worktree 只干活，不碰 T-\*/D-\* 文件（否则 merge 回来会出现两个状态事实源）。worker 的证据写到任务约定的产出位置，验收后由 orchestrator 用 `transition --reason` 记录。
 
 ## ADR 治理
 
