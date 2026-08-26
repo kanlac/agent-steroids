@@ -1107,7 +1107,7 @@ footer { color: var(--muted); font-size: 11.5px; margin-top: 12px; }
     if (t.manual === 'required') badges.push('<span class="badge">人工验收</span>');
     el.innerHTML = `<div class="nid"><span class="tid">${t.id}</span>${badges.join('')}</div>` +
       `<div class="ntitle" title="${esc(t.title)}">${esc(t.title)}</div>`;
-    el.addEventListener('click', () => selectTask(t.id));
+    el.addEventListener('click', () => goTo(t.id));
     el.addEventListener('mouseenter', () => hover(t.id, true));
     el.addEventListener('mouseleave', () => hover(t.id, false));
     canvas.appendChild(el);
@@ -1177,8 +1177,7 @@ footer { color: var(--muted); font-size: 11.5px; margin-top: 12px; }
     ev.preventDefault();
     const id = resolveId(search.value);
     if (!id) return;
-    if (byId.has(id)) { showTab('tasks'); selectTask(id, true); }
-    else { showTab('adrs'); selectAdr(id); }
+    goTo(id, true);
   });
   // 全局快捷键：F 或 / 聚焦搜索框并全选；Esc 离开搜索框
   document.addEventListener('keydown', ev => {
@@ -1191,6 +1190,7 @@ footer { color: var(--muted); font-size: 11.5px; margin-top: 12px; }
       showTab('tasks');
       search.focus(); search.select();
     }
+    if (ev.key === 'Backspace') { ev.preventDefault(); history.back(); }
   });
   function visible(t) {
     if (filters.prio.size && !filters.prio.has(t.priority)) return false;
@@ -1220,7 +1220,7 @@ footer { color: var(--muted); font-size: 11.5px; margin-top: 12px; }
     ? readySorted.map(t => `<a data-doc="${t.id}">${t.priority} · ${t.id} ${esc(t.title)}</a>`).join('')
     : '（无——先解锁依赖或验收进行中的任务）');
   ready.querySelectorAll('a').forEach(a =>
-    a.addEventListener('click', () => selectTask(a.dataset.doc)));
+    a.addEventListener('click', () => goTo(a.dataset.doc)));
 
   // ── 详情 ──
   const detail = document.getElementById('detail');
@@ -1273,8 +1273,7 @@ footer { color: var(--muted); font-size: 11.5px; margin-top: 12px; }
     container.querySelectorAll('a.doclink').forEach(a => a.addEventListener('click', ev => {
       ev.preventDefault();
       const id = a.dataset.doc;
-      if (byId.has(id)) { showTab('tasks'); selectTask(id); }
-      else if (adrById.has(id)) { showTab('adrs'); selectAdr(id); }
+      goTo(id);
     }));
   }
 
@@ -1286,7 +1285,7 @@ footer { color: var(--muted); font-size: 11.5px; margin-top: 12px; }
     li.dataset.doc = a.id;
     li.innerHTML = `<span class="aid">${a.id}</span><span class="atitle">${esc(a.title)}</span>` +
       `<span class="pill">${adrStatusLabel[a.status]}</span>`;
-    li.addEventListener('click', () => selectAdr(a.id));
+    li.addEventListener('click', () => goTo(a.id));
     adrList.appendChild(li);
   });
   if (!adrs.length) adrList.innerHTML = '<div class="empty">还没有 ADR</div>';
@@ -1302,7 +1301,25 @@ footer { color: var(--muted); font-size: 11.5px; margin-top: 12px; }
   tabTasks.addEventListener('click', () => showTab('tasks'));
   tabAdrs.addEventListener('click', () => showTab('adrs'));
 
-  if (checkpoint) selectTask(checkpoint.id);
+  // ── 导航：选中项写进 location.hash，浏览器后退/前进即返回，#T-031 可直达 ──
+  let pendingCenter = false;
+  function render(id, center) {
+    if (byId.has(id)) { showTab('tasks'); selectTask(id, center); }
+    else if (adrById.has(id)) { showTab('adrs'); selectAdr(id); }
+    else if (checkpoint) { showTab('tasks'); selectTask(checkpoint.id); }
+  }
+  function goTo(id, center) {
+    pendingCenter = !!center;
+    if (location.hash === '#' + id) { pendingCenter = false; render(id, center); }
+    else location.hash = id;
+  }
+  window.addEventListener('hashchange', () => {
+    const center = pendingCenter; pendingCenter = false;
+    render(decodeURIComponent(location.hash.slice(1)), center);
+  });
+  const initial = decodeURIComponent(location.hash.slice(1));
+  if (byId.has(initial) || adrById.has(initial)) render(initial, true);
+  else if (checkpoint) selectTask(checkpoint.id);
 })();
 </script>
 </body>
