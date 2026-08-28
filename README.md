@@ -34,7 +34,7 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 | [`read-book`](plugins/steroids/skills/read-book/SKILL.md) | `steroids` | EPUB 书籍中英双语翻译，以及阅读和讨论书籍内容。 |
 | [`youtube-bilingual-transcript`](plugins/steroids/skills/youtube-bilingual-transcript/SKILL.md) | `steroids` | 把 YouTube 链接转成中英对照单页 HTML 阅读稿。yt-dlp 抓字幕+章节，agent 翻译并策展，脚本渲染带时间戳跳转、带序号章节目录、重点高亮、专有名词内联点击注释。 |
 | [`html-to-pdf`](plugins/steroids/skills/html-to-pdf/SKILL.md) | `steroids` | 将样式化 HTML 转为高质量单页 PDF。自动处理动态元素（scroll-snap、CSS 动画、IntersectionObserver），含可复用生成脚本。 |
-| [`dispatch`](plugins/steroids/skills/dispatch/SKILL.md) | `steroids` | 把活派给别的模型的 CLI（Codex 跑 GPT-5.x，OpenCode 跑 GLM/DeepSeek/Kimi）：调用契约、会静默失败的那几个坑（缺 `< /dev/null` 直接零输出、权限沙箱一遇拒就停、输入长度墙）、以及怎么审收回来的报告。 |
+| [`dispatch`](plugins/steroids/skills/dispatch/SKILL.md) | `steroids` | 把活派给别的模型的 CLI（Codex 跑 GPT-5.x，OpenCode 跑 GLM/DeepSeek/Kimi）：调用契约、静默失败排查、显式 session 串行续问，以及怎么审收回来的报告。 |
 | [`clipping`](plugins/steroids/skills/clipping/SKILL.md) | `steroids` | 将网页文章保存为本地 Markdown 笔记。支持微信公众号等 JS 渲染页面；对信息图/表格截图可使用 PaddleOCR 提取文本并重构为 Markdown 表格。 |
 | [`paper-download`](plugins/steroids/skills/paper-download/SKILL.md) | `steroids` | 学术论文检索与下载。三级策略：HTTP/OA 直链、headless 解析、headed browser 登录/CAPTCHA。`cdp-chrome` 只是可选 provider。 |
 | [`wechat-desktop`](plugins/steroids/skills/wechat-desktop/SKILL.md) | `steroids` | 通过 computer-use MCP 在 macOS 上读取、浏览和总结微信群聊消息。 |

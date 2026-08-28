@@ -1,6 +1,6 @@
 {
   "name": "steroids",
-  "version": "2.10.0",
+  "version": "2.10.1",
   "description": "Core Agent Steroids skills and workflow helpers, including Skill inventory, Clash/Mihomo client config, and document/paper workflows",
   "author": {
     "name": "Kan"
