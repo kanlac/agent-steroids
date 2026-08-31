@@ -1,10 +1,12 @@
 ---
 name: cdp-chrome
 description: |
-  Optional per-OS-user headed Chrome provider for browser automation. Use when
-  an environment chooses cdp-chrome for visible GUI Chrome: social media,
-  JS-rendered pages, logged-in sites, anti-bot pages, forms, screenshots, and
-  live site inspection. Not required when an equivalent provider exists.
+  Optional per-OS-user headed Chrome provider for browser automation. Use ONLY
+  when the task needs this instance's unique capabilities: logged-in sessions,
+  anti-bot/real-browser fingerprint, or a GUI the user watches (social media,
+  logged-in sites, anti-bot pages). Stateless browsing (screenshots, DOM/text
+  extraction, local build review, login-free interaction) belongs to lighter
+  on-demand tools such as the agent-browser CLI, not this shared instance.
 ---
 
 # CDP Chrome: Per-User Headed Browser Provider
@@ -16,6 +18,13 @@ description: |
 `chrome-devtools-mcp` can launch Chrome with automation flags such as `--enable-automation`, which sets `navigator.webdriver = true`. This plugin instead connects MCP to a normal GUI Chrome process with a persistent profile.
 
 The process is shared across agents **for the same OS user only**. On multi-user machines, every OS user should configure a different port/profile so agents fail fast instead of connecting to another user's Chrome.
+
+## Tier First: Most Browsing Tasks Should NOT Use This Skill
+
+cdp-chrome is the single shared headed instance, reserved for tasks that need one of its unique capabilities: **logged-in sessions, anti-bot/real-browser fingerprint, or a GUI the user watches**. Before using it, name which of these the task needs; if you can't, use the lightweight tier, picking whatever the current environment provides:
+
+1. `agent-browser` CLI (if installed): on-demand, no MCP, headless by default; use `--session <unique-name>` for full isolation from other agents; covers screenshots, text extraction, snapshots, click/fill, and eval. Run `agent-browser skills get core` for usage first.
+2. Other one-shot headless means: an isolated devtools MCP instance already registered in the environment, or one-shot invocations like `chrome --headless=new --screenshot=... / --dump-dom <URL>` (with a temporary `--user-data-dir`).
 
 ## Config
 
@@ -80,16 +89,16 @@ Pick the intended target from `/json/list` and operate through its `webSocketDeb
 
 ## Profile-scoped Validation
 
-CDP Chrome 使用独立的 `profile_dir`。在这个实例里看到的 cookie、扩展、Preferences、WebRTC 或 DNS 结果只证明该 profile；`doctor.sh` 也只证明端口、进程与 user-data-dir 绑定正确，不能证明用户日常 Chrome 已修复。
+CDP Chrome uses its own `profile_dir`. Cookies, extensions, Preferences, WebRTC, or DNS results observed in this instance only prove that profile; likewise `doctor.sh` only proves the port/process/user-data-dir binding is correct — not that the user's daily Chrome is fixed.
 
-涉及浏览器 policy、WebRTC、DNS、扩展或登录态的结论时，先记录当前 binary、user-data-dir 与 `chrome://version` 的 Profile Path，并明确结论的作用域。profile preference 不得外推到其它 profile；只有 `chrome://policy` 中 Source=`Platform`、Level=`Mandatory`、Status=`OK` 的受管策略可以跨 profile，但仍要在实际出问题的浏览器和新开的无痕窗口复测。保持只读验收，不用 CDP Chrome 顺手修改 profile 设置。
+Before drawing conclusions about browser policy, WebRTC, DNS, extensions, or login state, record the current binary, user-data-dir, and the Profile Path from `chrome://version`, and state the scope of the conclusion explicitly. Profile preferences must not be extrapolated to other profiles; only managed policies shown in `chrome://policy` with Source=`Platform`, Level=`Mandatory`, Status=`OK` apply across profiles, and even those must be retested in the actually affected browser and a fresh incognito window. Keep validation read-only — do not use CDP Chrome to casually change profile settings.
 
 ## Agent Rules
 
 1. Use only MCP tools from server name `cdp-chrome` (`mcp__cdp-chrome__*` in Claude/Codex, `mcp_cdp_chrome_*` style in Hermes), or the direct configured CDP endpoint fallback above. Do not fall back to other Chrome/Playwright/Puppeteer MCP tools; they may launch automated Chrome or attach to a different Chrome target.
 2. Never launch your own Chrome. Use `start.sh` if the configured instance is not running.
 3. Before browser work, run `doctor.sh` when setup changed or when connection errors occur.
-4. Open tabs for your task and close them when done. Do not touch other agents' tabs.
+4. Only operate on pages you created: open your own via `new_page`, remember its target, and close it when done. `list_pages` lists tabs from **all sessions** — never `select_page`/`close_page` a page you did not create, and never guess tab ownership by title or index.
 5. Do not clear cookies, change profile settings, install extensions, or modify the browser profile.
 6. Parallel agents should run in separate agent processes. A single MCP process can have global selected-page state even though Chrome tabs have independent CDP target IDs.
 7. **Understand pages visually first.** Before interacting with a complex or unknown page, call `take_screenshot` (~800–1,600 vision tokens) to see the layout. Do NOT call `take_snapshot` for this purpose — its A11Y text tree costs 10K–540K chars (2.5K–135K text tokens) on complex pages and often exceeds tool limits. After the screenshot gives you spatial understanding, use `evaluate_script` for precise extraction/action.
@@ -120,9 +129,9 @@ See `references/page-interaction.md` for detailed patterns and examples.
 
 **Tool selection guide:**
 
-| 目的 | 工具 | Token 成本 | 说明 |
+| Purpose | Tool | Token cost | Notes |
 |------|------|-----------|------|
-| 看懂页面布局 | `take_screenshot` | ~800–1,600 vision tokens | 复杂/未知页面首选 |
-| 精准提取/操作 | `evaluate_script` | ~650 text tokens（可控） | 主力工具 |
-| 获取元素 UID | `take_snapshot` | 2.5K–135K text tokens | 仅限简单页面 |
-| 导航 | `navigate_page` | ~190 text tokens | — |
+| Understand page layout | `take_screenshot` | ~800–1,600 vision tokens | First choice for complex/unknown pages |
+| Precise extraction/action | `evaluate_script` | ~650 text tokens (controllable) | Workhorse tool |
+| Get element UIDs | `take_snapshot` | 2.5K–135K text tokens | Simple pages only |
+| Navigation | `navigate_page` | ~190 text tokens | — |
