@@ -1006,12 +1006,11 @@ header { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: baseline; 
 .canvas svg { position: absolute; inset: 0; pointer-events: none; }
 .edge { stroke: var(--baseline); stroke-width: 1.5; fill: none; }
 .edge.hi { stroke: var(--accent); stroke-width: 2; }
-.edge.dim, .node.dim { opacity: 0.18; }
+.edge.dim { opacity: 0.18; }
 .node { position: absolute; background: var(--surface); border: 1px solid var(--border);
   border-left: 4px solid var(--st-planned); border-radius: 3px; padding: 7px 10px;
   cursor: pointer; overflow: hidden; }
 .node:hover { border-color: var(--accent); }
-.node.sel { outline: 2px solid var(--accent); outline-offset: 1px; }
 .node .nid { font-size: 11px; color: var(--ink-2); display: flex; gap: 4px 6px;
   align-items: center; flex-wrap: wrap; }
 .node .tid { flex-shrink: 0; white-space: nowrap; }
@@ -1024,6 +1023,10 @@ header { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: baseline; 
 .node.st-cancelled { border-left-color: var(--st-cancelled); opacity: 0.45; }
 .node.st-cancelled .ntitle { text-decoration: line-through; }
 .node.runnable { box-shadow: inset 0 0 0 1px var(--accent); border-color: var(--accent); }
+/* 淡出与选中都要压过状态自带的 opacity，所以必须排在 .node.st-* 之后；选中永远最亮 */
+.node.dim { opacity: 0.18; }
+.node.sel { outline: 2px solid var(--accent); outline-offset: 2px; opacity: 1;
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 22%, transparent); }
 .badge { font-size: 10px; border-radius: 3px; padding: 0 5px; border: 1px solid var(--border);
   color: var(--ink-2); white-space: nowrap; }
 .badge.ckpt { color: var(--accent); border-color: var(--accent); font-weight: 650; }
@@ -1198,6 +1201,13 @@ footer { color: var(--muted); font-size: 11.5px; margin-top: 12px; }
   });
   const search = document.getElementById('search');
   search.addEventListener('input', applyFilters);
+  // 编号按 t049 / T-049 / 049 / 49 输入都要命中：比对前把连字符与空格去掉
+  const normId = s => s.toLowerCase().replace(/[\s-]/g, '');
+  function matches(doc, q) {
+    if (!q) return true;
+    const n = normId(q);
+    return doc.title.toLowerCase().includes(q) || (!!n && normId(doc.id).includes(n));
+  }
   // 回车：把输入解析成编号直接定位（12 / t12 / T-012 → T-012；d3 → D-003），
   // 不是编号就打开第一个标题匹配的任务
   function resolveId(q) {
@@ -1209,8 +1219,7 @@ footer { color: var(--muted); font-size: 11.5px; margin-top: 12px; }
     }
     const ql = q.trim().toLowerCase();
     if (!ql) return null;
-    const hit = tasks.find(t => visible(t)) ||
-      adrs.find(a => a.id.toLowerCase().includes(ql) || a.title.toLowerCase().includes(ql));
+    const hit = tasks.find(t => visible(t)) || adrs.find(a => matches(a, ql));
     return hit ? hit.id : null;
   }
   search.addEventListener('keydown', ev => {
@@ -1238,8 +1247,7 @@ footer { color: var(--muted); font-size: 11.5px; margin-top: 12px; }
     if (filters.status.size && !filters.status.has(t.status)) return false;
     if (filters.flag.has('runnable') && !t.runnable) return false;
     if (filters.flag.has('human') && t.owner !== 'human') return false;
-    const q = search.value.trim().toLowerCase();
-    if (q && !(t.id.toLowerCase().includes(q) || t.title.toLowerCase().includes(q))) return false;
+    if (!matches(t, search.value.trim().toLowerCase())) return false;
     return true;
   }
   function applyFilters() {
