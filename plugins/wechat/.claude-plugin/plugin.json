@@ -1,0 +1,9 @@
+{
+  "name": "wechat",
+  "version": "1.0.0",
+  "description": "Read and summarize local WeChat (macOS 4.x) chat history by decrypting the on-disk SQLCipher databases — local-only, read-only, never automates the WeChat client",
+  "author": {
+    "name": "Kan"
+  },
+  "license": "MIT"
+}

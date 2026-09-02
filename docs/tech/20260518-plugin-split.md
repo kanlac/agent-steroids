@@ -10,7 +10,7 @@
 
 ## Design Rules
 
-1. **不要过度拆分**：paper、web clipping、WeChat 等 workflow 都留在 `steroids`。
+1. **不要过度拆分**：paper、web clipping 等 workflow 都留在 `steroids`。
 2. **浏览器依赖写 capability，不写死 provider**：需要人工接管/登录态/CAPTCHA 时写 `headed-browser`。`chrome/cdp-chrome` 是一个 provider；Codex Chrome plugin 或原生 browser-use 也可以满足。
 3. **Telegram 相关能力集中**：Telegram commands、MCP server、time hook、payload guard hook 都在 `telegram`，避免再单独维护 guard 插件。
 4. **Codex marketplace 只暴露跨运行时 skill 插件**：当前为 `steroids` 和 `chrome`。`telegram` 保持 Claude Code 专用 marketplace。
@@ -20,7 +20,7 @@
 
 | Plugin | Runtime | Contents | Hard Dependencies | Soft / Capability Dependencies |
 |---|---|---|---|---|
-| `steroids` | Claude + Codex + Hermes | `extract-to-md`, `read-book`, `html-to-pdf`, `clipping`, `paper-download`, `wechat-desktop`, `/song` | None | `paper-download` / `clipping` may need `headed-browser`; `wechat-desktop` needs macOS + computer-use MCP |
+| `steroids` | Claude + Codex + Hermes | `extract-to-md`, `read-book`, `html-to-pdf`, `clipping`, `paper-download`, `/song` | None | `paper-download` / `clipping` may need `headed-browser` |
 | `telegram` | Claude Code only | `telegram-agents`, `/tg-*`, `/check-release`, `telegram-notify` MCP, Telegram time hook, `guard-payload-size` hook | Claude Code + official Telegram plugin for channel sessions; Telethon/tmux/launchd for heartbeat workflows | None |
 | `chrome` | Claude + Codex + Hermes | `cdp-chrome` per-OS-user headed Chrome provider; bundled MCP wrapper for Claude Code/Codex reads current-user config; Hermes uses config-driven MCP registration | Chrome, `npx`; `mcp_servers` registration for Hermes | Provides `headed-browser`; optional replacement for Codex Chrome plugin/native browser-use |
 

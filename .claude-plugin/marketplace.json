@@ -28,6 +28,11 @@
       "name": "taskdag",
       "source": "./plugins/taskdag",
       "description": "Repo-native ADR + Task DAG control plane: structured task/decision docs, vendored lifecycle CLI, generated DAG board, cross-agent dispatch"
+    },
+    {
+      "name": "wechat",
+      "source": "./plugins/wechat",
+      "description": "Read and summarize local WeChat (macOS 4.x) chat history by decrypting on-disk SQLCipher databases — local-only, read-only, never automates the WeChat client"
     }
   ]
 }

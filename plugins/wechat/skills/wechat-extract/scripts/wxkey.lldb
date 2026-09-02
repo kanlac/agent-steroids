@@ -1,0 +1,14 @@
+# wxkey.lldb — 截取微信 4.x 的 SQLCipher 口令（macOS / Apple Silicon）
+# 用法：先退出微信，再 `sudo lldb -s wxkey.lldb`，然后手动启动微信触发派生。
+# 原理：断在系统库 CCKeyDerivationPBKDF 的“主 key 派生”那次调用（轮数=256000），
+#       读入参：x1=口令指针、x2=口令长度、x3=salt。口令前 32 字节即为万能口令。
+break set -n CCKeyDerivationPBKDF -c '$w6 == 256000'
+break command add
+script print("=== PBKDF2(256000) hit: passphrase(x1, len=x2) + salt(x3) ===")
+expression -f d -- (unsigned long)$x2
+memory read --format x --size 1 --count 64 $x1
+memory read --format x --size 1 --count 16 $x3
+continue
+DONE
+process attach --name WeChat --waitfor
+continue

@@ -7,8 +7,9 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 - `chrome`：可选的每 OS 用户一个进程的共享有头 Chrome provider；Claude Code / Codex 安装后随插件提供 `cdp-chrome` MCP 启动器。
 - `write-blog`：Claude Code 专用的写作流程 skill 插件——选题构思、对话式挖掘、大纲迭代、按作者风格成文，附信息图/制图参考。
 - `taskdag`：仓库原生的 ADR + Task DAG 控制面——结构化任务/决策文档、vendor 进项目的零依赖生命周期 CLI、生成式 DAG 看板、跨 agent 派发。
+- `wechat`：Claude Code / Codex 通用的本机微信（macOS 4.x）聊天记录读取插件——只读本地磁盘、本地解密 SQLCipher 库，绝不操作微信客户端。仅 macOS + Apple Silicon。
 
-`steroids`、`chrome` 和 `taskdag` 的 canonical skills 位于 `plugins/<plugin>/skills/` 并可跨 runtime 复用；Claude Code / Codex 通过各自 marketplace 安装，Hermes 通过根目录 shim 仅暴露 `steroids` 与 `chrome`。`telegram` 和 `write-blog` 保持 Claude Code 专用，不提供 Codex marketplace 条目或 Hermes shim。
+`steroids`、`chrome` 和 `taskdag` 的 canonical skills 位于 `plugins/<plugin>/skills/` 并可跨 runtime 复用；Claude Code / Codex 通过各自 marketplace 安装，Hermes 通过根目录 shim 仅暴露 `steroids` 与 `chrome`。`wechat` 同时提供 Claude Code 与 Codex marketplace 条目，但不提供 Hermes shim（仅 macOS）；`telegram` 和 `write-blog` 保持 Claude Code 专用。
 
 ## 安装
 
@@ -20,11 +21,12 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 
 | Plugin | Runtime | 包含内容 | 硬依赖 | 可选 / capability 依赖 |
 |---|---|---|---|---|
-| [`steroids`](plugins/steroids/) | Claude + Codex + Hermes | 主体 Skills：文档处理、书籍阅读、PDF 导出、网页剪藏、论文下载、微信桌面 workflow、Agent 记忆管理（诊断/整理/吸收），以及 `/song` | 无 | `paper-download` / `clipping` 的登录态或 CAPTCHA 场景需要 `headed-browser`；`wechat-desktop` 需要 macOS + computer-use MCP |
+| [`steroids`](plugins/steroids/) | Claude + Codex + Hermes | 主体 Skills：文档处理、书籍阅读、PDF 导出、网页剪藏、论文下载、模型派发（dispatch）、Agent 记忆管理（诊断/整理/吸收），以及 `/song` | 无 | `paper-download` / `clipping` 的登录态或 CAPTCHA 场景需要 `headed-browser` |
 | [`telegram`](plugins/telegram/) | Claude Code only | `telegram-agents`、`/tg-*`、`/check-release`、`telegram-notify` MCP、Telegram time hook、`guard-payload-size` hook | Claude Code + official Telegram plugin；心跳 workflow 需 Telethon/tmux/launchd | 无 |
 | [`chrome`](plugins/chrome/) | Claude + Codex + Hermes | `cdp-chrome` 每 OS 用户一个进程的共享有头 Chrome provider；Claude/Codex 内置 `cdp-chrome` MCP 启动器，会读取当前用户 steroids 配置 | Chrome、`npx`；Hermes 使用时需在 `mcp_servers` 注册 | 提供 `headed-browser`，可被 Codex Chrome plugin / 原生 browser-use 替代 |
 | [`write-blog`](plugins/write-blog/) | Claude Code only | `write-blog` skill：选题/对话式挖掘/大纲迭代/按作者风格成文，附 voice-dna 与制图参考 | 无 | 无 |
 | [`taskdag`](plugins/taskdag/) | Claude + Codex | `orchestrator` skill：ADR + Task DAG 控制面，含 vendor 进项目的 `taskdag.py`（validate/query/transition/board）与派发/复审参考 | Python 3（仅标准库） | 派发映射到本机可用的 agent CLI（Claude Code / Codex / OpenCode 等） |
+| [`wechat`](plugins/wechat/) | Claude + Codex | `wechat-extract` skill：解密本机微信（macOS 4.x）SQLCipher 库、导出/总结群聊，含初始化手册（临时关 SIP 截口令、恢复 SIP、开 FDA） | macOS + Apple Silicon；Homebrew `zstd`；一次性 lldb 截口令 | 无 |
 
 ## Skills
 
@@ -37,7 +39,6 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 | [`dispatch`](plugins/steroids/skills/dispatch/SKILL.md) | `steroids` | 把活派给别的模型的 CLI（Codex 跑 GPT-5.x，OpenCode 跑 GLM/DeepSeek/Kimi）：调用契约、静默失败排查、显式 session 串行续问，以及怎么审收回来的报告。 |
 | [`clipping`](plugins/steroids/skills/clipping/SKILL.md) | `steroids` | 将网页文章保存为本地 Markdown 笔记。支持微信公众号等 JS 渲染页面；对信息图/表格截图可使用 PaddleOCR 提取文本并重构为 Markdown 表格。 |
 | [`paper-download`](plugins/steroids/skills/paper-download/SKILL.md) | `steroids` | 学术论文检索与下载。三级策略：HTTP/OA 直链、headless 解析、headed browser 登录/CAPTCHA。`cdp-chrome` 只是可选 provider。 |
-| [`wechat-desktop`](plugins/steroids/skills/wechat-desktop/SKILL.md) | `steroids` | 通过 computer-use MCP 在 macOS 上读取、浏览和总结微信群聊消息。 |
 | [`clash-verge-config`](plugins/steroids/skills/clash-verge-config/SKILL.md) | `steroids` | Clash Verge Rev / mihomo / Stash 客户端配置即代码：保留字段与 enhance 管线、不中断 provider 热刷新、隔离内核验收、Stash Override、运行态 controller、规则/provider/真实连接闭环、DNS 与浏览器泄漏、TUN 回环。 |
 | [`skill-console`](plugins/steroids/skills/skill-console/SKILL.md) | `steroids` | 生成本地 Skill 清单控制台，审计 token 用量、description token、重复项路径、Skill 内容预览，并导出选中 Skill 的 `{name, path}` JSON。 |
 | [`hippocampus`](plugins/steroids/skills/hippocampus/SKILL.md) | `steroids` | 管理 Agent 记忆与上下文：①诊断与治疗——扫描全局/项目指令、auto-memory、当前工具定义、skills 与文档，按体量/可用性/新鲜度/矛盾四维打分，生成「记忆精神科确诊书」和逐项确认的 ReviewTable；②吸收新知识——把教训路由到唯一归属并重构，而非追加笔记。内置最短充分表达、渐进披露、工具描述去噪和 auto-memory 中性原则。 |
@@ -45,6 +46,7 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 | [`cdp-chrome`](plugins/chrome/skills/cdp-chrome/SKILL.md) | `chrome` | 可选的共享有头 Chrome provider。适合需要持久登录态、用户手动 CAPTCHA、反 bot 页面或 live site inspection 的环境；明确独立 CDP profile 与日常 Chrome 的验证边界。 |
 | [`write-blog`](plugins/write-blog/skills/write-blog/SKILL.md) | `write-blog` | 写作全流程：从录音稿成文，或从零开始的对话式写作（选题、调研、提问漏斗、大纲迭代、初稿）。按作者 voice-dna 风格输出，附「图形为主、文字为辅」制图参考。 |
 | [`orchestrator`](plugins/taskdag/skills/orchestrator/SKILL.md) | `taskdag` | 仓库原生的 ADR + Task DAG 控制面：任务按「一次派发」粒度拆分并标注 priority/model-tier/effort，零依赖 `taskdag.py` 管 schema 校验、runnable 推导、状态机与单文件 DAG 看板（可发布到仓库外路径）；含初始化/迁移、跨 agent 派发映射两份参考。 |
+| [`wechat-extract`](plugins/wechat/skills/wechat-extract/SKILL.md) | `wechat` | 读取/总结/提取本机微信桌面端（macOS 4.x）聊天记录：只读本地 SQLCipher 库、本地解密，绝不操作微信客户端（零封号风险）。含 `references/setup.md` 初始化手册（临时关 SIP → lldb 截口令 → 恢复 SIP → 开 FDA）与 `scripts/wechat.py` 解密导出管线（decrypt/groups/contacts/dump）。 |
 
 ## Commands（Claude Code）
 
@@ -93,6 +95,7 @@ agent-steroids/
     chrome/             # cdp-chrome provider（含 Claude/Codex MCP launcher 配置）
     write-blog/         # 写作流程 skill（Claude Code only）
     taskdag/            # ADR + Task DAG 控制面（Claude + Codex）
+    wechat/             # 微信本地聊天记录解密读取（Claude + Codex，仅 macOS）
   docs/
     tech/               # 技术方案和架构设计
     research/           # 调研、对比分析
