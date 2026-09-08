@@ -15,7 +15,7 @@ wechat.py — 微信 macOS 4.x 本地聊天库解密与导出管线（只读、�
   wechat.py dump <群名或id> [--days N | --since YYYY-MM-DD] [-o 文件]
                                     导出某群某时间段的可读转录（默认最近 2 天）
 """
-import os, sys, glob, sqlite3, ctypes, hashlib, datetime, re, argparse
+import os, sys, glob, sqlite3, ctypes, hashlib, datetime, re, argparse, html
 
 WORKDIR = os.environ.get('WECHAT_EXTRACT_HOME', os.path.expanduser('~/wechat-extract'))
 PLAIN = os.path.join(WORKDIR, 'plain')
@@ -152,14 +152,8 @@ def _strip_sender(s):
     i = s.find('\n')
     return s[i+1:] if 0 < i < 70 and s[:i].endswith(':') else s
 
-def _readable(t, mc):
-    if mc is None:
-        return '[空]'
-    if isinstance(mc, bytes):
-        mc = _unzstd(mc) if mc[:4] == b'\x28\xb5\x2f\xfd' else mc
-        try: mc = mc.decode('utf-8', 'replace')
-        except: return '[二进制]'
-    body = _strip_sender(mc)
+def _render(t, body):
+    """按 local_type 把消息体渲染成可读文本；被 _readable 和"引用回复"里的被引用消息共用。"""
     if t == 1:  return body.strip()
     if t == 47: return '[表情]'
     if t == 3:  return '[图片]'
@@ -172,23 +166,45 @@ def _readable(t, mc):
     if m:
         title = m.group(1).strip()
         rm = re.search(r'<refermsg>(.*?)</refermsg>', body, re.S)
-        if rm:
+        if rm and rm.group(1).strip():
             ref = rm.group(1)
             who = re.search(r'<displayname>(.*?)</displayname>', ref, re.S)
             ct = re.search(r'<content>(.*?)</content>', ref, re.S)
-            who = (who.group(1).strip() if who else '')
-            quoted = ct.group(1).strip() if ct else ''
-            if quoted.startswith('&lt;') or quoted.startswith('<'):
-                import html as _html
-                inner = _html.unescape(quoted)
-                qm = re.search(r'<title>(.*?)</title>', inner, re.S)
-                quoted = f'[分享/链接] {qm.group(1).strip()}' if qm else '[消息]'
-            quoted = quoted[:60]
-            return f'[回复 {who}: {quoted}] {title}'
+            rt = re.search(r'<type>(\d+)</type>', ref)
+            who = who.group(1).strip() if who else ''
+            raw = ct.group(1).strip() if ct else ''
+            quoted = None
+            if raw.startswith('&lt;') or raw.startswith('<'):
+                # 被引用消息本身是非文本类型（图片/语音/视频/链接…），content 是转义后的嵌套 XML：
+                # 用被引用消息自己的 <type> 递归复用同一套渲染逻辑，而不是只会摘标题。
+                inner = html.unescape(raw)
+                if rt:
+                    quoted = _render(int(rt.group(1)), inner)
+                if not quoted:
+                    qm = re.search(r'<title>(.*?)</title>', inner, re.S)
+                    quoted = f'[分享/链接] {qm.group(1).strip()}' if qm else '[消息]'
+            else:
+                quoted = raw or '[消息]'
+            return f'[回复 {who}: {quoted[:60]}] {title}'
+        # <refermsg> 自己的 <type> 固定是 49（占位值，不反映被引用消息的真实类型），不能拿来判断；
+        # 真正可靠的信号是这条 appmsg 自己的 <type>：57 = 引用回复信封（纯文字，无附件，
+        # 可能是套娃转发时被剥空了 refermsg），其余数字才是真正带附件的分享/链接/文件。
+        atype = re.search(r'<type>(\d+)</type>', body, re.S)
+        if atype and atype.group(1) == '57':
+            return title
         d = re.search(r'<des>(.*?)</des>', body, re.S)
         des = d.group(1).strip() if d else ''
         return f'[分享/链接] {title}' + (f' — {des[:60]}' if des else '')
     return f'[类型{t}]'
+
+def _readable(t, mc):
+    if mc is None:
+        return '[空]'
+    if isinstance(mc, bytes):
+        mc = _unzstd(mc) if mc[:4] == b'\x28\xb5\x2f\xfd' else mc
+        try: mc = mc.decode('utf-8', 'replace')
+        except: return '[二进制]'
+    return _render(t, _strip_sender(mc))
 
 def _find_room(query):
     """按名字或 id 定位群，返回 (chatroom_id, 显示名)"""
