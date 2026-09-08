@@ -41,7 +41,7 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 | [`paper-download`](plugins/steroids/skills/paper-download/SKILL.md) | `steroids` | 学术论文检索与下载。三级策略：HTTP/OA 直链、headless 解析、headed browser 登录/CAPTCHA。`cdp-chrome` 只是可选 provider。 |
 | [`clash-verge-config`](plugins/steroids/skills/clash-verge-config/SKILL.md) | `steroids` | Clash Verge Rev / mihomo / Stash 客户端配置即代码：保留字段与 enhance 管线、不中断 provider 热刷新、隔离内核验收、Stash Override、运行态 controller、规则/provider/真实连接闭环、DNS 与浏览器泄漏、TUN 回环。 |
 | [`skill-console`](plugins/steroids/skills/skill-console/SKILL.md) | `steroids` | 生成本地 Skill 清单控制台，审计 token 用量、description token、重复项路径、Skill 内容预览，并导出选中 Skill 的 `{name, path}` JSON。 |
-| [`hippocampus`](plugins/steroids/skills/hippocampus/SKILL.md) | `steroids` | 管理 Agent 记忆与上下文：①诊断与治疗——扫描全局/项目指令、auto-memory、当前工具定义、skills 与文档，按体量/可用性/新鲜度/矛盾四维打分，生成「记忆精神科确诊书」和逐项确认的 ReviewTable；②吸收新知识——把教训路由到唯一归属并重构，而非追加笔记。内置最短充分表达、渐进披露、工具描述去噪和 auto-memory 中性原则。 |
+| [`hippocampus`](plugins/steroids/skills/hippocampus/SKILL.md) | `steroids` | Agent 记忆与上下文的品味清单（T1–T14，每条附反模式）：最短充分表达、护栏越少越好、description 只答「何时用」、一个事实一个主人、重构不追加等。用于体检清理 CLAUDE.md/AGENTS.md、auto-memory、skill 与工具描述，或把教训沉淀到唯一归属。 |
 | [`telegram-agents`](plugins/telegram/skills/telegram-agents/SKILL.md) | `telegram` | Telegram agent 配置与管理。包括 tmux 会话、Telethon 调度器、launchd 心跳定时任务。 |
 | [`cdp-chrome`](plugins/chrome/skills/cdp-chrome/SKILL.md) | `chrome` | 可选的共享有头 Chrome provider。适合需要持久登录态、用户手动 CAPTCHA、反 bot 页面或 live site inspection 的环境；明确独立 CDP profile 与日常 Chrome 的验证边界。 |
 | [`write-blog`](plugins/write-blog/skills/write-blog/SKILL.md) | `write-blog` | 写作全流程：从录音稿成文，或从零开始的对话式写作（选题、调研、提问漏斗、大纲迭代、初稿）。按作者 voice-dna 风格输出，附「图形为主、文字为辅」制图参考。 |
