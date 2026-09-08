@@ -171,10 +171,23 @@ def _readable(t, mc):
     m = re.search(r'<title>(.*?)</title>', body, re.S)
     if m:
         title = m.group(1).strip()
+        rm = re.search(r'<refermsg>(.*?)</refermsg>', body, re.S)
+        if rm:
+            ref = rm.group(1)
+            who = re.search(r'<displayname>(.*?)</displayname>', ref, re.S)
+            ct = re.search(r'<content>(.*?)</content>', ref, re.S)
+            who = (who.group(1).strip() if who else '')
+            quoted = ct.group(1).strip() if ct else ''
+            if quoted.startswith('&lt;') or quoted.startswith('<'):
+                import html as _html
+                inner = _html.unescape(quoted)
+                qm = re.search(r'<title>(.*?)</title>', inner, re.S)
+                quoted = f'[分享/链接] {qm.group(1).strip()}' if qm else '[消息]'
+            quoted = quoted[:60]
+            return f'[回复 {who}: {quoted}] {title}'
         d = re.search(r'<des>(.*?)</des>', body, re.S)
         des = d.group(1).strip() if d else ''
-        pre = '[引用回复]' if '<refermsg>' in body else '[分享/链接]'
-        return f'{pre} {title}' + (f' — {des[:60]}' if des else '')
+        return f'[分享/链接] {title}' + (f' — {des[:60]}' if des else '')
     return f'[类型{t}]'
 
 def _find_room(query):
