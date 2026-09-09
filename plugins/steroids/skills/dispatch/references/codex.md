@@ -2,6 +2,14 @@
 
 ## 当时可用的调用（实测于 2026-08）
 
+探活：
+
+```bash
+codex exec --model gpt-5.6-sol "只回答两个字：收到" < /dev/null
+```
+
+正式任务：
+
 ```bash
 codex exec --sandbox danger-full-access --model gpt-5.6-sol \
   -c model_reasoning_effort=xhigh --skip-git-repo-check \

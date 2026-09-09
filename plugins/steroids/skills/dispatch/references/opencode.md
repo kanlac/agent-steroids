@@ -11,6 +11,14 @@
 
 ## 当时可用的调用
 
+探活：
+
+```bash
+opencode run --pure -m ark-coding/glm-5.3 "只回答两个字：收到" < /dev/null
+```
+
+正式任务：
+
 ```bash
 opencode run --pure --auto -m ark-coding/glm-5.3 "$(cat prompt.txt)" < /dev/null
 ```

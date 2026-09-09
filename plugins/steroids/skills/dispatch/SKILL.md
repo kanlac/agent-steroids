@@ -3,9 +3,6 @@ name: dispatch
 description: Send work to another model's CLI (Codex, OpenCode) and get a usable answer back. Use when handing a task to GPT via Codex or to GLM/DeepSeek/Kimi via OpenCode — second-opinion code review, an independent design, bulk generation, or anything worth a different model's eyes.
 ---
 
-派活是把任务交给另一个进程里的另一个 agent：它有自己的工具、权限和上下文，不共享你的记忆，
-你能拿回的只有它写出来的东西。下面的规则都从这一点推出来。
-
 ## 像派给同事，不像调函数
 
 - **cwd 就是仓库，给入口和关注点，让它自己读**。不把源码贴进提示词，也不预先划只读范围：
@@ -22,7 +19,7 @@ description: Send work to another model's CLI (Codex, OpenCode) and get a usable
 ## CLI 的硬限制，调用时就要绕开
 
 - **先看 `--help` 和 `models`**。参数和模型名迭代很快，不凭记忆写；长输出先看模型的输出上限，
-  那是硬约束。换了 CLI、模型或机器，先用一句话任务探活。
+  那是硬约束。派正式任务前先用一句话任务探活。
 - **命令末尾 `< /dev/null`**，否则它等 stdin，零输出挂住。
 - **权限一次给够**。被拒后它不绕开、不交已有结论，整轮作废。这是委派不是隔离，
   宿主配好的权限和 alias 照用，别自己加沙箱。
