@@ -20,6 +20,9 @@ codex exec --sandbox danger-full-access --model gpt-5.6-sol \
 
 缺 `< /dev/null` 时的具体表现是卡在 `Reading additional input from stdin...` 一动不动。
 
+宿主 shell 可能给 `codex` 配了 alias（如注入 `--dangerously-bypass-approvals-and-sandbox`），
+此时 `--sandbox` 参数会被它覆盖。这是宿主有意的设置，照用即可，不要用 `command codex` 绕开。
+
 ## 沙箱禁网
 
 `danger-full-access` 给的是文件系统权限，网络仍然是断的。所以：
