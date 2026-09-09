@@ -1,0 +1,36 @@
+{
+  "name": "market",
+  "version": "1.0.0",
+  "description": "Research and data-analysis methodology for market/growth decisions — social media trend discovery and SEO/keyword-data methodology, evidence-gated throughout",
+  "author": {
+    "name": "Kan"
+  },
+  "license": "MIT",
+  "keywords": [
+    "trends",
+    "keyword-research",
+    "seo",
+    "market-research",
+    "social-media",
+    "reddit",
+    "twitter",
+    "tiktok"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Market",
+    "shortDescription": "Evidence-gated market research: social trend discovery and SEO/keyword-data methodology.",
+    "longDescription": "Research and data-analysis methodology for market/growth decisions. Currently includes trend-radar: discovers genuinely trending topics and keywords across Reddit, X/Twitter, TikTok, YouTube, and Instagram for a given niche, bottom-up (start from what's actually trending, never from a hypothesis), with per-platform engagement thresholds so every candidate is backed by a real, linkable, high-engagement post. More research/SEO-data methodology skills to follow under the same plugin.",
+    "developerName": "Kan",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Network"
+    ],
+    "defaultPrompt": [
+      "Find what's actually trending right now for [niche] across Reddit and X.",
+      "Discover hot keywords for my SEO content plan, bottom-up, with evidence."
+    ],
+    "brandColor": "#7C3AED"
+  }
+}
