@@ -1,8 +1,5 @@
 # Codex
 
-**参数和数值都带日期，会过期；调用方式以你当下 `--help` 看到的为准。**
-记录它们是因为「问题长什么样」比「用哪个 flag」更耐久——参数改名了，坑还在。
-
 ## 当时可用的调用（实测于 2026-08）
 
 ```bash
@@ -20,8 +17,7 @@ codex exec --sandbox danger-full-access --model gpt-5.6-sol \
 
 缺 `< /dev/null` 时的具体表现是卡在 `Reading additional input from stdin...` 一动不动。
 
-宿主 shell 可能给 `codex` 配了 alias（如注入 `--dangerously-bypass-approvals-and-sandbox`），
-此时 `--sandbox` 参数会被它覆盖。这是宿主有意的设置，照用即可，不要用 `command codex` 绕开。
+宿主 shell 若给 `codex` 配了注入审批/沙箱参数的 alias，照用，不要 `command codex` 绕开。
 
 ## 沙箱禁网
 
@@ -33,8 +29,8 @@ codex exec --sandbox danger-full-access --model gpt-5.6-sol \
 
 ## 并发
 
-多个实例同时写一个仓库会互相覆盖。做法是每个实例一个独立工作目录；
-只读/调研类任务干脆放在仓库之外跑，结果用 `-o` 收到文件里。
+多个实例同时写一个仓库会互相覆盖，每个实例一个独立工作目录。
+只读/调研类任务也要在仓库或仓库快照里跑，让它自己探索文件；结果用 `-o` 收到文件里。
 
 ## 生图
 

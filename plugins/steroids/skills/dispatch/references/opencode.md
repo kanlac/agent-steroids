@@ -1,8 +1,5 @@
 # OpenCode
 
-**参数和数值都带日期，会过期；调用方式以你当下 `--help` 看到的为准。**
-记录它们是因为「问题长什么样」比「用哪个 flag」更耐久——参数改名了，坑还在。
-
 ## Provider 与模型（实测于 2026-08）
 
 provider 固定 `ark-coding`（火山 Coding Plan），`opencode models ark-coding` 列全部。
@@ -10,7 +7,6 @@ provider 固定 `ark-coding`（火山 Coding Plan），`opencode models ark-codi
 - **主力 `glm-5.3`**：推理和安全能力强，代码审查、安全相关的活优先给它。
 - **要长输出换 `deepseek-v4-pro`**：整文件重写、大批量生成这类任务，它 393K 的输出
   上限是唯一扛得住的。输出上限是硬约束，模型再聪明也会被截断。
-- 截至 2026-08-19 实测没有 Kimi K3，之后可能上新，以 `opencode models` 为准。
 
 不要凭记忆写模型名，先列一遍。
 
@@ -69,7 +65,6 @@ opencode run --pure -m <provider/model> --session "$SESSION_ID" --format json "<
 - 全部内容都在 cwd 之内，不触发 `external_directory` 拒绝；
 - 它在副本里读写，不会和真仓库里正在进行的工作互相干扰。
 
-这是功能性安排，不是安全隔离；不需要为「限制它能读什么」再加约束。
 变更集（diff + 新增文件全文）也一并放进快照，提示词里用相对路径指过去。
 
 **2026-08-26 实测**：同一个审查任务，放在仓库外跑 → 连打两次 `auto-rejecting`，
