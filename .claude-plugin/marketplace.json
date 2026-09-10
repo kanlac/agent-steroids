@@ -33,11 +33,6 @@
       "name": "wechat",
       "source": "./plugins/wechat",
       "description": "Read and summarize local WeChat (macOS 4.x) chat history by decrypting on-disk SQLCipher databases — local-only, read-only, never automates the WeChat client"
-    },
-    {
-      "name": "market",
-      "source": "./plugins/market",
-      "description": "Research and data-analysis methodology for market/growth decisions — social media trend discovery and SEO/keyword-data methodology, evidence-gated throughout"
     }
   ]
 }

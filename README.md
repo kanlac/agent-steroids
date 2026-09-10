@@ -8,9 +8,8 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 - `write-blog`：Claude Code 专用的写作流程 skill 插件——选题构思、对话式挖掘、大纲迭代、按作者风格成文，附信息图/制图参考。
 - `taskdag`：仓库原生的 ADR + Task DAG 控制面——结构化任务/决策文档、vendor 进项目的零依赖生命周期 CLI、生成式 DAG 看板、跨 agent 派发。
 - `wechat`：Claude Code / Codex 通用的本机微信（macOS 4.x）聊天记录读取插件——只读本地磁盘、本地解密 SQLCipher 库，绝不操作微信客户端。仅 macOS + Apple Silicon。
-- `market`：Claude Code / Codex 通用的调研/数据分析方法论插件——目前含 `trend-radar` skill：自底向上扫描 Reddit/X/TikTok/YouTube/Instagram，强制每条候选话题/关键词附互动量达标证据,不接受凭假设推断的条目；后续会陆续收纳更多社媒调研与 SEO/关键词数据方法论。
 
-`steroids`、`chrome`、`taskdag` 和 `market` 的 canonical skills 位于 `plugins/<plugin>/skills/` 并可跨 runtime 复用；Claude Code / Codex 通过各自 marketplace 安装，Hermes 通过根目录 shim 仅暴露 `steroids` 与 `chrome`。`wechat` 同时提供 Claude Code 与 Codex marketplace 条目，但不提供 Hermes shim（仅 macOS）；`market` 同理提供 Claude Code 与 Codex 条目，暂不提供 Hermes shim；`telegram` 和 `write-blog` 保持 Claude Code 专用。
+`steroids`、`chrome`、`taskdag` 的 canonical skills 位于 `plugins/<plugin>/skills/` 并可跨 runtime 复用；Claude Code / Codex 通过各自 marketplace 安装，Hermes 通过根目录 shim 仅暴露 `steroids` 与 `chrome`。`wechat` 同时提供 Claude Code 与 Codex marketplace 条目，但不提供 Hermes shim（仅 macOS）；`telegram` 和 `write-blog` 保持 Claude Code 专用。
 
 ## 安装
 
@@ -28,7 +27,6 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 | [`write-blog`](plugins/write-blog/) | Claude Code only | `write-blog` skill：选题/对话式挖掘/大纲迭代/按作者风格成文，附 voice-dna 与制图参考 | 无 | 无 |
 | [`taskdag`](plugins/taskdag/) | Claude + Codex | `orchestrator` skill：ADR + Task DAG 控制面，含 vendor 进项目的 `taskdag.py`（validate/query/transition/board）与派发/复审参考 | Python 3（仅标准库） | 派发映射到本机可用的 agent CLI（Claude Code / Codex / OpenCode 等） |
 | [`wechat`](plugins/wechat/) | Claude + Codex | `wechat-extract` skill：解密本机微信（macOS 4.x）SQLCipher 库、导出/总结群聊，含初始化手册（临时关 SIP 截口令、恢复 SIP、开 FDA） | macOS + Apple Silicon；Homebrew `zstd`；一次性 lldb 截口令 | 无 |
-| [`market`](plugins/market/) | Claude + Codex | 调研/数据分析方法论；目前含 `trend-radar` skill：自底向上扫描 Reddit/X/TikTok/YouTube/Instagram 发现真实热门话题，每条候选词强制附互动量达标证据，拒绝凭假设推断的条目 | 无 | Reddit/X 免费公开访问即可；TikTok/Instagram 通常需要第三方抓取服务的付费 key |
 
 ## Skills
 
@@ -49,7 +47,6 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 | [`write-blog`](plugins/write-blog/skills/write-blog/SKILL.md) | `write-blog` | 写作全流程：从录音稿成文，或从零开始的对话式写作（选题、调研、提问漏斗、大纲迭代、初稿）。按作者 voice-dna 风格输出，附「图形为主、文字为辅」制图参考。 |
 | [`orchestrator`](plugins/taskdag/skills/orchestrator/SKILL.md) | `taskdag` | 仓库原生的 ADR + Task DAG 控制面：任务按「一次派发」粒度拆分并标注 priority/model-tier/effort，零依赖 `taskdag.py` 管 schema 校验、runnable 推导、状态机与单文件 DAG 看板（可发布到仓库外路径）；含初始化/迁移、跨 agent 派发映射两份参考。 |
 | [`wechat-extract`](plugins/wechat/skills/wechat-extract/SKILL.md) | `wechat` | 读取/总结/提取本机微信桌面端（macOS 4.x）聊天记录：只读本地 SQLCipher 库、本地解密，绝不操作微信客户端（零封号风险）。含 `references/setup.md` 初始化手册（临时关 SIP → lldb 截口令 → 恢复 SIP → 开 FDA）与 `scripts/wechat.py` 解密导出管线（decrypt/groups/contacts/dump）。 |
-| [`trend-radar`](plugins/market/skills/trend-radar/SKILL.md) | `market` | 自底向上发现社媒平台真实热门话题/关键词：先看平台实际在发生什么，不先假设类目再找帖子佐证；每条候选词按平台互动量门槛（点赞/转发/播放/评论）二选一收录，不设低置信度中间态；含 `references/platform-mechanics.md`（Reddit 公开 `.json` 端点、X cookie 免费访问与查询长度坑、TikTok/Instagram 付费抓取现状、中文平台现状）。 |
 
 ## Commands（Claude Code）
 
