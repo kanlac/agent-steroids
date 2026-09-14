@@ -1,91 +1,74 @@
 # OpenCode
 
-## Provider 与模型（实测于 2026-08）
+实测于 2026-09，opencode 1.18.30，provider `ark-coding`（火山 Coding Plan）。
 
-实测环境的 provider 是 `ark-coding`（火山 Coding Plan），`opencode models ark-coding` 列全部。
+## 模型
 
-- **主力 `glm-5.3`**：推理和安全能力强，代码审查、安全相关的活优先给它。
-- **要长输出换 `deepseek-v4-pro`**：393K 的输出上限是唯一扛得住整文件重写、大批量生成的。
+`opencode models ark-coding --verbose` 看模型名和生效的 `limit`，不凭记忆写。
 
-不要凭记忆写模型名，先列一遍。
+主力是 `kimi-k3`、`glm-5.3`、`deepseek-v4-pro` 三个，按任务挑，不分高下。挑的时候留意各自的
+输出上限（`--verbose` 里的 `limit.output`），它决定单步推理加输出能走多远（见「单步输出上限」）：
 
-## 当时可用的调用
+- **`kimi-k3`**：配置声明的输出上限 32768，是三个里最紧的。
+- **`glm-5.3`**：输出上限 128000。实测习惯把推理集中在一步里，上下文一大单步推理动辄上万 token。
+- **`deepseek-v4-pro`**：输出上限 393K。实测推理分散在多步里，单步推理较短。
 
-探活：
+## 调用
 
 ```bash
+# 探活
 opencode run --pure -m ark-coding/glm-5.3 "只回答两个字：收到" < /dev/null
+
+# 正式任务
+opencode run --pure --auto -m ark-coding/glm-5.3 --format json \
+  "$(cat prompt.txt)" < /dev/null > events.jsonl 2> stderr.txt
 ```
 
-正式任务：
-
-```bash
-opencode run --pure --auto -m ark-coding/glm-5.3 "$(cat prompt.txt)" < /dev/null
-```
-
-| 参数 | 当时的作用 |
+| 参数 | 作用 |
 |---|---|
-| `--auto` | 自动批准权限。help 原文是 "auto-approve permissions that are not explicitly denied (dangerous!)" |
-| `--pure` | 不加载外部插件（MCP）。配了远程 MCP 时能避免启动阶段挂死 |
-| `--format json` | 输出原始事件流，需要程序化解析时用 |
-| `-c` / `--continue` | 续当前目录最近更新的会话；多任务环境不保证是你想要的那一个 |
-| `-s` / `--session` | 显式续指定会话 |
+| `--pure` | 不加载外部插件（MCP），避免启动阶段挂死 |
+| `--auto` | 自动批准未被显式拒绝的权限 |
+| `--format json` | 事件流：每次 `tool_use`、每步 `step_finish`（带 `reason` 和 token 数） |
+| `-s` / `--session` | 显式续指定会话；`-c` 续的是当前目录最近的会话，多任务时不可靠 |
 
 ## 权限拒绝
 
-不加 `--auto` 时，任何超出 cwd 的读写都会打印
+不加 `--auto` 时，读写 cwd 之外会打印 `permission requested: external_directory (...); auto-rejecting`，
+然后模型放弃整轮，零输出、退出码 0。
 
-```
-! permission requested: external_directory (/tmp/*); auto-rejecting
-```
+## 续问必须串行
 
-然后模型**放弃整轮任务**，不绕开、也不把已有结论先交出来。撞到过的：想写 `/tmp` 的验证脚本、
-想读 `~/Library/LaunchAgents/`、想读另一个仓库的配置；2026-08-26 把仓库外目录当 cwd 跑审查，
-连打两次 `auto-rejecting`，零字节输出、退出码 0。
+从事件流取 `sessionID`，续问用 `--session` 显式传。同一会话并发两问，两个进程都会退出 0，
+但回答串到同一个问题上。等上一进程退出、事件流出现 `reason=stop` 再发；
+残轮不明就用 `opencode export --sanitize <sessionID>` 检查，或新开会话。
 
-## 续问：显式 ID，严格串行
+## 单步输出上限
 
-从首轮 JSON 事件取 `sessionID`，后续始终显式传它：
+每一步（一次模型调用）发出的 `max_tokens` 取模型 `limit.output` 与环境变量
+`OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX`（默认 32000）的较小值，**推理 token 也算在内**。
+一步推理超限，这一步以 `finish=length` 结束，
+没有文本也没有工具调用；循环只在 `tool-calls` 时继续，于是整轮静默结束：退出码 0，stderr 没有错误。
 
-```bash
-opencode run --pure -m <provider/model> --format json "<首轮任务>" < /dev/null
-opencode run --pure -m <provider/model> --session "$SESSION_ID" --format json "<续问>" < /dev/null
-```
+撞不撞取决于**一步想多少**，不是总共想多少。2026-09-14 同一份大文档核对任务：
+`deepseek-v4-pro` 总推理 10 万 token，分散在 42 步里，单步最多 2.1 万，一次跑通；
+`glm-5.3` 零产出四次：两次在准备动笔的那一步把整份报告放进推理里起草，一步推理到 32000 被截断；
+另两次跑到单步 2–2.8 万 token 的长推理中途被停掉。
+提示词里要求「先写占位、边写边追加」拦不住。
 
-**同一 session 没有安全并发**：2026-08-27 实测同时发送 A/B 两问，两进程都退出 0，
-但 A 也返回了 B；导出后 A 的 user 消息成为孤儿，两个 assistant 都挂到 B 上。
+判别：事件流最后一个 `step_finish` 的 `reason` 是 `length`；没开事件流就 `opencode export`
+看最后一条 assistant 的 `finish`。连续几次 Read 同一文件但 `offset` 不同是分页，不是死循环。
 
-下一轮启动前要同时满足：事件流出现同一 `sessionID` 的 `step_finish`（`reason=stop`）、
-CLI 进程已退出、没有另一进程在写这个 session。中止后用 `opencode export --sanitize "$SESSION_ID"`
-检查最后一条 assistant 是否完整；残轮不明时新开 session。
+配置方式：在 shell 环境里把 `OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX` 设成很大的数，
+等于取消全局上限，再用 `opencode.json` 里各模型的 `limit.output` 分别定。上下文不大的模型别给太大：
+没写 `limit.input` 时，自动压缩的阈值是上下文减去这个值，给到和上下文一样大就步步压缩。
+`limit.output` 也不能超过服务商的真实上限，否则请求被拒（这种会报错）。
 
-## 输入长度墙
+应对：上限放开，留足时间（重推理的单步可达 10 分钟），或换模型。放开上限只免于当场判死，
+不保证它按时写文件。早先（2026-08）观察到的「提示词约 49 KB 只输出一行标题」当时没看结束原因，
+形状与此一致。
 
-同一模型、同一提示词结构，只改大小：
+## 配额
 
-| 提示词大小 | 结果 |
-|---|---|
-| 约 7 KB | 正常，报告完整 |
-| 约 10 KB | 正常 |
-| 约 49 KB | **只输出一行标题，无内容、无报错、退出码 0** |
-
-配置里该模型声明的 context 是 1M，所以墙不在模型上下文，在 provider 或 CLI 这一层。
-
-## 配额：5 小时滚动窗口
-
-撞上时 stderr 末尾一行：
-
-```
-Error: You have exceeded the 5-hour usage quota. It will reset at <时间>.
-```
-
-stdout 里是半截过程旁白，退出码仍是 0。2026-08-26 一次 84 KB 变更集的审查，读完文件、
-跑完测试，正要写报告时被掐断，产出零字节。一个账号的配额是共享的，同时跑两个实例会更快撞墙。
-
-## 输出里有 ANSI 转义
-
-写进文件后先清洗：
-
-```bash
-sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' out.txt
-```
+5 小时滚动窗口，账号内共享，并行实例更快撞墙。撞上时 stderr 末尾是
+`Error: You have exceeded the 5-hour usage quota. It will reset at <时间>.`，
+stdout 是半截旁白，退出码 0。**没看到这一行就不是配额**：单步输出截断的产出形状一模一样。

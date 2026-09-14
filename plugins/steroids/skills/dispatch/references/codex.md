@@ -13,13 +13,14 @@ codex exec --model gpt-5.6-sol "只回答两个字：收到" < /dev/null
 ```bash
 codex exec --sandbox danger-full-access --model gpt-5.6-sol \
   -c model_reasoning_effort=xhigh --skip-git-repo-check \
-  -o result.md "$(cat prompt.txt)" < /dev/null
+  -o result.md --json "$(cat prompt.txt)" < /dev/null > events.jsonl
 ```
 
 | 参数 | 当时的作用 |
 |---|---|
 | `--sandbox danger-full-access` | 本地文件系统完全访问，**不含网络** |
 | `-o result.md` | 把最终回复收进文件，后台跑时靠它取结果 |
+| `--json` | 事件流以 JSONL 打到 stdout，重定向进文件，夭折时靠它看停在哪一步（2026-09 从 `--help` 补录） |
 | `-c model_reasoning_effort=...` | 调推理档位 |
 | `--skip-git-repo-check` | 在非 git 目录里跑时需要 |
 

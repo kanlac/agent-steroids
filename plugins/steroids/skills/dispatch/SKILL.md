@@ -23,6 +23,9 @@ description: Send work to another model's CLI (Codex, OpenCode) and get a usable
 - **命令末尾 `< /dev/null`**，否则它等 stdin，零输出挂住。
 - **权限一次给够**。被拒后它不绕开、不交已有结论，整轮作废。这是委派不是隔离，
   宿主配好的权限和 alias 照用，别自己加沙箱。
+- **单步输出有上限，推理也算在里面**。CLI 给每次模型调用设的上限可能远低于模型本身声明的值，
+  重推理的模型上下文一大就一步想穿，这一步没有文本也没有工具调用，整轮静默收工。
+  提示词里要求「边写边存」拦不住，要么调高上限，要么换推理轻的模型。
 - **配额按时间窗口计**，跑到一半掐断，钱花了产出零。长任务开跑前先估量。
 - **后台走工具的后台机制**，命令末尾不加 `&`。
 - **续问用显式会话 ID，等上一进程退出再发**。同一会话并发会串线。并行写代码各给一个 worktree。
@@ -30,8 +33,11 @@ description: Send work to another model's CLI (Codex, OpenCode) and get a usable
 ## 收结果
 
 - **让它把结果写进文件**，不靠捕获 stdout。夭折时至少拿回已写完的部分。
-- **空白或半截输出、退出码 0，是故障不是「没话说」**。真正的原因在 stderr 末尾：
-  `quota` 换 provider 或等重置，重试无用；`auto-rejecting` 是权限没给够。
+- **正式任务开机器可读的事件流并落盘**。每步的结束原因和工具调用序列只在那里，
+  事后才有据可查；人读格式的进度多是终端重绘，落盘只剩最后一帧。
+- **空白或半截输出、退出码 0，是故障不是「没话说」**。几种原因产出形状一模一样，按证据判，不按形状猜：
+  stderr 末尾有 `quota` 行才是配额，换 provider 或等重置，重试无用；`auto-rejecting` 是权限没给够；
+  两者都没有，看事件流最后一步的结束原因，`length` 是单步输出被推理吃光。
 - **验产物不验转述**。报告会说反提交归属、会声称改了而文件没动；数字要连着产生它的命令看。
 
 ## 各 CLI 的细节
@@ -39,4 +45,4 @@ description: Send work to another model's CLI (Codex, OpenCode) and get a usable
 参数和数值都带日期，以当下 `--help` 为准。
 
 - `references/codex.md` —— 调用参数、沙箱无网、内置生图
-- `references/opencode.md` —— 模型选择、权限拒绝、会话串线、长度墙与配额实测
+- `references/opencode.md` —— 模型选择、权限拒绝、会话串线、单步输出截断、配额
