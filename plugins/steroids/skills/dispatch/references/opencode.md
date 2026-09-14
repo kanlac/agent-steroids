@@ -13,6 +13,36 @@
 - **`glm-5.3`**：输出上限 128000。实测习惯把推理集中在一步里，上下文一大单步推理动辄上万 token。
 - **`deepseek-v4-pro`**：输出上限 393K。实测推理分散在多步里，单步推理较短。
 
+## 推理档位（variant）
+
+opencode 不叫 effort，叫 **variant**。`ark-coding` 的模型出厂没有变体（`--verbose` 里
+`variants: {}`），此时 `--variant` 是**静默 no-op**：不报错、不警告、照常跑完。本机全局
+`opencode.json` 已给 ark-coding 全部模型加上 `low` / `medium` / `high` / `xhigh` 四档：
+
+```jsonc
+"ark-coding": { "models": { "kimi-k3": { "variants": {
+  "low":   { "reasoningEffort": "low" },
+  "high":  { "reasoningEffort": "high" }
+}}}}
+```
+
+```bash
+opencode run --pure -m ark-coding/kimi-k3 --variant high "..."
+```
+
+**键名必须用 camelCase**。实测抓包（把 baseURL 指到本地记录代理）：`reasoningEffort` → 请求体
+`reasoning_effort`，`textVerbosity` → `verbosity`；写成 snake_case 的 `reasoning_effort`
+**会被悄悄丢掉**，请求体里根本没有这个字段。不认识的键则原样透传。`--variant` 传一个没定义的
+名字同样是静默 no-op。改完想确认生效，抓包或看一次真实报错。
+
+档位效果（2026-09 直接打 Ark API 实测，reasoning token 为单次采样，趋势可信、绝对值有噪声）：
+`kimi-k3` 的 `low`→`medium`→`high` 是 84→126→263，单调；`deepseek-v4-pro`、`glm-5.3` 也接受这三档。
+`xhigh` 服务端收下但没看出比 `high` 更多推理，别指望它是更高一档。
+值不被模型支持时是**显式 400**（例：glm-5.3 收到 `minimal` 报
+`reasoning_effort 'none' is not supported by this model`），不是静默失败——这点和别的坑不一样。
+
+以上三个主力模型逐档验证过。
+
 ## 调用
 
 ```bash
