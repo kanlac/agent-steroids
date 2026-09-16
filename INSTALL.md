@@ -15,9 +15,9 @@
 
 | Runtime | 默认安装 | 可选安装 | 不安装 |
 |---|---|---|---|
-| Claude Code | `steroids` | `dispatch`, `chrome`, `telegram`, `write-blog`, `taskdag` | 无 |
-| Codex | `steroids` | `dispatch`, `chrome`, `taskdag` | `telegram`, `write-blog` |
-| Hermes | `agent-steroids/steroids` | `agent-steroids/dispatch`, `agent-steroids/chrome` | `agent-steroids/telegram`, `agent-steroids/write-blog`, `agent-steroids/taskdag` |
+| Claude Code | `steroids` | `dispatch`, `chrome`, `telegram`, `taskdag` | 无 |
+| Codex | `steroids` | `dispatch`, `chrome`, `taskdag` | `telegram` |
+| Hermes | `agent-steroids/steroids` | `agent-steroids/dispatch`, `agent-steroids/chrome` | `agent-steroids/telegram`, `agent-steroids/taskdag` |
 
 ## Claude Code
 
@@ -34,7 +34,6 @@ claude plugin install steroids@agent-steroids
 claude plugin install chrome@agent-steroids      # 可选：共享有头 Chrome/CDP provider
 claude plugin install dispatch@agent-steroids    # 可选：跨 agent 派发与模型/effort 选择
 claude plugin install telegram@agent-steroids    # Claude Code 专用：Telegram agent 运维 + payload guard
-claude plugin install write-blog@agent-steroids  # Claude Code 专用：写作流程 skill
 claude plugin install taskdag@agent-steroids     # 可选：ADR + Task DAG 控制面
 ```
 

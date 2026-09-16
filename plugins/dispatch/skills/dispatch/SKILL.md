@@ -48,6 +48,6 @@ description: Send work to subagents or another model's CLI (Codex, OpenCode) and
 
 参数和数值都带日期，以当下 `--help` 为准。
 
-- `references/codex.md` —— 调用参数、沙箱无网、内置生图
+- `references/codex.md` —— 环境发现、通用调用形状、权限与结果诊断
 - `references/model-and-effort-selection.md` —— 跨 provider 的模型推荐表与统一推理强度标准
-- `references/opencode.md` —— 模型选择、权限拒绝、会话串线、单步输出截断、配额
+- `references/opencode.md` —— provider / variant 发现、权限、会话、输出截断与配额诊断

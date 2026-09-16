@@ -1,104 +1,85 @@
 # OpenCode
 
-实测于 2026-09，opencode 1.18.30，provider `ark-coding`（火山 Coding Plan）。
+## 先发现 provider 与模型
 
-## 模型
+OpenCode 的 provider、模型、限制和配置来源因用户环境而异。先查看当前版本的帮助和模型清单；部分版本可以用：
 
-`opencode models ark-coding --verbose` 看模型名和生效的 `limit`，不凭记忆写。
+```bash
+opencode --version
+opencode models --verbose
+DISPATCH_PROVIDER_ID="replace-with-provider-id"
+opencode models "$DISPATCH_PROVIDER_ID" --verbose
+```
 
-主力是 `kimi-k3`、`glm-5.3`、`deepseek-v4-pro` 三个，按任务挑，不分高下。挑的时候留意各自的
-输出上限（`--verbose` 里的 `limit.output`），它决定单步推理加输出能走多远（见「单步输出上限」）：
-
-- **`kimi-k3`**：配置声明的输出上限 32768，是三个里最紧的。
-- **`glm-5.3`**：输出上限 128000。实测习惯把推理集中在一步里，上下文一大单步推理动辄上万 token。
-- **`deepseek-v4-pro`**：输出上限 393K。实测推理分散在多步里，单步推理较短。
+从实际输出读取模型 ID、输入输出上限和 `variants`，不要假设某个 provider、模型或全局配置必然存在。
+模型选型参考 `model-and-effort-selection.md`；命令中使用当前环境解析出的 ID。
 
 ## 推理档位（variant）
 
-opencode 不叫 effort，叫 **variant**。`ark-coding` 的模型出厂没有变体（`--verbose` 里
-`variants: {}`），此时 `--variant` 是**静默 no-op**：不报错、不警告、照常跑完。本机全局
-`opencode.json` 已给 ark-coding 全部模型加上 `low` / `medium` / `high` / `xhigh` 四档：
+OpenCode 通常把推理档位称为 **variant**。先检查目标模型的有效配置：若 `variants` 为空或没有目标档位，
+`--variant` 可能被忽略，也可能由 provider 拒绝，不能仅凭退出码判断它已生效。
+
+需要自定义档位时，在当前环境实际使用的 OpenCode 配置中为对应 provider 和模型声明 variants。例如：
 
 ```jsonc
-"ark-coding": { "models": { "kimi-k3": { "variants": {
-  "low":   { "reasoningEffort": "low" },
-  "high":  { "reasoningEffort": "high" }
-}}}}
+"provider-id": {
+  "models": {
+    "model-id": {
+      "variants": {
+        "low":  { "reasoningEffort": "low" },
+        "high": { "reasoningEffort": "high" }
+      }
+    }
+  }
+}
 ```
 
-```bash
-opencode run --pure -m ark-coding/kimi-k3 --variant high "..."
-```
+字段名和可用值取决于当前 OpenCode schema 与 provider。常见配置使用 `reasoningEffort`，但服务端可能只接受
+部分档位；`xhigh` 不可用时按统一标尺向下映射到 `high`。用有效配置输出、机器可读事件、请求日志或一次可控的
+真实调用确认档位确实进入请求，不把某份个人配置的结果推广到其他环境。
 
-**键名必须用 camelCase**。实测抓包（把 baseURL 指到本地记录代理）：`reasoningEffort` → 请求体
-`reasoning_effort`，`textVerbosity` → `verbosity`；写成 snake_case 的 `reasoning_effort`
-**会被悄悄丢掉**，请求体里根本没有这个字段。不认识的键则原样透传。`--variant` 传一个没定义的
-名字同样是静默 no-op。改完想确认生效，抓包或看一次真实报错。
-
-档位效果（2026-09 直接打 Ark API 实测，reasoning token 为单次采样，趋势可信、绝对值有噪声）：
-`kimi-k3` 的 `low`→`medium`→`high` 是 84→126→263，单调；`deepseek-v4-pro`、`glm-5.3` 也接受这三档。
-`xhigh` 服务端收下但没看出比 `high` 更多推理，别指望它是更高一档。
-值不被模型支持时是**显式 400**（例：glm-5.3 收到 `minimal` 报
-`reasoning_effort 'none' is not supported by this model`），不是静默失败——这点和别的坑不一样。
-
-以上三个主力模型逐档验证过。
-
-## 调用
+## 调用形状
 
 ```bash
+DISPATCH_PROVIDER_ID="replace-with-provider-id"
+DISPATCH_MODEL_ID="replace-with-model-id"
+
 # 探活
-opencode run --pure -m ark-coding/glm-5.3 "只回答两个字：收到" < /dev/null
+opencode run --pure -m "$DISPATCH_PROVIDER_ID/$DISPATCH_MODEL_ID" \
+  "只回答两个字：收到" < /dev/null
 
-# 正式任务
-opencode run --pure --auto -m ark-coding/glm-5.3 --format json \
+# 正式任务；按当前 --help 决定是否使用 --auto
+opencode run --pure -m "$DISPATCH_PROVIDER_ID/$DISPATCH_MODEL_ID" --format json \
   "$(cat prompt.txt)" < /dev/null > events.jsonl 2> stderr.txt
 ```
 
-| 参数 | 作用 |
+| 参数 | 常见用途 |
 |---|---|
-| `--pure` | 不加载外部插件（MCP），避免启动阶段挂死 |
-| `--auto` | 自动批准未被显式拒绝的权限 |
-| `--format json` | 事件流：每次 `tool_use`、每步 `step_finish`（带 `reason` 和 token 数） |
-| `-s` / `--session` | 显式续指定会话；`-c` 续的是当前目录最近的会话，多任务时不可靠 |
+| `--pure` | 不加载外部插件，减少启动阶段变量；需要 MCP 时不要使用 |
+| `--auto` | 在当前版本支持且任务已获相应权限时，自动批准未被显式拒绝的操作 |
+| `--format json` | 保存工具调用、步骤结束原因和 token 信息 |
+| `-s` / `--session` | 显式续指定会话；比依赖“当前目录最近会话”更适合多任务环境 |
 
-## 权限拒绝
+## 权限与会话
 
-不加 `--auto` 时，读写 cwd 之外会打印 `permission requested: external_directory (...); auto-rejecting`，
-然后模型放弃整轮，零输出、退出码 0。
+外部目录、网络和写入权限由当前配置决定。出现 `permission requested`、`auto-rejecting` 或等价事件时，按实际
+权限策略处理，不假设所有安装都支持同一批准参数。
 
-## 续问必须串行
+同一会话的续问保持串行。等上一进程退出并确认事件流已正常停止后再续；残轮状态不明时导出会话检查，或新开
+会话。并行写代码时为每份工作使用独立 worktree 或等价隔离环境。
 
-从事件流取 `sessionID`，续问用 `--session` 显式传。同一会话并发两问，两个进程都会退出 0，
-但回答串到同一个问题上。等上一进程退出、事件流出现 `reason=stop` 再发；
-残轮不明就用 `opencode export --sanitize <sessionID>` 检查，或新开会话。
+## 输出上限与静默结束
 
-## 单步输出上限
+有效单步输出上限可能同时受模型、provider、OpenCode 版本和环境配置约束。某些版本还支持
+`OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX`；只有当前版本文档或行为确认该变量生效时才使用它。
 
-每一步（一次模型调用）发出的 `max_tokens` 取模型 `limit.output` 与环境变量
-`OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX`（默认 32000）的较小值，**推理 token 也算在内**。
-一步推理超限，这一步以 `finish=length` 结束，
-没有文本也没有工具调用；循环只在 `tool-calls` 时继续，于是整轮静默结束：退出码 0，stderr 没有错误。
+推理 token 可能计入单步输出预算。若任务退出码为 0 但没有结果，检查事件流最后一步：
 
-撞不撞取决于**一步想多少**，不是总共想多少。2026-09-14 同一份大文档核对任务：
-`deepseek-v4-pro` 总推理 10 万 token，分散在 42 步里，单步最多 2.1 万，一次跑通；
-`glm-5.3` 零产出四次：两次在准备动笔的那一步把整份报告放进推理里起草，一步推理到 32000 被截断；
-另两次跑到单步 2–2.8 万 token 的长推理中途被停掉。
-提示词里要求「先写占位、边写边追加」拦不住。
+| 证据 | 更可能的原因 | 处理方向 |
+|---|---|---|
+| `reason=length` 或等价字段 | 单步输出或推理触顶 | 调整有效上限、降低 effort、缩小单步任务或换模型 |
+| 权限拒绝事件 | 工具或路径未获授权 | 修正权限或缩小任务范围 |
+| 明确的 quota / rate-limit 错误 | provider 配额或限流 | 等待重置、换可用 provider，或降低并发 |
+| `--variant` 无报错但行为不变 | 档位没有进入有效配置或请求 | 检查 `variants`、schema 和请求证据 |
 
-判别：事件流最后一个 `step_finish` 的 `reason` 是 `length`；没开事件流就 `opencode export`
-看最后一条 assistant 的 `finish`。连续几次 Read 同一文件但 `offset` 不同是分页，不是死循环。
-
-配置方式：在 shell 环境里把 `OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX` 设成很大的数，
-等于取消全局上限，再用 `opencode.json` 里各模型的 `limit.output` 分别定。上下文不大的模型别给太大：
-没写 `limit.input` 时，自动压缩的阈值是上下文减去这个值，给到和上下文一样大就步步压缩。
-`limit.output` 也不能超过服务商的真实上限，否则请求被拒（这种会报错）。
-
-应对：上限放开，留足时间（重推理的单步可达 10 分钟），或换模型。放开上限只免于当场判死，
-不保证它按时写文件。早先（2026-08）观察到的「提示词约 49 KB 只输出一行标题」当时没看结束原因，
-形状与此一致。
-
-## 配额
-
-5 小时滚动窗口，账号内共享，并行实例更快撞墙。撞上时 stderr 末尾是
-`Error: You have exceeded the 5-hour usage quota. It will reset at <时间>.`，
-stdout 是半截旁白，退出码 0。**没看到这一行就不是配额**：单步输出截断的产出形状一模一样。
+不要把固定时间窗口、错误文本或 token 数写成跨 provider 规律；只按当前运行留下的证据判断。

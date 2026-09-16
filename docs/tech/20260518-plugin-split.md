@@ -8,15 +8,14 @@
 2. `dispatch` — 跨 agent 派发、模型 / effort 选择和结果验收。
 3. `telegram` — Telegram agent 运维、通知 MCP、Telegram hook，并包含 `guard-payload-size`。
 4. `chrome` — 可选的共享有头 Chrome provider。
-5. `write-blog` — Claude Code 专用写作流程。
-6. `taskdag` — 仓库原生的 ADR + Task DAG 控制面。
+5. `taskdag` — 仓库原生的 ADR + Task DAG 控制面。
 
 ## Design Rules
 
 1. **不要过度拆分**：paper、web clipping 等 workflow 都留在 `steroids`。
 2. **浏览器依赖写 capability，不写死 provider**：需要人工接管/登录态/CAPTCHA 时写 `headed-browser`。`chrome/cdp-chrome` 是一个 provider；Codex Chrome plugin 或原生 browser-use 也可以满足。
 3. **Telegram 相关能力集中**：Telegram commands、MCP server、time hook、payload guard hook 都在 `telegram`，避免再单独维护 guard 插件。
-4. **Codex marketplace 只暴露跨运行时 skill 插件**：当前为 `steroids`、`dispatch`、`chrome` 和 `taskdag`。`telegram`、`write-blog` 保持 Claude Code 专用 marketplace。
+4. **Codex marketplace 只暴露跨运行时 skill 插件**：当前为 `steroids`、`dispatch`、`chrome` 和 `taskdag`。`telegram` 保持 Claude Code 专用 marketplace。
 5. **Hermes 用根目录 shim 暴露已验证的跨运行时插件**：当前为 `agent-steroids/steroids`、`agent-steroids/dispatch`、`agent-steroids/chrome`；Claude Code 专用插件和未验证的 runtime surface 不提供 shim。
 
 ## Plugin Matrix
@@ -27,7 +26,6 @@
 | `dispatch` | Claude + Codex + Hermes | `dispatch`: task-aware model recommendations, unified effort scale, handoff and verification | None | Maps to available subagents or agent CLIs |
 | `telegram` | Claude Code only | `telegram-agents`, `/tg-*`, `/check-release`, `telegram-notify` MCP, Telegram time hook, `guard-payload-size` hook | Claude Code + official Telegram plugin for channel sessions; Telethon/tmux/launchd for heartbeat workflows | None |
 | `chrome` | Claude + Codex + Hermes | `cdp-chrome` per-OS-user headed Chrome provider; bundled MCP wrapper for Claude Code/Codex reads current-user config; Hermes uses config-driven MCP registration | Chrome, `npx`; `mcp_servers` registration for Hermes | Provides `headed-browser`; optional replacement for Codex Chrome plugin/native browser-use |
-| `write-blog` | Claude Code only | `write-blog` guided writing workflow | None | None |
 | `taskdag` | Claude + Codex | `orchestrator` ADR + Task DAG control plane | Python 3 standard library | Maps dispatch to available agent CLIs |
 
 ## Capability Map
@@ -74,7 +72,7 @@ All concrete install commands live in the root [`INSTALL.md`](../../INSTALL.md).
 
 ## Maintenance Checklist
 
-- Keep the Claude marketplace aligned with the canonical plugin directories: `steroids`, `dispatch`, `telegram`, `chrome`, `write-blog`, `taskdag`.
+- Keep the Claude marketplace aligned with the canonical plugin directories: `steroids`, `dispatch`, `telegram`, `chrome`, `taskdag`.
 - Keep the Codex marketplace limited to cross-runtime plugins: `steroids`, `dispatch`, `chrome`, `taskdag`; keep Hermes shims limited to `steroids`, `dispatch`, `chrome` until another runtime surface is verified.
 - Update every changed plugin manifest version, including Hermes `plugin.yaml` shim manifests when their exposed skill set changes.
 - Keep README tables grouped by the canonical plugin directories, while marking runtime coverage accurately.
