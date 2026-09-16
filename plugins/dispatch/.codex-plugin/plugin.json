@@ -1,0 +1,32 @@
+{
+  "name": "dispatch",
+  "version": "1.1.0",
+  "description": "Cross-agent dispatch guidance for model selection, reasoning effort, task handoff, and result verification",
+  "author": {
+    "name": "Kan"
+  },
+  "license": "MIT",
+  "keywords": [
+    "agents",
+    "dispatch",
+    "orchestration",
+    "models",
+    "reasoning"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Agent Steroids Dispatch",
+    "shortDescription": "Choose and brief subagents, then verify their work.",
+    "longDescription": "A focused cross-runtime skill for selecting a suitable worker model and reasoning effort, handing off bounded work to subagents or external model CLIs, diagnosing failed runs, and verifying returned artifacts.",
+    "developerName": "Kan",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive"
+    ],
+    "defaultPrompt": [
+      "Use $dispatch to plan and delegate this work to subagents.",
+      "Use $dispatch to get an independent review from another model."
+    ],
+    "brandColor": "#2563EB"
+  }
+}

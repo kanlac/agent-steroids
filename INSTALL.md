@@ -15,9 +15,9 @@
 
 | Runtime | 默认安装 | 可选安装 | 不安装 |
 |---|---|---|---|
-| Claude Code | `steroids` | `chrome`, `telegram`, `write-blog`, `taskdag` | 无 |
-| Codex | `steroids` | `chrome`, `taskdag` | `telegram`, `write-blog` |
-| Hermes | `agent-steroids/steroids` | `agent-steroids/chrome` | `agent-steroids/telegram`, `agent-steroids/write-blog`, `agent-steroids/taskdag` |
+| Claude Code | `steroids` | `dispatch`, `chrome`, `telegram`, `write-blog`, `taskdag` | 无 |
+| Codex | `steroids` | `dispatch`, `chrome`, `taskdag` | `telegram`, `write-blog` |
+| Hermes | `agent-steroids/steroids` | `agent-steroids/dispatch`, `agent-steroids/chrome` | `agent-steroids/telegram`, `agent-steroids/write-blog`, `agent-steroids/taskdag` |
 
 ## Claude Code
 
@@ -32,6 +32,7 @@ claude plugin install steroids@agent-steroids
 
 ```bash
 claude plugin install chrome@agent-steroids      # 可选：共享有头 Chrome/CDP provider
+claude plugin install dispatch@agent-steroids    # 可选：跨 agent 派发与模型/effort 选择
 claude plugin install telegram@agent-steroids    # Claude Code 专用：Telegram agent 运维 + payload guard
 claude plugin install write-blog@agent-steroids  # Claude Code 专用：写作流程 skill
 claude plugin install taskdag@agent-steroids     # 可选：ADR + Task DAG 控制面
@@ -45,7 +46,7 @@ claude plugin list
 
 ## Codex
 
-适用场景：Codex 使用跨运行时稳定的 skill 插件。Codex marketplace 暴露 `steroids`、`chrome` 和 `taskdag`。
+适用场景：Codex 使用跨运行时稳定的 skill 插件。Codex marketplace 暴露 `steroids`、`dispatch`、`chrome` 和 `taskdag`。
 
 ```bash
 codex plugin marketplace add kanlac/agent-steroids
@@ -56,6 +57,7 @@ codex plugin add steroids@agent-steroids
 
 ```bash
 codex plugin add chrome@agent-steroids           # 可选：共享有头 Chrome/CDP provider
+codex plugin add dispatch@agent-steroids         # 可选：跨 agent 派发与模型/effort 选择
 codex plugin add taskdag@agent-steroids          # 可选：ADR + Task DAG 控制面
 ```
 
@@ -78,6 +80,7 @@ hermes plugins enable agent-steroids/steroids
 
 ```bash
 hermes plugins enable agent-steroids/chrome      # 可选：共享有头 Chrome/CDP provider skill
+hermes plugins enable agent-steroids/dispatch    # 可选：跨 agent 派发与模型/effort 选择
 ```
 
 验证：
@@ -90,6 +93,7 @@ Hermes 加载 skill 时使用插件命名空间，而不是 enable key：
 
 ```bash
 hermes -s steroids:paper-download
+hermes -s dispatch:dispatch
 hermes -s chrome:cdp-chrome
 ```
 

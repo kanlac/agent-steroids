@@ -1,15 +1,19 @@
 ---
 name: dispatch
-description: Send work to another model's CLI (Codex, OpenCode) and get a usable answer back. Use when handing a task to GPT via Codex or to GLM/DeepSeek/Kimi via OpenCode — second-opinion code review, an independent design, bulk generation, or anything worth a different model's eyes.
+description: Send work to subagents or another model's CLI (Codex, OpenCode) and get a usable answer back. Use for multi-agent orchestration, second-opinion review, independent design, bulk generation, or anything worth a different model's eyes.
 ---
 
 ## 像派给同事，不像调函数
 
+- **先按任务特长、复杂度和成本选择模型，再定推理强度，不默认继承宿主**。模型不是固定等级表，
+  GPT-6 不作为 sub-agent；候选与选择信号参考 `references/model-and-effort-selection.md`。
+  已知会派出 4 个及以上 agent 时，默认先向用户列出每份工作的模型、effort 和选择理由，等用户确认。
 - **cwd 就是仓库，给入口和关注点，让它自己读**。不把源码贴进提示词，也不预先划只读范围：
   它能读的路径由 cwd 决定，提示词的长度上限远小于模型的上下文，而它自己探索出的路径
   正是第二双眼睛的价值所在。
 - **你知道而它推不出的，写进任务正文**：已经修过什么、哪些不能动、怎样算完成、用什么命令验。
   只有正文会跟着转交和续做走，外围对话不会。
+- **上下文给最小充分集**。运行时支持逐 agent 配置时，显式指定模型与 effort；能用任务摘要讲清就不继承整段历史。
 - **让它一轮闭环**。成本按往返轮数算，不按 diff 大小算。
 - **发现要具体到文件、函数和触发输入**。「建议加异常处理」没法验真假。
 - **写代码的任务按可验证单元提交**，中断后接得上。
@@ -45,4 +49,5 @@ description: Send work to another model's CLI (Codex, OpenCode) and get a usable
 参数和数值都带日期，以当下 `--help` 为准。
 
 - `references/codex.md` —— 调用参数、沙箱无网、内置生图
+- `references/model-and-effort-selection.md` —— 跨 provider 的模型推荐表与统一推理强度标准
 - `references/opencode.md` —— 模型选择、权限拒绝、会话串线、单步输出截断、配额

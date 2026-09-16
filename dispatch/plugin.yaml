@@ -1,0 +1,6 @@
+manifest_version: 1
+name: dispatch
+version: 1.1.0
+description: Cross-agent dispatch guidance for Hermes, including model and reasoning-effort selection.
+author: Kan
+kind: standalone

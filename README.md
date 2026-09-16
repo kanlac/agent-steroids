@@ -3,12 +3,13 @@
 Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容三种 agent runtime，但各插件的 runtime 覆盖不同。插件按用途分类，方便在不同环境中按需启用：
 
 - `steroids`：主体 Skills 和通用 workflow。
+- `dispatch`：跨 agent 派发，统一模型 / effort 选择、任务交接和结果验收。
 - `telegram`：Claude Code 专用的 Telegram agent 运维、通知 MCP、Telegram hook，并包含 `guard-payload-size`。
 - `chrome`：可选的每 OS 用户一个进程的共享有头 Chrome provider；Claude Code / Codex 安装后随插件提供 `cdp-chrome` MCP 启动器。
 - `write-blog`：Claude Code 专用的写作流程 skill 插件——选题构思、对话式挖掘、大纲迭代、按作者风格成文，附信息图/制图参考。
 - `taskdag`：仓库原生的 ADR + Task DAG 控制面——结构化任务/决策文档、vendor 进项目的零依赖生命周期 CLI、生成式 DAG 看板、跨 agent 派发。
 
-`steroids`、`chrome` 和 `taskdag` 的 canonical skills 位于 `plugins/<plugin>/skills/` 并可跨 runtime 复用；Claude Code / Codex 通过各自 marketplace 安装，Hermes 通过根目录 shim 仅暴露 `steroids` 与 `chrome`；`telegram` 和 `write-blog` 保持 Claude Code 专用。
+`steroids`、`dispatch`、`chrome` 和 `taskdag` 的 canonical skills 位于 `plugins/<plugin>/skills/` 并可跨 runtime 复用；Claude Code / Codex 通过各自 marketplace 安装，Hermes 通过根目录 shim 暴露 `steroids`、`dispatch` 与 `chrome`；`telegram` 和 `write-blog` 保持 Claude Code 专用。
 
 ## 安装
 
@@ -20,7 +21,8 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 
 | Plugin | Runtime | 包含内容 | 硬依赖 | 可选 / capability 依赖 |
 |---|---|---|---|---|
-| [`steroids`](plugins/steroids/) | Claude + Codex + Hermes | 主体 Skills：文档处理、书籍阅读、PDF 导出、网页剪藏、论文下载、模型派发（dispatch）、Agent 记忆管理（诊断/整理/吸收），以及 `/song` | 无 | `paper-download` / `clipping` 的登录态或 CAPTCHA 场景需要 `headed-browser` |
+| [`steroids`](plugins/steroids/) | Claude + Codex + Hermes | 主体 Skills：文档处理、书籍阅读、PDF 导出、网页剪藏、论文下载、Agent 记忆管理（诊断/整理/吸收），以及 `/song` | 无 | `paper-download` / `clipping` 的登录态或 CAPTCHA 场景需要 `headed-browser` |
+| [`dispatch`](plugins/dispatch/) | Claude + Codex + Hermes | `dispatch` skill：按任务特长、复杂度和成本选择模型，统一 effort 标尺，以及 sub-agent / 外部模型 CLI 交接与结果验收 | 无 | 映射到当前 runtime 或本机可用的 agent CLI |
 | [`telegram`](plugins/telegram/) | Claude Code only | `telegram-agents`、`/tg-*`、`/check-release`、`telegram-notify` MCP、Telegram time hook、`guard-payload-size` hook | Claude Code + official Telegram plugin；心跳 workflow 需 Telethon/tmux/launchd | 无 |
 | [`chrome`](plugins/chrome/) | Claude + Codex + Hermes | `cdp-chrome` 每 OS 用户一个进程的共享有头 Chrome provider；Claude/Codex 内置 `cdp-chrome` MCP 启动器，会读取当前用户 steroids 配置 | Chrome、`npx`；Hermes 使用时需在 `mcp_servers` 注册 | 提供 `headed-browser`，可被 Codex Chrome plugin / 原生 browser-use 替代 |
 | [`write-blog`](plugins/write-blog/) | Claude Code only | `write-blog` skill：选题/对话式挖掘/大纲迭代/按作者风格成文，附 voice-dna 与制图参考 | 无 | 无 |
@@ -34,7 +36,7 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 | [`read-book`](plugins/steroids/skills/read-book/SKILL.md) | `steroids` | EPUB 书籍中英双语翻译，以及阅读和讨论书籍内容。 |
 | [`youtube-bilingual-transcript`](plugins/steroids/skills/youtube-bilingual-transcript/SKILL.md) | `steroids` | 把 YouTube 链接转成中英对照单页 HTML 阅读稿。yt-dlp 抓字幕+章节，agent 翻译并策展，脚本渲染带时间戳跳转、带序号章节目录、重点高亮、专有名词内联点击注释。 |
 | [`html-to-pdf`](plugins/steroids/skills/html-to-pdf/SKILL.md) | `steroids` | 将样式化 HTML 转为高质量单页 PDF。自动处理动态元素（scroll-snap、CSS 动画、IntersectionObserver），含可复用生成脚本。 |
-| [`dispatch`](plugins/steroids/skills/dispatch/SKILL.md) | `steroids` | 把活派给别的模型的 CLI（Codex 跑 GPT-5.x，OpenCode 跑 GLM/DeepSeek/Kimi）：调用契约、静默失败排查、显式 session 串行续问，以及怎么审收回来的报告。 |
+| [`dispatch`](plugins/dispatch/skills/dispatch/SKILL.md) | `dispatch` | 把活派给 subagent 或其他模型 CLI：灵活的模型推荐表和统一 effort 规划、调用契约、静默失败排查、显式 session 串行续问，以及怎么审收回来的报告。 |
 | [`clipping`](plugins/steroids/skills/clipping/SKILL.md) | `steroids` | 将网页文章保存为本地 Markdown 笔记。支持微信公众号等 JS 渲染页面；对信息图/表格截图可使用 PaddleOCR 提取文本并重构为 Markdown 表格。 |
 | [`paper-download`](plugins/steroids/skills/paper-download/SKILL.md) | `steroids` | 学术论文检索与下载。三级策略：HTTP/OA 直链、headless 解析、headed browser 登录/CAPTCHA。`cdp-chrome` 只是可选 provider。 |
 | [`clash-verge-config`](plugins/steroids/skills/clash-verge-config/SKILL.md) | `steroids` | Clash Verge Rev / mihomo / Stash 客户端配置即代码：保留字段与 enhance 管线、不中断 provider 热刷新、隔离内核验收、Stash Override、运行态 controller、规则/provider/真实连接闭环、DNS 与浏览器泄漏、TUN 回环。 |
@@ -84,10 +86,12 @@ agent-steroids/
   .agents/plugins/      # Codex marketplace 配置（只列跨运行时 skill 插件）
   .claude-plugin/       # Claude marketplace 配置（列全部插件）
   steroids/              # Hermes shim：agent-steroids/steroids
+  dispatch/              # Hermes shim：agent-steroids/dispatch
   chrome/               # Hermes shim：agent-steroids/chrome
   scripts/              # 独立 CLI 工具
   plugins/
     steroids/            # 主体 skills 和通用 commands
+    dispatch/           # 跨 agent 派发 skill（Claude + Codex + Hermes）
     telegram/           # Telegram skill/commands/MCP/hooks（含 guard-payload-size）
     chrome/             # cdp-chrome provider（含 Claude/Codex MCP launcher 配置）
     write-blog/         # 写作流程 skill（Claude Code only）

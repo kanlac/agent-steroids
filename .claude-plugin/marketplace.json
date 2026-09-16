@@ -10,6 +10,11 @@
       "description": "Core Agent Steroids skills and workflow helpers, including Skill inventory auditing"
     },
     {
+      "name": "dispatch",
+      "source": "./plugins/dispatch",
+      "description": "Cross-agent dispatch guidance for model selection, reasoning effort, task handoff, and result verification"
+    },
+    {
       "name": "telegram",
       "source": "./plugins/telegram",
       "description": "Telegram agent operations, notification MCP, and payload guard hook"
