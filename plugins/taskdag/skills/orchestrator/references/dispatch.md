@@ -47,7 +47,7 @@ codex exec --sandbox danger-full-access --model gpt-5.6-sol \
 opencode run -m <provider>/glm-5.3 "$(cat prompt.md)"
 ```
 
-`<provider>` 以本机 `opencode models` 输出为准；长输出任务换 deepseek 系。
+`<provider>` 优先取 steroids 配置文件的 `dispatch.opencode.provider`，未配置再以本机 `opencode models` 输出为准；长输出任务换 deepseek 系。
 
 ## 并行与隔离：worktree 按 lane 开
 

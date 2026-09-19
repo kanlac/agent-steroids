@@ -1,18 +1,18 @@
 # OpenCode
 
-## 先发现 provider 与模型
+## 先确定 provider 与模型
 
-OpenCode 的 provider、模型、限制和配置来源因用户环境而异。先查看当前版本的帮助和模型清单；部分版本可以用：
+steroids 配置文件（macOS/Linux: `~/.config/steroids.json`；Windows: `%APPDATA%\steroids.json`）里有
+`dispatch.opencode.provider` 时，只在该 provider 内选模型。没有时先用 `opencode models`（不加 `--verbose`，
+全量 verbose 可达上百 KB）和 `opencode auth list` 看哪些 provider 有凭证，选定后再查它的详情：
 
 ```bash
-opencode --version
-opencode models --verbose
 DISPATCH_PROVIDER_ID="replace-with-provider-id"
 opencode models "$DISPATCH_PROVIDER_ID" --verbose
 ```
 
-从实际输出读取模型 ID、输入输出上限和 `variants`，不要假设某个 provider、模型或全局配置必然存在。
-模型选型参考 `model-and-effort-selection.md`；命令中使用当前环境解析出的 ID。
+从输出读取模型 ID、输入输出上限和 `variants`。模型选型参考 `model-and-effort-selection.md`；
+清单里有不代表能调用，选中后用下文的探活确认。
 
 ## 推理档位（variant）
 
