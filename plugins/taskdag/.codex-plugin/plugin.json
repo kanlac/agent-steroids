@@ -1,7 +1,7 @@
 {
   "name": "taskdag",
-  "version": "0.2.3",
-  "description": "Repo-native ADR + Task DAG control plane: structured task/decision docs, vendored lifecycle CLI, generated DAG board, cross-agent dispatch",
+  "version": "0.3.0",
+  "description": "Repo-native ADR + Task DAG data plane: structured task/decision docs, vendored lifecycle CLI, generated DAG board",
   "author": {
     "name": "Kan"
   },
@@ -16,13 +16,13 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Agent Steroids TaskDAG",
-    "shortDescription": "Repo-native ADR + Task DAG control plane.",
-    "longDescription": "Structured task and architecture-decision docs governed by a vendored zero-dependency CLI (validate/query/transition/board), with a generated single-file DAG board and model-tier/effort annotations for dispatching tasks to any agent CLI.",
+    "shortDescription": "Repo-native ADR + Task DAG data plane.",
+    "longDescription": "Structured task and architecture-decision docs governed by a vendored zero-dependency CLI (validate/query/transition/board), with a generated single-file DAG board and lane-based write-surface isolation. Model selection and dispatch are left to a separate dispatch capability.",
     "developerName": "Kan",
     "category": "Developer Tools",
     "defaultPrompt": [
-      "Use $orchestrator to adopt the task DAG system in this repository.",
-      "Use $orchestrator to pick and dispatch the next runnable task batch."
+      "Use $taskdag to adopt the task DAG system in this repository.",
+      "Use $taskdag to pick the next runnable task and record its outcome."
     ]
   }
 }

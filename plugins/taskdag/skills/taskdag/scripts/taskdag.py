@@ -3,7 +3,7 @@
 """taskdag — 仓库原生的 Task DAG + ADR 控制面。
 
 单文件、仅 Python 标准库。此副本 vendor 在项目 `scripts/taskdag.py`；
-canonical 源在 agent-steroids 的 taskdag 插件（skills/orchestrator/scripts/taskdag.py）。
+canonical 源在 agent-steroids 的 taskdag 插件（skills/taskdag/scripts/taskdag.py）。
 
 约定（本项目如有偏差，改下方常量区，不改逻辑）：
 - 任务文件 docs/tasks/T-*.md，ADR 文件 docs/adr/D-*.md
@@ -24,7 +24,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 
 # ───────────────────────── 常量区（项目级约定） ─────────────────────────
 
@@ -64,16 +64,16 @@ TRANSITIONS = {
 TERMINAL_STATUSES = {"done", "cancelled"}
 
 OWNERS = ["agent", "human"]
-MODEL_TIERS = ["high", "mid"]
-EFFORTS = ["mid", "high", "xhigh", "max"]
 PRIORITIES = ["p0", "p1", "p2"]
 MANUAL_ACCEPTANCE = ["none", "required"]
 HUMAN_CHECKPOINT = ["next"]
 
 TASK_KEYS = {
-    "type", "id", "title", "status", "priority", "owner", "model-tier", "effort",
+    "type", "id", "title", "status", "priority", "owner",
     "manual_acceptance", "human_checkpoint", "depends_on", "related_adrs",
     "source", "area", "phase", "updated", "lane",
+    # 旧版的派发档位字段：选模型与推理强度已交给派发方，保留仅为兼容旧文档，不校验、不展示
+    "model-tier", "effort",
 }
 # lane：写入面互斥的串行泳道。同 lane = 声明写入面重叠，必须串行、共用一个
 # worktree（worktree 名 = lane 名）；不同 lane / 无 lane = 声明写入面不重叠，可并行。
@@ -312,15 +312,6 @@ def validate(docs):
         owner = data.get("owner")
         if owner not in OWNERS:
             errors.append(f"{path}: owner must be one of {'/'.join(OWNERS)}")
-        tier, effort = data.get("model-tier"), data.get("effort")
-        if owner == "agent":
-            if tier not in MODEL_TIERS:
-                errors.append(f"{path}: agent task requires model-tier ({'/'.join(MODEL_TIERS)})")
-            if effort not in EFFORTS:
-                errors.append(f"{path}: agent task requires effort ({'/'.join(EFFORTS)})")
-        elif owner == "human":
-            if tier is not None or effort is not None:
-                errors.append(f"{path}: human task must not declare model-tier/effort")
         if data.get("manual_acceptance") not in MANUAL_ACCEPTANCE:
             errors.append(f"{path}: manual_acceptance must be none or required")
         if "human_checkpoint" in data and data["human_checkpoint"] not in HUMAN_CHECKPOINT:
@@ -532,7 +523,6 @@ def query(docs, filters, as_json=False):
     for doc, computed in rows:
         if doc.type == "task":
             owner = computed.get("owner", "?")
-            gear = f"{computed.get('model-tier')}/{computed.get('effort')}" if owner == "agent" else "-"
             flags = []
             if computed["runnable"] == "true":
                 flags.append("runnable")
@@ -545,7 +535,7 @@ def query(docs, filters, as_json=False):
                 flags.append("manual")
             flag_str = ",".join(flags)
             print(f"{doc.id}  {computed.get('status', ''):<11} {computed.get('priority', '?'):<4} "
-                  f"{owner:<6} {gear:<11} {flag_str:<26} {computed.get('title', '')}")
+                  f"{owner:<6} {flag_str:<26} {computed.get('title', '')}")
         else:
             print(f"{doc.id}  {computed.get('status', ''):<11} {computed.get('title', '')}")
     if not rows:
@@ -622,7 +612,7 @@ title: {title}
 status: planned
 priority: {priority}
 owner: {owner}
-{gear}{lane}manual_acceptance: {manual}
+{lane}manual_acceptance: {manual}
 depends_on:{deps}
 {adrs}updated: {today}
 ---
@@ -685,21 +675,15 @@ def next_id(kind):
     return f"{prefix}{highest + 1:03d}"
 
 
-def new_doc(kind, title, owner, tier, effort, manual, deps, adrs, priority, lane=None):
+def new_doc(kind, title, owner, manual, deps, adrs, priority, lane=None):
     doc_id = next_id(kind)
     if kind == "task":
-        if owner == "agent":
-            if tier not in MODEL_TIERS or effort not in EFFORTS:
-                sys.exit("error: agent task requires --model-tier and --effort")
-            gear = f"model-tier: {tier}\neffort: {effort}\n"
-        else:
-            gear = ""
         lane_value = f"lane: {lane}\n" if lane else ""
         deps_value = " []" if not deps else "\n" + "\n".join(f"  - {d}" for d in deps)
         adr_value = "" if not adrs else "related_adrs:\n" + "\n".join(f"  - {a}" for a in adrs) + "\n"
         manual_body = "无。" if manual == "none" else "- 最小动作：（一步动作）\n- 通过标准：（一条标准）"
         content = TASK_TEMPLATE.format(
-            id=doc_id, title=title, owner=owner, gear=gear, lane=lane_value, manual=manual,
+            id=doc_id, title=title, owner=owner, lane=lane_value, manual=manual,
             deps=deps_value, adrs=adr_value, today=today(), priority=priority,
             start_condition=DEFAULT_START_CONDITION, manual_body=manual_body)
         path = ROOT / TASK_DIR / f"{doc_id}.md"
@@ -854,8 +838,7 @@ def board():
         task_rows.append({
             "id": doc.id, "title": doc.data.get("title", ""), "status": doc.status,
             "priority": doc.data.get("priority"),
-            "owner": doc.data.get("owner"), "tier": doc.data.get("model-tier"),
-            "effort": doc.data.get("effort"),
+            "owner": doc.data.get("owner"),
             "manual": doc.data.get("manual_acceptance"),
             "lane": doc.data.get("lane"),
             "checkpoint": doc.data.get("human_checkpoint") == "next",
@@ -886,7 +869,8 @@ def board():
         badges = [row["priority"] or "?"]
         if row["checkpoint"]:
             badges.append("检查点")
-        badges.append("人" if row["owner"] == "human" else f"{row['tier']}/{row['effort']}")
+        if row["owner"] == "human":
+            badges.append("人")
         if row["lane"]:
             badges.append(row["lane"])
         if row["manual"] == "required":
@@ -1146,7 +1130,6 @@ footer { color: var(--muted); font-size: 11.5px; margin-top: 12px; }
     const badges = [`<span class="badge prio">${t.priority}</span>`];
     if (t.checkpoint) badges.push('<span class="badge ckpt">检查点</span>');
     if (t.owner === 'human') badges.push('<span class="badge">人</span>');
-    else badges.push(`<span class="badge">${t.tier}/${t.effort}</span>`);
     if (t.lane) badges.push(`<span class="badge lane">${esc(t.lane)}</span>`);
     if (t.manual === 'required') badges.push('<span class="badge">人工验收</span>');
     el.innerHTML = `<div class="nid"><span class="tid">${t.id}</span>${badges.join('')}</div>` +
@@ -1285,7 +1268,6 @@ footer { color: var(--muted); font-size: 11.5px; margin-top: 12px; }
     nodeEls.get(id).scrollIntoView(center ? { block: 'center', inline: 'center' }
                                           : { block: 'nearest', inline: 'nearest' });
     const chips = [statusChip(t.status), chip(t.priority), chip(ownerLabel[t.owner])];
-    if (t.owner === 'agent') chips.push(chip(`model-tier: ${t.tier}`), chip(`effort: ${t.effort}`));
     if (t.lane) chips.push(chip(`lane: ${esc(t.lane)}`));
     if (t.runnable) chips.push(chip('可开跑'));
     if (t.checkpoint) chips.push(chip('下一检查点', 'ckpt'));
@@ -1391,7 +1373,7 @@ status 只能用 transition 改；看板由 board 生成，不是编辑入口。
   transition <id> <status> [--reason 文字]
                                     状态迁移（写 status + updated，终态自动摘除
                                     human_checkpoint，并在 ## 执行记录 追加一行）
-  new task --title 标题 [--owner agent|human] [--model-tier ...] [--effort ...]
+  new task --title 标题 [--owner agent|human]
            [--priority p0|p1|p2] [--manual none|required] [--lane 泳道名]
            [--deps T-001,T-002] [--adrs D-001]
   new adr --title 标题
@@ -1405,9 +1387,7 @@ Task frontmatter（唯一事实源）
   id: T-001             与文件名一致，编号只增不复用
   title / status / updated
   priority: p0|p1|p2    p0=当前周期必经；p1=下一里程碑/发布窗口前必须；p2=机会性
-  owner: agent|human    human 任务不写 model-tier/effort
-  model-tier: high|mid  规划用的模型档位（派发时映射到当天的具体模型/CLI）
-  effort: mid|high|xhigh|max
+  owner: agent|human    模型与推理强度由派发方在派发时选，不写进任务
   manual_acceptance: none|required
   human_checkpoint: next   全仓最多一个；须 manual_acceptance: required
   lane: 小写slug        可选。写入面互斥的串行泳道：同 lane = 写入面重叠，必须
@@ -1466,8 +1446,6 @@ def main():
     n.add_argument("kind", choices=["task", "adr"])
     n.add_argument("--title", required=True)
     n.add_argument("--owner", choices=OWNERS, default="agent")
-    n.add_argument("--model-tier", dest="tier", choices=MODEL_TIERS)
-    n.add_argument("--effort", choices=EFFORTS)
     n.add_argument("--manual", choices=MANUAL_ACCEPTANCE, default="none")
     n.add_argument("--priority", choices=PRIORITIES, default="p2")
     n.add_argument("--lane")
@@ -1504,7 +1482,7 @@ def main():
     if args.command == "new":
         deps = [d.strip() for d in args.deps.split(",") if d.strip()]
         adrs = [a.strip() for a in args.adrs.split(",") if a.strip()]
-        new_doc(args.kind, args.title, args.owner, args.tier, args.effort,
+        new_doc(args.kind, args.title, args.owner,
                 args.manual, deps, adrs, args.priority, args.lane)
         return
     if args.command == "board":

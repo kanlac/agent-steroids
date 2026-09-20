@@ -17,14 +17,13 @@
 `python3 scripts/taskdag.py help`。
 
 - frontmatter 是状态与关系的唯一事实源；`status` 只能用 `transition` 改，不手改。
-- 拆分粒度：一个任务 = 一次可交给单个 agent 的派发；agent 任务标 `model-tier`（high/mid）
-  与 `effort`（mid/high/xhigh/max），档位→模型映射见〔按项目指路，如 taskdag skill 的
-  dispatch 参考〕。
+- 拆分粒度：一个任务 = 一次可交给单个 agent 的派发；模型与推理强度不写进任务，
+  由派发方在派发时选。
 - `TASK-DAG.html` 是 `board` 命令的生成物（只读视图），改完文档重新生成。
 - 改口径、改决策：不改旧 ADR 的实质内容，开新 ADR 并 `supersedes` 互链。
 ```
 
-按项目情况增删，保持在 20 行以内；调度方法不写这里（属于 skill），项目特有事实（编号历史、归档位置）写这里。
+按项目情况增删，保持在 20 行以内；调度与派发方法不写这里（属于 skill），项目特有事实（编号历史、归档位置）写这里。
 
 ## 项目约定偏差
 

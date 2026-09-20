@@ -1,7 +1,7 @@
 {
   "name": "taskdag",
-  "version": "0.2.3",
-  "description": "Repo-native ADR + Task DAG control plane: structured task/decision docs, vendored lifecycle CLI, generated DAG board, cross-agent dispatch",
+  "version": "0.3.0",
+  "description": "Repo-native ADR + Task DAG data plane: structured task/decision docs, vendored lifecycle CLI, generated DAG board",
   "author": {
     "name": "Kan"
   },
