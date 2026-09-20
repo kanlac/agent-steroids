@@ -92,6 +92,7 @@ opencode run --pure --auto -m "$DISPATCH_PROVIDER_ID/$DISPATCH_MODEL_ID" --forma
 | `reason=length` 或等价字段 | 单步输出或推理触顶 | 调整有效上限、降低 effort、缩小单步任务或换模型 |
 | 权限拒绝事件 | 工具或路径未获授权 | 修正权限或缩小任务范围 |
 | 明确的 quota / rate-limit 错误 | provider 配额或限流 | 等待重置、换可用 provider，或降低并发 |
+| 最后一个 text 事件末尾含 `</tool_call>`、`<arg_key>`、`</arg_value>`，`finish=stop` | 模型某步没走结构化工具调用，改用文本格式输出，前半段被解析吞掉、后半段泄漏成文本；进程正常退出但任务没做完（GLM 5.3 Flash 约 700 步出现 1 次，诱因多为带多重引号或正则的长 shell 命令） | 跑完检测该特征，用 `-s <id>` 续跑并提示「上一条工具调用被当成文本输出没执行，请用正常工具调用重新发出；长命令先写进文件再执行」，限次数；这不是换模型的理由 |
 | `--variant` 无报错但行为不变 | 档位没有进入有效配置或请求 | 检查 `variants`、schema 和请求证据 |
 
 不要把固定时间窗口、错误文本或 token 数写成跨 provider 规律；只按当前运行留下的证据判断。

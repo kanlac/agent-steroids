@@ -8,6 +8,7 @@ description: Send work to subagents or another model's CLI (Codex, OpenCode) and
 - **已知会派出 4 个及以上 agent 时，必读 `references/batch-orchestration.md` **。
 - **cwd 就是仓库，给入口和关注点，让它自己读**。不贴源码、不预划只读范围。
 - **你知道而它推不出的，写进任务正文**：已修过什么、哪些不能动、怎样算完成、用什么命令验。
+  长脚本让它先写进文件再执行，别在工具参数里塞多行 heredoc。
   只有正文会跟着转交和续做走。
 - **发现要具体到文件、函数和触发输入**。「建议加异常处理」没法验真假。
 - **并行几份给几种侧重**，否则拿回雷同的东西；大审查分批送，一批一个关注面。
