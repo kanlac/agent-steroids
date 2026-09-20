@@ -2,16 +2,15 @@
 
 ## 先确定 provider 与模型
 
-steroids 配置文件（macOS/Linux: `~/.config/steroids.json`；Windows: `%APPDATA%\steroids.json`）里有
-`dispatch.opencode.provider` 时，只在该 provider 内选模型。没有时先用 `opencode models`（不加 `--verbose`，
-全量 verbose 可达上百 KB）和 `opencode auth list` 看哪些 provider 有凭证，选定后再查它的详情：
+先用 `opencode models` 和 `opencode auth list` 看哪些 provider
+有凭证，选定后再查它的详情：
 
 ```bash
 DISPATCH_PROVIDER_ID="replace-with-provider-id"
 opencode models "$DISPATCH_PROVIDER_ID" --verbose
 ```
 
-从输出读取模型 ID、输入输出上限和 `variants`。模型选型参考 `model-and-effort-selection.md`；
+从输出读取模型 ID、输入输出上限和 `variants`。如用户未指定模型，选型参考 `batch-orchestration.md`；
 清单里有不代表能调用，选中后用下文的探活确认。
 
 ## 推理档位（variant）
@@ -58,12 +57,25 @@ opencode run --pure -m "$DISPATCH_PROVIDER_ID/$DISPATCH_MODEL_ID" --format json 
 | `--pure` | 不加载外部插件，减少启动阶段变量；需要 MCP 时不要使用 |
 | `--auto` | 在当前版本支持且任务已获相应权限时，自动批准未被显式拒绝的操作 |
 | `--format json` | 保存工具调用、步骤结束原因和 token 信息 |
-| `-s` / `--session` | 显式续指定会话；比依赖“当前目录最近会话”更适合多任务环境 |
+| `-s` / `--session <id>` | 显式续指定会话；比依赖“当前目录最近会话”更适合多任务环境 |
+| `--fork` | 续之前先分叉；同一上下文上要分头做两个方向时配合 `-s` 使用 |
 
 ## 权限与会话
 
 外部目录、网络和写入权限由当前配置决定。出现 `permission requested`、`auto-rejecting` 或等价事件时，按实际
 权限策略处理，不假设所有安装都支持同一批准参数。
+
+### 续跑
+
+每条 `--format json` 事件都带 `sessionID`。派发时从第一条取出并落盘，中断、追加指令或复审同一 HEAD 时
+用 `-s <id>` 续上，不新起会话；`--pure`、`--auto` 可同时使用。
+
+```bash
+opencode run --pure --auto -m "$DISPATCH_PROVIDER_ID/$DISPATCH_MODEL_ID" --format json \
+  -s "$SESSION_ID" "追加指令" < /dev/null > events2.jsonl 2> stderr2.txt
+```
+
+`opencode session` 列出和管理会话，`opencode export <id>` 导出 JSON 归档。
 
 同一会话的续问保持串行。等上一进程退出并确认事件流已正常停止后再续；残轮状态不明时导出会话检查，或新开
 会话。并行写代码时为每份工作使用独立 worktree 或等价隔离环境。

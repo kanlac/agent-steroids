@@ -34,7 +34,7 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 | [`read-book`](plugins/steroids/skills/read-book/SKILL.md) | `steroids` | EPUB 书籍中英双语翻译，以及阅读和讨论书籍内容。 |
 | [`youtube-bilingual-transcript`](plugins/steroids/skills/youtube-bilingual-transcript/SKILL.md) | `steroids` | 把 YouTube 链接转成中英对照单页 HTML 阅读稿。yt-dlp 抓字幕+章节，agent 翻译并策展，脚本渲染带时间戳跳转、带序号章节目录、重点高亮、专有名词内联点击注释。 |
 | [`html-to-pdf`](plugins/steroids/skills/html-to-pdf/SKILL.md) | `steroids` | 将样式化 HTML 转为高质量单页 PDF。自动处理动态元素（scroll-snap、CSS 动画、IntersectionObserver），含可复用生成脚本。 |
-| [`dispatch`](plugins/dispatch/skills/dispatch/SKILL.md) | `dispatch` | 把活派给 subagent 或其他模型 CLI：灵活的模型推荐表和统一 effort 规划、调用契约、静默失败排查、显式 session 串行续问，以及怎么审收回来的报告。 |
+| [`dispatch`](plugins/dispatch/skills/dispatch/SKILL.md) | `dispatch` | 把活派给 subagent 或其他模型 CLI：灵活的模型推荐表和统一 effort 规划、调用契约、静默失败排查、显式 session 串行续问、编排表，以及怎么审收回来的报告。 |
 | [`clipping`](plugins/steroids/skills/clipping/SKILL.md) | `steroids` | 将网页文章保存为本地 Markdown 笔记。支持微信公众号等 JS 渲染页面；对信息图/表格截图可使用 PaddleOCR 提取文本并重构为 Markdown 表格。 |
 | [`paper-download`](plugins/steroids/skills/paper-download/SKILL.md) | `steroids` | 学术论文检索与下载。三级策略：HTTP/OA 直链、headless 解析、headed browser 登录/CAPTCHA。`cdp-chrome` 只是可选 provider。 |
 | [`clash-verge-config`](plugins/steroids/skills/clash-verge-config/SKILL.md) | `steroids` | Clash Verge Rev / mihomo / Stash 客户端配置即代码：保留字段与 enhance 管线、不中断 provider 热刷新、隔离内核验收、Stash Override、运行态 controller、规则/provider/真实连接闭环、DNS 与浏览器泄漏、TUN 回环。 |

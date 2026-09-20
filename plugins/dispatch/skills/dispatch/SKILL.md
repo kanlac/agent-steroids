@@ -5,16 +5,14 @@ description: Send work to subagents or another model's CLI (Codex, OpenCode) and
 
 ## 像派给同事，不像调函数
 
-- **先按任务特长、复杂度和成本选模型，再定推理强度，不默认继承宿主**。
-  候选与选择信号见 `references/model-and-effort-selection.md`。
-  已知会派出 4 个及以上 agent 时，先向用户列出每份工作的模型、effort 和理由，等确认。
-- **cwd 就是仓库，给入口和关注点，让它自己读**。不贴源码、不预划只读范围，
-  它自己探索出的路径正是第二双眼睛的价值。
-- **你知道而它推不出的，写进任务正文**：已经修过什么、哪些不能动、怎样算完成、用什么命令验，
-  让它一轮闭环。只有正文会跟着转交和续做走，外围对话不会。
+- **先按任务特长、复杂度和成本选模型，再定推理强度，不默认继承宿主**，见 `references/batch-orchestration.md`。
+  已知会派出 4 个及以上 agent 时，参考 `references/batch-orchestration.md`。
+- **cwd 就是仓库，给入口和关注点，让它自己读**。不贴源码、不预划只读范围。
+- **你知道而它推不出的，写进任务正文**：已修过什么、哪些不能动、怎样算完成、用什么命令验。
+  只有正文会跟着转交和续做走。
 - **发现要具体到文件、函数和触发输入**。「建议加异常处理」没法验真假。
 - **并行几份给几种侧重**，否则拿回雷同的东西；大审查分批送，一批一个关注面。
-- **循环评审优先 resume 同一会话**。它记得上轮提过什么、哪些已被驳回，每轮新开要重读全仓，还会反复提同一问题。
+- **循环评审优先 resume 同一会话**，它记得哪些已被驳回，不必每轮重读全仓。
 
 ## CLI 的硬限制，调用时就要绕开
 
@@ -46,5 +44,5 @@ description: Send work to subagents or another model's CLI (Codex, OpenCode) and
 参数和数值都带日期，以当下 `--help` 为准。
 
 - `references/codex.md` —— 环境发现、通用调用形状、权限与结果诊断
-- `references/model-and-effort-selection.md` —— 跨 provider 的模型推荐表与统一推理强度标准
+- `references/batch-orchestration.md` —— 多 agent 批次调度（4 个及以上必读）：模型推荐表、统一推理强度标准与编排表
 - `references/opencode.md` —— provider / variant 发现、权限、会话、输出截断与配额诊断
