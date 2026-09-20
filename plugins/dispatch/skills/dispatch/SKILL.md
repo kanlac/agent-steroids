@@ -5,8 +5,7 @@ description: Send work to subagents or another model's CLI (Codex, OpenCode) and
 
 ## 像派给同事，不像调函数
 
-- **先按任务特长、复杂度和成本选模型，再定推理强度，不默认继承宿主**，见 `references/batch-orchestration.md`。
-  已知会派出 4 个及以上 agent 时，参考 `references/batch-orchestration.md`。
+- **已知会派出 4 个及以上 agent 时，必读 `references/batch-orchestration.md` **。
 - **cwd 就是仓库，给入口和关注点，让它自己读**。不贴源码、不预划只读范围。
 - **你知道而它推不出的，写进任务正文**：已修过什么、哪些不能动、怎样算完成、用什么命令验。
   只有正文会跟着转交和续做走。
@@ -44,5 +43,5 @@ description: Send work to subagents or another model's CLI (Codex, OpenCode) and
 参数和数值都带日期，以当下 `--help` 为准。
 
 - `references/codex.md` —— 环境发现、通用调用形状、权限与结果诊断
-- `references/batch-orchestration.md` —— 多 agent 批次调度（4 个及以上必读）：模型推荐表、统一推理强度标准与编排表
+- `references/batch-orchestration.md` —— 多 agent 批次调度：模型推荐表、统一推理强度标准与编排表
 - `references/opencode.md` —— provider / variant 发现、权限、会话、输出截断与配额诊断
