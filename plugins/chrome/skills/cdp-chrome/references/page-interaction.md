@@ -1,138 +1,56 @@
-# Page Interaction Patterns
+# page.mjs: driving pages by element number
 
-`take_screenshot` → `evaluate_script` 是标准流程。`take_snapshot` 仅用于简单页面。
-
-## 工具定位
-
-| 工具 | 用途 | Token 成本 |
-|------|------|-----------|
-| `take_screenshot` | 看懂页面布局和内容 | ~800–1,600 vision tokens |
-| `evaluate_script` | 精准提取数据、操作 DOM | 可控（目标 < 2K tokens） |
-| `take_snapshot` | 获取元素 UID 用于 fill/click | 2.5K–135K text tokens |
-
-## 为什么不用 take_snapshot 感知页面
-
-复杂页面（知网、社交媒体、电商）的完整 A11Y 树动辄 80K+ 字符，超出工具返回限制，也会淹没 LLM 上下文。而一张截图只花 ~1K vision tokens，就能让你理解整个页面布局。
-
-## 标准流程
-
-### 1. 看懂页面：`take_screenshot`
-
-对复杂或未知页面，先截图了解布局。这比解析任何文本结构都高效：
+Every command prints a numbered table of what is clickable or editable in the viewport, plus a slice of visible text:
 
 ```
-take_screenshot          → 看到页面长什么样
-evaluate_script(JS)      → 基于看到的内容，精准提取/操作
+$ page.mjs open "https://example.com/search"
+target=3FA9C21B https://example.com/search
+title: Search  |  viewport 0-780 of 4200px
+[2] searchbox "Search" = ""
+[3] button "Search"
+[4] select "Sort" = "Relevance" options: Relevance | Newest
+[5] checkbox "Originals only" (checked)
+[9] time "Delivery" = ""
+--- visible text ---
 ```
 
-对于简单页面（登录页、设置页、确认弹窗），可以直接用 `take_snapshot` 获取 UID 再配合 `fill`/`click`。
+Any unique prefix of the id works as `target`. Tabs open in the background. Actions dispatch real mouse and keyboard events, so framework-controlled inputs and anti-bot pages see a user, not `el.click()`.
 
-### 2. 精准提取：`evaluate_script`
+## With a TypeSafe key (default)
 
-用 JS 提取页面摘要——只返回你需要的信息：
-
-```javascript
-// 提取交互元素摘要
-() => {
-  const inputs = Array.from(document.querySelectorAll('input, textarea, select'))
-    .map(el => ({ tag: el.tagName, type: el.type, placeholder: el.placeholder, id: el.id, name: el.name }));
-  const buttons = Array.from(document.querySelectorAll('button, [role="button"], input[type="submit"]'))
-    .map(el => ({ text: el.textContent.trim().slice(0, 50), id: el.id, className: el.className }));
-  return { title: document.title, url: location.href, inputs, buttons };
-}
+```
+page.mjs run "https://www.google.com/travel/flights?hl=en" "Search one-way flights from Zurich to London departing October 20, 2026, one adult, economy. Once results are shown, open the Stops filter and choose 'Nonstop only'. Stop when only nonstop flights are listed." --value origin=Zurich --value destination=London
+page.mjs eval <target> "<expression that checks the outcome>"
+page.mjs close <target>
 ```
 
-### 3. 交互
+- The goal is the user's, whole, one sentence per part; Jev sees the parts as a numbered list.
+- Fields without a supplied value (date pickers, custom dropdowns) are operated by clicking.
+- Output: status line, the tab(s) left open, a trace with each step's confidence, then the final table.
+- Hand-back statuses: `UNSURE` (low confidence twice), `BLOCKED` (login, CAPTCHA, missing value), `STUCK`, `MAX_STEPS`, `NEEDS_CONFIRMATION` (the next click looks like paying, posting, sending or deleting). Do that step, then `run <target> "<same goal>"`.
+- `DONE` is a belief: one `eval` confirms the outcome. Re-tracing the steps costs more than the run did.
 
-两种方式：
-- **有 uid 时**（从 snapshot 获得）：用 `fill` / `click` 工具
-- **无 uid 时**（纯 JS 流）：`evaluate_script` 直接操作 DOM
+## Without a key
 
-```javascript
-// 填充搜索框并提交
-() => {
-  const input = document.querySelector('#searchInput, input[type="search"], input[name="q"]');
-  if (!input) return 'input not found';
-  input.value = '搜索词';
-  input.dispatchEvent(new Event('input', { bubbles: true }));
-  const btn = document.querySelector('button[type="submit"], .search-btn');
-  if (btn) btn.click();
-  return 'submitted';
-}
+```
+page.mjs type 3FA9 2 "keyword" --enter
+page.mjs select 3FA9 4 Newest
+page.mjs type 3FA9 9 18:30                         # time/date fields take HH:MM / YYYY-MM-DD
+page.mjs do 3FA9 'type 2 Ada' 'click 5' 'click 3'  # several actions on the current table; stops at the first FAILED
+page.mjs scroll 3FA9 down
+page.mjs wait 3FA9 "results found"                 # 10 s cap
 ```
 
-### 4. 批量数据提取
+Numbers stay valid until the page re-creates the element; a `FAILED` comes with the fresh table, pick again. Custom widgets: click to open, then click the option that appears. Do not batch across a step whose result you need to see (suggestions, navigation, dialogs). A click that opens a new tab is followed and the new id printed.
 
-一次 JS 调用返回结构化数据，不要逐条解析快照：
+## Extraction
 
-```javascript
-// 示例：提取搜索结果列表
-() => {
-  const rows = document.querySelectorAll('.result-item, .result-table-list tr');
-  return Array.from(rows).map(row => ({
-    title: row.querySelector('.title a, .name a')?.textContent.trim(),
-    link: row.querySelector('.title a, .name a')?.href,
-    meta: row.querySelector('.meta, .source')?.textContent.trim()
-  })).filter(r => r.title);
-}
+```
+page.mjs eval 3FA9 "[...document.querySelectorAll('.result')].slice(0,50).map(r => ({title: r.querySelector('a')?.innerText.trim().slice(0,100), link: r.querySelector('a')?.href}))"
 ```
 
-### 5. 翻页
+Limit count and length inside the expression; output beyond 8K chars is truncated. Page through large lists.
 
-```javascript
-// 点击下一页
-() => {
-  const next = document.querySelector('.next, a[id*="next"], .pagination .active + * a');
-  if (next) { next.click(); return 'clicked next'; }
-  return 'no next page';
-}
-```
+## Limits
 
-## 何时用 take_snapshot
-
-- 页面极简（设置页、登录页、确认弹窗）——元素少，快照小
-- 完全未知的页面，需要先了解整体结构再写 JS
-- 需要 uid 来配合 `fill` / `click` 工具（但优先考虑纯 JS 流）
-
-## 控制返回大小
-
-`evaluate_script` 的优势在于返回大小可控。务必在 JS 端限制输出：
-
-```javascript
-// ✅ 好：限制数组长度
-() => {
-  const items = document.querySelectorAll('.item');
-  return Array.from(items).slice(0, 50).map(el => ({
-    title: el.querySelector('.title')?.textContent.trim().slice(0, 100),
-    link: el.querySelector('a')?.href
-  })).filter(r => r.title);
-}
-
-// ❌ 坏：返回无限量数据
-() => document.body.innerText  // 可能 50K+ 字符
-() => document.body.innerHTML  // 可能 500K+ 字符
-```
-
-**安全上限参考：**
-- 数组结果：`.slice(0, 50-100)` 条目
-- 文本字段：`.slice(0, 100-200)` 字符
-- 总返回目标：< 8K 字符（~2K tokens）
-
-如果需要提取大量数据，分批处理：
-
-```javascript
-// 第 1 页：items 0-49
-() => Array.from(document.querySelectorAll('.item')).slice(0, 50).map(...)
-// 第 2 页：items 50-99
-() => Array.from(document.querySelectorAll('.item')).slice(50, 100).map(...)
-```
-
-## 反模式
-
-| 做法 | 问题 |
-|------|------|
-| 对复杂页面 `take_snapshot` | 80K+ 字符，超限或淹没上下文 |
-| 用 snapshot 逐条解析数据 | 每轮都传回完整页面，token 爆炸 |
-| 依赖 snapshot 导航交互 | 不如 JS 直接 querySelector 精准 |
-| `evaluate_script` 返回 `innerText` / `innerHTML` | 无限量文本，47K+ 字符实测出现过 |
-| 不限制数组长度 | 列表页可能有数百条结果 |
+Only the viewport is listed (`scroll` for more; a popup may open off-screen, so an empty table after a click usually means scroll). Open shadow DOM is traversed; cross-origin iframes are not. Uploads go through MCP `upload_file`. `clickable` rows are `cursor: pointer` targets without a declared role. Screenshot (`page.mjs shot`) only for canvas, image-only controls or layout questions; `take_snapshot` only on tiny pages that need MCP `fill`/`click` UIDs.
