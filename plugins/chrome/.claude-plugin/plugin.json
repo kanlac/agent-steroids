@@ -1,6 +1,6 @@
 {
   "name": "chrome",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Shared headed Chrome provider for browser automation workflows",
   "author": {
     "name": "Kan"

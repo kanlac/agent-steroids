@@ -11,127 +11,61 @@ description: |
 
 # CDP Chrome: Per-User Headed Browser Provider
 
-**Scope:** Optional implementation of the abstract `headed-browser` capability. Do not force this plugin when the user already has an equivalent provider.
+Optional implementation of the abstract `headed-browser` capability. It connects to a normal GUI Chrome with a persistent profile (no `--enable-automation`, so `navigator.webdriver` stays false). One process per OS user, shared by that user's agents.
 
-## Why This Exists
+## Tier first
 
-`chrome-devtools-mcp` can launch Chrome with automation flags such as `--enable-automation`, which sets `navigator.webdriver = true`. This plugin instead connects MCP to a normal GUI Chrome process with a persistent profile.
-
-The process is shared across agents **for the same OS user only**. On multi-user machines, every OS user should configure a different port/profile so agents fail fast instead of connecting to another user's Chrome.
-
-## Tier First: Most Browsing Tasks Should NOT Use This Skill
-
-cdp-chrome is the single shared headed instance, reserved for tasks that need one of its unique capabilities: **logged-in sessions, anti-bot/real-browser fingerprint, or a GUI the user watches**. Before using it, name which of these the task needs; if you can't, use the lightweight tier, picking whatever the current environment provides:
-
-1. `agent-browser` CLI (if installed): on-demand, no MCP, headless by default; use `--session <unique-name>` for full isolation from other agents; covers screenshots, text extraction, snapshots, click/fill, and eval. Run `agent-browser skills get core` for usage first.
-2. Other one-shot headless means: an isolated devtools MCP instance already registered in the environment, or one-shot invocations like `chrome --headless=new --screenshot=... / --dump-dom <URL>` (with a temporary `--user-data-dir`).
+cdp-chrome is reserved for tasks that need **a logged-in session, a real-browser fingerprint, or a GUI the user watches**. Name which one the task needs; if you can't, use the lightweight tier: the `agent-browser` CLI if installed (`agent-browser skills get core` for usage; `--session <unique-name>` for isolation), or one-shot `chrome --headless=new --screenshot=… / --dump-dom <URL>` with a temporary `--user-data-dir`.
 
 ## Config
 
-steroids config file:
-- macOS/Linux: `~/.config/steroids.json`
-- Windows: `%APPDATA%\steroids.json`
-- shell form: `${APPDATA:-$HOME/.config}/steroids.json`
-
-Default config:
+steroids config file: macOS/Linux `~/.config/steroids.json`, Windows `%APPDATA%\steroids.json` (shell: `${APPDATA:-$HOME/.config}/steroids.json`).
 
 ```json
 { "cdp-chrome": { "port": 9224, "profile_dir": "~/.config/cdp-chrome/profile" } }
 ```
 
-Existing configs with only `port` still work; `profile_dir` defaults to `~/.config/cdp-chrome/profile`. Do not configure a shared download directory; Chrome default downloads are left alone.
+| Optional key | Default | Meaning |
+|---|---|---|
+| `log_dir` | `~/.config/cdp-chrome/logs` (Windows `%APPDATA%\cdp-chrome\logs`) | `page.mjs` execution log; `false` disables |
+| `typesafe_api_key` | unset | TypeSafe key for `page.mjs run`; the `TYPESAFE_API_KEY` env var takes precedence and is the better place |
+| `jev_model` | `jev-latest` | Pin a versioned Jev model once thresholds are tuned against it |
 
-## Setup / Doctor
+Do not configure a shared download directory.
 
-1. Choose a unique `cdp-chrome.port` and `profile_dir` for this OS user in the steroids config file.
-2. Run the plugin script:
+## Setup
 
-   ```bash
-   plugins/chrome/skills/cdp-chrome/scripts/doctor.sh
-   ```
+1. Pick a unique `cdp-chrome.port` and `profile_dir` for this OS user.
+2. `plugins/chrome/skills/cdp-chrome/scripts/doctor.sh` checks config, port ownership and profile consistency. If it reports another user or profile on the port, change the port.
+3. `plugins/chrome/skills/cdp-chrome/scripts/start.sh` starts GUI Chrome on that profile.
+4. Log in to the needed sites by hand; sessions persist.
 
-   It verifies current-user config, port ownership, and Chrome profile consistency. If it reports another OS user or another profile on the port, choose a different `cdp-chrome.port` and rerun it.
+MCP: installing the `chrome` plugin registers the `cdp-chrome` server through the plugin-local `.mcp.json`, whose launcher reads the config, validates the listener, and runs `chrome-devtools-mcp --browserUrl http://127.0.0.1:<port>`. Do not add a duplicate project-level `.mcp.json` for the same server.
 
-3. Start Chrome:
+## Target binding
 
-   ```bash
-   plugins/chrome/skills/cdp-chrome/scripts/start.sh
-   ```
+This skill is satisfied only when operating the configured endpoint. `scripts/page.mjs` reads the config and connects there directly. Similar tools (`mcp__chrome_devtools__*`, Playwright, Puppeteer, browser-use) are not substitutes unless proven to use `http://127.0.0.1:<port>`; they can silently attach to a different browser. If the `cdp-chrome` MCP namespace is missing, run `doctor.sh`, then use `curl -s http://127.0.0.1:<port>/json/list` and `page.mjs`; do not guess with another tool.
 
-   The script creates `profile_dir`, refuses occupied/wrong-user/wrong-profile listeners on macOS, and starts normal GUI Chrome without `--enable-automation`.
+Findings about cookies, extensions, WebRTC, DNS or policy observed here prove only this profile. Record binary, user-data-dir and Profile Path from `chrome://version` before drawing conclusions; keep such validation read-only.
 
-4. Log in manually to needed sites. Sessions persist in the configured profile.
+## Agent rules
 
-## MCP Registration
+1. **Operate pages with `scripts/page.mjs`** (run it with no arguments for usage). It works only on tabs it opened, which also keeps you off other sessions' tabs. Never launch your own Chrome (`start.sh` if the instance is down), never clear cookies, change settings or install extensions. Parallel agents run in separate processes.
+2. **With a TypeSafe key: `page.mjs run <url> "<goal>" --value name=text …` is the default, and you stay outside the loop.** Pass the user's goal whole, every part in order, one sentence per part; supply every literal it may need to type as a `--value` (it never writes text). Jev picks operation and element step by step (~0.4 s/step), follows new tabs, and leaves the tab open. On `DONE`, verify the outcome, not the path: one `eval` of the fields you care about on that tab, extract, `close` (or `--close`). On a hand-back (`UNSURE`, `BLOCKED`, `STUCK`, `NEEDS_CONFIRMATION`, `MAX_STEPS`), do the one step it could not (CAPTCHA, login, a confirmation the user asked for) and `run <target> "<same goal>"`; it continues with the history. Do not click through the middle of a task yourself or open extra tabs to re-check.
+3. **Without a key: drive the numbered table yourself.** `open` prints the elements in the viewport; `click` / `type` / `select` / `key` / `scroll` act on numbers with real input events; `do` batches several actions when they are all on the current table. Each action prints the refreshed table and returns `FAILED` (never a silent success) when an element is gone or covered. See `references/page-interaction.md`.
+4. **Look only when the table cannot tell you.** `page.mjs shot` or `take_screenshot` (~1K vision tokens) for canvas, image-only controls, layout. Never `take_snapshot` to understand a page: its tree costs 10K–540K chars.
+5. **Extract with one capped expression.** `page.mjs eval` truncates at 8K chars; in MCP `evaluate_script`, truncate in-script. Never return unbounded DOM or page text.
+6. **Keep private pages away from `run`.** Each step sends the element table and visible text to the TypeSafe API.
 
-Claude Code and Codex: installing the `chrome` plugin provides `cdp-chrome` through plugin-local `.mcp.json`. Claude Code documents `${CLAUDE_PLUGIN_ROOT}` for plugin MCP paths; current Codex plugin loading has been verified to start plugin MCP entries with `cwd: "."` at the installed plugin root. The shared `.mcp.json` uses a small shell launcher to support both cases, then runs `skills/cdp-chrome/scripts/mcp-launcher.sh`; that launcher reads the current user's config, validates an existing listener when possible, then execs:
+## Execution log
 
-```bash
-npx -y chrome-devtools-mcp@latest --browserUrl http://127.0.0.1:<port> --no-usage-statistics \
-  --no-category-performance --no-category-emulation --no-category-network
-```
+`page.mjs` appends one JSON line per command to a monthly file in `log_dir`: time, command, tab, site (origin + path), target element, `ok`/`failed` with reason, duration, table size; for `run`, the chosen operation with Jev's confidence and latency. It never records typed text, `eval` code or output, or page text. Use it to find failing sites and widgets and to tune `run` thresholds.
 
-Hermes: plugin-local MCP config is not auto-loaded. Register an equivalent `mcp_servers.cdp-chrome` manually and point it at this plugin's `mcp-launcher.sh` or at the same `chrome-devtools-mcp` command with your configured port. Restart/reload MCP after config changes.
-
-Do not create a duplicate project-level `./.mcp.json` for the same server; duplicate MCP definitions can connect to different ports.
-
-## Target Binding
-
-This skill is only satisfied when the agent is operating on the configured shared CDP endpoint. Similar-looking tools such as `mcp__chrome_devtools__*`, Playwright, Puppeteer, or browser-use are not substitutes unless they are explicitly registered as the `cdp-chrome` server for this plugin and proven to use the configured `http://127.0.0.1:<port>` endpoint. They can silently attach to a different browser or target, even when their API is based on Chrome DevTools.
-
-If the expected `cdp-chrome` MCP namespace is not exposed, do not guess with another browser tool. First run `doctor.sh`, then use the configured endpoint directly:
+## Quick checks
 
 ```bash
-curl -s "http://127.0.0.1:<port>/json/list"
-```
-
-Pick the intended target from `/json/list` and operate through its `webSocketDebuggerUrl`, or report that the `cdp-chrome` MCP namespace is missing. A page list from any other tool is not proof that this skill is attached to the shared Chrome.
-
-## Profile-scoped Validation
-
-CDP Chrome uses its own `profile_dir`. Cookies, extensions, Preferences, WebRTC, or DNS results observed in this instance only prove that profile; likewise `doctor.sh` only proves the port/process/user-data-dir binding is correct — not that the user's daily Chrome is fixed.
-
-Before drawing conclusions about browser policy, WebRTC, DNS, extensions, or login state, record the current binary, user-data-dir, and the Profile Path from `chrome://version`, and state the scope of the conclusion explicitly. Profile preferences must not be extrapolated to other profiles; only managed policies shown in `chrome://policy` with Source=`Platform`, Level=`Mandatory`, Status=`OK` apply across profiles, and even those must be retested in the actually affected browser and a fresh incognito window. Keep validation read-only — do not use CDP Chrome to casually change profile settings.
-
-## Agent Rules
-
-1. Use only MCP tools from server name `cdp-chrome` (`mcp__cdp-chrome__*` in Claude/Codex, `mcp_cdp_chrome_*` style in Hermes), or the direct configured CDP endpoint fallback above. Do not fall back to other Chrome/Playwright/Puppeteer MCP tools; they may launch automated Chrome or attach to a different Chrome target.
-2. Never launch your own Chrome. Use `start.sh` if the configured instance is not running.
-3. Before browser work, run `doctor.sh` when setup changed or when connection errors occur.
-4. Only operate on pages you created: open your own via `new_page`, remember its target, and close it when done. `list_pages` lists tabs from **all sessions** — never `select_page`/`close_page` a page you did not create, and never guess tab ownership by title or index.
-5. Do not clear cookies, change profile settings, install extensions, or modify the browser profile.
-6. Parallel agents should run in separate agent processes. A single MCP process can have global selected-page state even though Chrome tabs have independent CDP target IDs.
-7. **Understand pages visually first.** Before interacting with a complex or unknown page, call `take_screenshot` (~800–1,600 vision tokens) to see the layout. Do NOT call `take_snapshot` for this purpose — its A11Y text tree costs 10K–540K chars (2.5K–135K text tokens) on complex pages and often exceeds tool limits. After the screenshot gives you spatial understanding, use `evaluate_script` for precise extraction/action.
-8. **Reserve `take_snapshot` for simple pages only.** Login forms, settings panels, confirmation dialogs — pages where the A11Y tree is expected to be < 5K chars. For anything else, screenshot + evaluate_script is both cheaper and more effective.
-9. **Cap `evaluate_script` results.** When writing extraction JS, truncate or paginate output in-script (e.g. `.slice(0, 100)` for arrays, `.slice(0, 8000)` for text). Do not return unbounded DOM content or full page text.
-
-## Quick Checks
-
-```bash
-PORT=$(python3 - <<'PY'
-import json, os
-p=os.path.join(os.environ.get('APPDATA', os.path.join(os.environ['HOME'], '.config')), 'steroids.json')
-try:
-    print(json.load(open(os.path.expanduser(os.path.expandvars(p)))).get('cdp-chrome', {}).get('port', 9224))
-except FileNotFoundError:
-    print(9224)
-PY
-)
+PORT=$(python3 -c "import json,os;p=os.path.join(os.environ.get('APPDATA',os.path.expanduser('~/.config')),'steroids.json');print((json.load(open(p)) if os.path.exists(p) else {}).get('cdp-chrome',{}).get('port',9224))")
 curl -s "http://127.0.0.1:$PORT/json/version"
-curl -s "http://127.0.0.1:$PORT/json/list"
 ```
 
-Red flags: another OS user owns the port, process args lack the configured `--user-data-dir`, `--enable-automation`, `--remote-debugging-pipe`, temp `puppeteer_dev_chrome_profile-*`, or unexpected logouts. Stop and fix config/MCP registration.
-
-## Page Interaction
-
-See `references/page-interaction.md` for detailed patterns and examples.
-
-**Tool selection guide:**
-
-| Purpose | Tool | Token cost | Notes |
-|------|------|-----------|------|
-| Understand page layout | `take_screenshot` | ~800–1,600 vision tokens | First choice for complex/unknown pages |
-| Precise extraction/action | `evaluate_script` | ~650 text tokens (controllable) | Workhorse tool |
-| Get element UIDs | `take_snapshot` | 2.5K–135K text tokens | Simple pages only |
-| Navigation | `navigate_page` | ~190 text tokens | — |
+Red flags: another OS user on the port, process args without the configured `--user-data-dir`, `--enable-automation`, `--remote-debugging-pipe`, temp `puppeteer_dev_chrome_profile-*`, unexpected logouts. Stop and fix config or registration.

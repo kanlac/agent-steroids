@@ -1,19 +1,14 @@
 **IMPORTANT**: After any plugin change, update the changed plugin's runtime manifest version(s):
 - Claude Code: `plugins/<plugin>/.claude-plugin/plugin.json` when present
 - Codex: `plugins/<plugin>/.codex-plugin/plugin.json` when present
-- Hermes: the corresponding `plugin.yaml` only when that plugin is Hermes-exposed and its skill set, description, or runtime surface changes
 
 Do not treat README/INSTALL as mandatory for every plugin version bump. Update README/INSTALL only when the user-facing feature list, setup flow, command list, skill list, hook list, MCP server list, or compatibility story changes.
 
 If a plugin's MCP config is shared through `mcpServers: "./.mcp.json"`, keep the server definition in that shared `.mcp.json` and bump every runtime manifest that packages it. Do not duplicate divergent MCP server definitions across Claude Code and Codex manifests.
 
-`AGENTS.md` is a symlink to this file. Keep these instructions compatible with Claude Code, Codex, and Hermes unless a section explicitly names one runtime.
+`AGENTS.md` is a symlink to this file. Keep these instructions compatible with Claude Code and Codex unless a section explicitly names one runtime.
 
 Do not commit unless user asked to.
-
-## Skill 正文语言
-
-Skill 的 frontmatter（尤其 description，用于触发）用英文；frontmatter 以下的正文（SKILL.md 正文与 references/ 文档）一律用中文撰写，不要中英夹杂。
 
 ## README 维护
 
@@ -21,9 +16,9 @@ Skill 的 frontmatter（尤其 description，用于触发）用英文；frontmat
 
 安装、升级、启用流程统一维护在 `INSTALL.md`；`README.md` 和本文件只引用安装手册，不重复安装命令。让 agent 安装本仓库时，要求它先读取 `INSTALL.md`。
 
-Claude Code、Codex、Hermes 三种 agent runtime 都支持本仓库，但 runtime 覆盖不同：Claude Code 暴露 `steroids`、`dispatch`、`telegram`、`chrome`、`write-blog`、`taskdag`；Codex 暴露跨运行时稳定可用的 `steroids`、`dispatch`、`chrome`、`taskdag`；Hermes 暴露 `steroids`、`dispatch`、`chrome`。`telegram` 和 `write-blog` 是 Claude Code 专用插件，不提供 Codex marketplace 条目或 Hermes shim。
+Claude Code、Codex 两种 agent runtime 都支持本仓库，但 runtime 覆盖不同：Claude Code 暴露 `steroids`、`dispatch`、`telegram`、`chrome`、`write-blog`、`taskdag`；Codex 暴露跨运行时稳定可用的 `steroids`、`dispatch`、`chrome`、`taskdag`。`telegram` 和 `write-blog` 是 Claude Code 专用插件，不提供 Codex marketplace 条目。
 
-正式 runtime skills 只放在对应插件的 `plugins/<plugin>/skills/`，不要在根目录维护第二份或用 symlink。Hermes shim 只负责注册这些 canonical skill；不要新增根目录 `plugin.yaml`，否则会把仓库变成单一根插件并挡住子插件发现。Codex marketplace 只声明跨运行时稳定可用的 skill 插件；Claude Code 专用的 commands、agents、hooks、MCP server 可放在对应 Claude 插件根目录下，但除非确认 Codex/Hermes 支持对应运行时语义，不要把 Claude Code 专用配置直接挂到 Codex manifest 或 Hermes shim。
+正式 runtime skills 只放在对应插件的 `plugins/<plugin>/skills/`，不要在根目录维护第二份或用 symlink。Codex marketplace 只声明跨运行时稳定可用的 skill 插件；Claude Code 专用的 commands、agents、hooks、MCP server 可放在对应 Claude 插件根目录下，但除非确认 Codex 支持对应运行时语义，不要把 Claude Code 专用配置直接挂到 Codex manifest。
 
 插件拆分保持简单：`steroids`、`dispatch`、`telegram`、`chrome`、`write-blog`、`taskdag`。插件之间尽量用能力依赖（capability）描述，而不是强制安装某个 provider。例如需要可人工接管浏览器时写 `headed-browser`，并说明 `chrome/cdp-chrome`、Codex Chrome plugin、原生 browser-use 都可以满足；只有实现确实绑定某个 provider 时才写硬依赖。
 
@@ -38,7 +33,7 @@ Claude Code、Codex、Hermes 三种 agent runtime 都支持本仓库，但 runti
 
 ## 公开仓库注意事项
 
-此项目是公开的 Claude Code / Codex / Hermes 三 runtime 兼容插件仓库。**不要在任何文件中包含**：
+此项目是公开的 Claude Code / Codex 双 runtime 兼容插件仓库。**不要在任何文件中包含**：
 - 个人账号、用户名、chat_id、API key
 - 私人业务相关的 skill/agent 名称和工作流
 - 特定于个人环境的路径（使用 `~` 或 `$HOME` 代替绝对路径）

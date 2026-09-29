@@ -1,6 +1,6 @@
 # agent-steroids
 
-Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容三种 agent runtime，但各插件的 runtime 覆盖不同。插件按用途分类，方便在不同环境中按需启用：
+Claude Code / Codex 通用增强插件集合。这个仓库同时兼容两种 agent runtime，但各插件的 runtime 覆盖不同。插件按用途分类，方便在不同环境中按需启用：
 
 - `steroids`：主体 Skills 和通用 workflow。
 - `dispatch`：跨 agent 派发，统一模型 / effort 选择、任务交接和结果验收。
@@ -9,7 +9,7 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 - `write-blog`：Claude Code 专用的写作流程 skill 插件——选题构思、对话式挖掘、大纲迭代、按作者风格成文，附信息图/制图参考。
 - `taskdag`：仓库原生的 ADR + Task DAG 控制面——结构化任务/决策文档、vendor 进项目的零依赖生命周期 CLI、生成式 DAG 看板、跨 agent 派发。
 
-`steroids`、`dispatch`、`chrome` 和 `taskdag` 的 canonical skills 位于 `plugins/<plugin>/skills/` 并可跨 runtime 复用；Claude Code / Codex 通过各自 marketplace 安装，Hermes 通过根目录 shim 暴露 `steroids`、`dispatch` 与 `chrome`；`telegram` 和 `write-blog` 保持 Claude Code 专用。
+`steroids`、`dispatch`、`chrome` 和 `taskdag` 的 canonical skills 位于 `plugins/<plugin>/skills/` 并可跨 runtime 复用；Claude Code / Codex 通过各自 marketplace 安装；`telegram` 和 `write-blog` 保持 Claude Code 专用。
 
 ## 安装
 
@@ -21,10 +21,10 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 
 | Plugin | Runtime | 包含内容 | 硬依赖 | 可选 / capability 依赖 |
 |---|---|---|---|---|
-| [`steroids`](plugins/steroids/) | Claude + Codex + Hermes | 主体 Skills：文档处理、书籍阅读、PDF 导出、网页剪藏、论文下载、Agent 记忆管理（诊断/整理/吸收），以及 `/song` | 无 | `paper-download` / `clipping` 的登录态或 CAPTCHA 场景需要 `headed-browser` |
-| [`dispatch`](plugins/dispatch/) | Claude + Codex + Hermes | `dispatch` skill：按任务特长、复杂度和成本选择模型，统一 effort 标尺，以及 sub-agent / 外部模型 CLI 交接与结果验收 | 无 | 映射到当前 runtime 或本机可用的 agent CLI |
+| [`steroids`](plugins/steroids/) | Claude + Codex | 主体 Skills：文档处理、书籍阅读、PDF 导出、网页剪藏、论文下载、Agent 记忆管理（诊断/整理/吸收），以及 `/song` | 无 | `paper-download` / `clipping` 的登录态或 CAPTCHA 场景需要 `headed-browser` |
+| [`dispatch`](plugins/dispatch/) | Claude + Codex | `dispatch` skill：按任务特长、复杂度和成本选择模型，统一 effort 标尺，以及 sub-agent / 外部模型 CLI 交接与结果验收 | 无 | 映射到当前 runtime 或本机可用的 agent CLI |
 | [`telegram`](plugins/telegram/) | Claude Code only | `telegram-agents`、`/tg-*`、`/check-release`、`telegram-notify` MCP、Telegram time hook、`guard-payload-size` hook | Claude Code + official Telegram plugin；心跳 workflow 需 Telethon/tmux/launchd | 无 |
-| [`chrome`](plugins/chrome/) | Claude + Codex + Hermes | `cdp-chrome` 每 OS 用户一个进程的共享有头 Chrome provider；Claude/Codex 内置 `cdp-chrome` MCP 启动器，会读取当前用户 steroids 配置 | Chrome、`npx`；Hermes 使用时需在 `mcp_servers` 注册 | 提供 `headed-browser`，可被 Codex Chrome plugin / 原生 browser-use 替代 |
+| [`chrome`](plugins/chrome/) | Claude + Codex | `cdp-chrome` 每 OS 用户一个进程的共享有头 Chrome provider；Claude/Codex 内置 `cdp-chrome` MCP 启动器，会读取当前用户 steroids 配置 | Chrome、`npx`、Node ≥ 22（`page.mjs` 用内置 WebSocket） | 提供 `headed-browser`，可被 Codex Chrome plugin / 原生 browser-use 替代 |
 | [`write-blog`](plugins/write-blog/) | Claude Code only | `write-blog` skill：选题/对话式挖掘/大纲迭代/按作者风格成文，附 voice-dna 与制图参考 | 无 | 无 |
 | [`taskdag`](plugins/taskdag/) | Claude + Codex | `orchestrator` skill：ADR + Task DAG 控制面，含 vendor 进项目的 `taskdag.py`（validate/query/transition/board）与派发/复审参考 | Python 3（仅标准库） | 派发映射到本机可用的 agent CLI（Claude Code / Codex / OpenCode 等） |
 
@@ -43,7 +43,7 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 | [`skill-console`](plugins/steroids/skills/skill-console/SKILL.md) | `steroids` | 生成本地 Skill 清单控制台，审计 token 用量、description token、重复项路径、Skill 内容预览，并导出选中 Skill 的 `{name, path}` JSON。 |
 | [`hippocampus`](plugins/steroids/skills/hippocampus/SKILL.md) | `steroids` | 管理 Agent 记忆与上下文：①诊断与治疗——扫描全局/项目指令、auto-memory、当前工具定义、skills 与文档，按体量/可用性/新鲜度/矛盾四维打分，生成「记忆精神科确诊书」和逐项确认的 ReviewTable；②吸收新知识——把教训路由到唯一归属并重构，而非追加笔记。内置最短充分表达、渐进披露、工具描述去噪和 auto-memory 中性原则。 |
 | [`telegram-agents`](plugins/telegram/skills/telegram-agents/SKILL.md) | `telegram` | Telegram agent 配置与管理。包括 tmux 会话、Telethon 调度器、launchd 心跳定时任务。 |
-| [`cdp-chrome`](plugins/chrome/skills/cdp-chrome/SKILL.md) | `chrome` | 可选的共享有头 Chrome provider。适合需要持久登录态、用户手动 CAPTCHA、反 bot 页面或 live site inspection 的环境；明确独立 CDP profile 与日常 Chrome 的验证边界。 |
+| [`cdp-chrome`](plugins/chrome/skills/cdp-chrome/SKILL.md) | `chrome` | 可选的共享有头 Chrome provider。适合需要持久登录态、用户手动 CAPTCHA、反 bot 页面或 live site inspection 的环境；自带 `page.mjs` 按编号操作页面（编号元素表 + 真实输入事件 + 批量动作 + 执行日志），可选用 TypeSafe Jev 做多步子任务的快速决策；明确独立 CDP profile 与日常 Chrome 的验证边界。 |
 | [`write-blog`](plugins/write-blog/skills/write-blog/SKILL.md) | `write-blog` | 写作全流程：从录音稿成文，或从零开始的对话式写作（选题、调研、提问漏斗、大纲迭代、初稿）。按作者 voice-dna 风格输出，附「图形为主、文字为辅」制图参考。 |
 | [`orchestrator`](plugins/taskdag/skills/orchestrator/SKILL.md) | `taskdag` | 仓库原生的 ADR + Task DAG 控制面：任务按「一次派发」粒度拆分并标注 priority/model-tier/effort，零依赖 `taskdag.py` 管 schema 校验、runnable 推导、状态机与单文件 DAG 看板（可发布到仓库外路径）；含初始化/迁移、跨 agent 派发映射两份参考。 |
 
@@ -68,7 +68,7 @@ Claude Code / Codex / Hermes 通用增强插件集合。这个仓库同时兼容
 
 | Server | Plugin | Runtime | 说明 |
 |--------|--------|---------|------|
-| `cdp-chrome` | `chrome` | Claude + Codex bundled；Hermes config-driven | Claude/Codex 通过插件本地 MCP 配置启动 launcher，读取当前用户 `cdp-chrome.port/profile_dir` 并校验监听者；Hermes 通过 `mcp_servers.cdp-chrome` 手动注册。每个 OS 用户应使用自己的端口和 profile，并运行 `doctor.sh` 验证。 |
+| `cdp-chrome` | `chrome` | Claude + Codex bundled | Claude/Codex 通过插件本地 MCP 配置启动 launcher，读取当前用户 `cdp-chrome.port/profile_dir` 并校验监听者。每个 OS 用户应使用自己的端口和 profile，并运行 `doctor.sh` 验证。 |
 | [`telegram-notify`](plugins/telegram/mcp-servers/telegram-notify/) | `telegram` | Claude Code only | 轻量级 Telegram 通知服务，供 agent 发送消息。 |
 
 ## Scripts
@@ -85,13 +85,10 @@ agent-steroids/
   INSTALL.md            # 唯一安装手册：给 human/agent 安装时读取
   .agents/plugins/      # Codex marketplace 配置（只列跨运行时 skill 插件）
   .claude-plugin/       # Claude marketplace 配置（列全部插件）
-  steroids/              # Hermes shim：agent-steroids/steroids
-  dispatch/              # Hermes shim：agent-steroids/dispatch
-  chrome/               # Hermes shim：agent-steroids/chrome
   scripts/              # 独立 CLI 工具
   plugins/
     steroids/            # 主体 skills 和通用 commands
-    dispatch/           # 跨 agent 派发 skill（Claude + Codex + Hermes）
+    dispatch/           # 跨 agent 派发 skill（Claude + Codex）
     telegram/           # Telegram skill/commands/MCP/hooks（含 guard-payload-size）
     chrome/             # cdp-chrome provider（含 Claude/Codex MCP launcher 配置）
     write-blog/         # 写作流程 skill（Claude Code only）

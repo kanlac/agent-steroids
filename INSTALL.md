@@ -8,7 +8,7 @@
 
 1. 优先使用各 runtime 的插件/marketplace 机制，不要手工复制一份 `skills/` 目录。
 2. 默认只安装 `steroids` 主插件；只有需要持久登录态、人工 CAPTCHA、live site inspection 等 `headed-browser` 能力时才安装 `chrome`。
-3. `telegram` 是 **Claude Code 专用** 插件；不要在 Codex 或 Hermes 中安装/启用 Telegram 插件。
+3. `telegram` 是 **Claude Code 专用** 插件；不要在 Codex 中安装/启用 Telegram 插件。
 4. 如果 marketplace 或插件已经存在，不要当作失败；继续执行安装、更新或验证步骤。
 
 ## Runtime 选择表
@@ -17,7 +17,6 @@
 |---|---|---|---|
 | Claude Code | `steroids` | `dispatch`, `chrome`, `telegram`, `write-blog`, `taskdag` | 无 |
 | Codex | `steroids` | `dispatch`, `chrome`, `taskdag` | `telegram`, `write-blog` |
-| Hermes | `agent-steroids/steroids` | `agent-steroids/dispatch`, `agent-steroids/chrome` | `agent-steroids/telegram`, `agent-steroids/write-blog`, `agent-steroids/taskdag` |
 
 ## Claude Code
 
@@ -67,43 +66,11 @@ codex plugin add taskdag@agent-steroids          # 可选：ADR + Task DAG 控�
 codex plugin list
 ```
 
-## Hermes
-
-适用场景：Hermes 通过根目录 shim 暴露可单独启用的子插件。不要启用根 `agent-steroids`，只启用需要的子插件。
-
-```bash
-hermes plugins install kanlac/agent-steroids --no-enable
-hermes plugins enable agent-steroids/steroids
-```
-
-按需启用：
-
-```bash
-hermes plugins enable agent-steroids/chrome      # 可选：共享有头 Chrome/CDP provider skill
-hermes plugins enable agent-steroids/dispatch    # 可选：跨 agent 派发与模型/effort 选择
-```
-
-验证：
-
-```bash
-hermes plugins list --plain --no-bundled
-```
-
-Hermes 加载 skill 时使用插件命名空间，而不是 enable key：
-
-```bash
-hermes -s steroids:paper-download
-hermes -s dispatch:dispatch
-hermes -s chrome:cdp-chrome
-```
-
-启用/禁用插件后，启动新 session 或重启 gateway 才会生效。
-
 ## 安装后检查
 
 安装 agent 应确认：
 
 1. 目标 runtime 的插件列表里能看到刚安装的插件。
-2. 只安装了该 runtime 支持的插件；尤其是 Codex/Hermes 中不应出现 `telegram`。
-3. 如安装 `chrome`，Claude Code / Codex 会随插件加载 `cdp-chrome` MCP launcher；继续根据 `plugins/chrome/skills/cdp-chrome/SKILL.md` 在 steroids 配置文件（macOS/Linux: `~/.config/steroids.json`；Windows: `%APPDATA%\steroids.json`）设置当前 OS 用户专属的 `cdp-chrome.port/profile_dir`，运行 `plugins/chrome/skills/cdp-chrome/scripts/doctor.sh` 验证，再用 `start.sh` 启动。Hermes 支持 MCP，但需按该 skill 在 `mcp_servers` 中手动注册。
+2. 只安装了该 runtime 支持的插件；尤其是 Codex 中不应出现 `telegram`。
+3. 如安装 `chrome`，Claude Code / Codex 会随插件加载 `cdp-chrome` MCP launcher；继续根据 `plugins/chrome/skills/cdp-chrome/SKILL.md` 在 steroids 配置文件（macOS/Linux: `~/.config/steroids.json`；Windows: `%APPDATA%\steroids.json`）设置当前 OS 用户专属的 `cdp-chrome.port/profile_dir`，运行 `plugins/chrome/skills/cdp-chrome/scripts/doctor.sh` 验证，再用 `start.sh` 启动。
 4. 如安装 Claude Code 的 `telegram`，继续根据 `plugins/telegram/skills/telegram-agents/SKILL.md` 完成 Telegram agent 配置。
