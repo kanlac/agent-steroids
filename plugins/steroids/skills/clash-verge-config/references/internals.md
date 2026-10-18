@@ -63,11 +63,11 @@ curl -s -H "Authorization: Bearer $SECRET" $BASE/version
 curl -s -H "Authorization: Bearer $SECRET" $BASE/configs          # 当前配置
 curl -s -H "Authorization: Bearer $SECRET" $BASE/connections      # 实时连接：含每条的 rule / rulePayload / chains
 curl -s -H "Authorization: Bearer $SECRET" $BASE/proxies          # 节点/策略组
-# 热重载（按文件路径，path 须内核可读的绝对路径）：
+# 热重载（仅限独立临时 mihomo，勿对 Verge 管理的内核用；path 须内核可读的绝对路径）：
 curl -s -X PUT -H "Authorization: Bearer $SECRET" "$BASE/configs?force=true" -d '{"path":"/abs/clash-verge.yaml"}'
 ```
 
-- `PUT /configs` 重载的是内核「当前配置文件」，不跑 Verge 的 `enhance()`。要套用扩展脚本改动仍需先重新生成（重启），或自己生成完整配置后用 `{"payload":"<整段 yaml>"}` 灌入。
+- `PUT /configs` 重载的是内核「当前配置文件」，不跑 Verge 的 `enhance()`。要套用扩展脚本改动只能让 Verge 重新生成（GUI 保存该扩展或重启应用）；不要自己渲染整份配置用 `payload` 或 `path` 灌入 Verge 管理的内核——会与 Verge 内存状态脱节，实测导致 GUI 空白直至重启。`PUT /configs` 只用于独立的临时 mihomo。
 - 内核可能同时被 Verge 用 unix socket 控制（`-ext-ctl-unix`），那条不影响 TCP 控制器。
 
 ## 5. external-ui 自托管 Web 面板

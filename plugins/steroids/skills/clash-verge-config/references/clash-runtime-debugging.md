@@ -117,7 +117,7 @@ provider 刷新只更新 provider 数据，不会重新执行 Clash Verge 的 `e
 
 ## 生成、加载与生效不是一回事
 
-Clash Verge 的扩展 Script/Merge 只有在 `enhance()` 重新执行时才进入最终配置。重启应用通常会重新生成；mihomo `PUT /configs` 只重载给定 YAML，不会替 Clash Verge 执行扩展脚本。
+Clash Verge 的扩展 Script/Merge 只有在 `enhance()` 重新执行时才进入最终配置。重启应用通常会重新生成；mihomo `PUT /configs` 只重载给定 YAML，不会替 Clash Verge 执行扩展脚本；也不要用它把自行渲染的配置推给 Verge 管理的内核，见 `internals.md`。
 
 因此每次验证都记录三个时间点：
 

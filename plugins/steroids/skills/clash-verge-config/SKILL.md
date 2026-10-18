@@ -21,6 +21,8 @@ Clash Verge Rev 是个 Tauri GUI，底层跑 mihomo 内核。它的配置系统�
 
 这意味着：**保留字段，扩展脚本/扩展配置改不动**，写进去也会被抹掉，不是 bug。要改它们，写进 Clash Verge 自己的 clash 配置文件（应用数据目录里那个带 `#` 头注释的）。而 `proxies`、`proxy-groups`、`rules`、大多数 `dns`/`tun`/`sniffer` 才适合由扩展脚本控制。改了没生效时，先判断是改错层、没触发重新生成，还是规则已生效但被更早规则盖过。
 
+全局与 profile 级增强也有先后（2.5.x 源码）：profile 级 Rules/Proxies/Groups 增强最先作用于订阅，然后才是全局 Merge/Script，最后是 profile 级 Merge/Script。所以「只在某个订阅生效、且要压过全局前置规则」的叠加写在该 profile 的扩展脚本里；写在 profile 级 Rules 增强里的 prepend 会被全局 Script 再 prepend 的规则压住。
+
 内部细节、保留字段清单、配置文件角色与位置、external controller / external-ui 见 `references/internals.md`。
 
 ## 心智模型二：profiles.yaml 与「显示名 / 到期」从哪来
@@ -47,7 +49,7 @@ Clash Verge Rev 是个 Tauri GUI，底层跑 mihomo 内核。它的配置系统�
 
 模板、生成 YAML、内核静态检查、运行态存在、真实连接命中是四层不同证据；最终结论以真实连接的 rule/policy/chains 为准。
 
-把当前 Clash Verge 进程视为可能承载控制面的基础设施。节点/provider 内容变化优先通过 Unix socket 热刷新，不为刷新节点重启应用；扩展 Script/Merge 需要重新执行 `enhance()` 时，先静态生成并验收，应用级重启留到不会切断当前会话的维护窗口。节点真实流量用独立工作目录、端口和 controller 的临时 mihomo 验收，不停止、不替换当前内核。
+把当前 Clash Verge 进程视为可能承载控制面的基础设施。节点/provider 内容变化优先通过 Unix socket 热刷新，不为刷新节点重启应用；扩展 Script/Merge 需要重新执行 `enhance()` 时，先静态生成并验收，再让 Clash Verge 自己重新生成：用户在 GUI 保存该扩展，或在不会切断当前会话的维护窗口重启应用。不要把自行渲染的整份配置经 `PUT /configs` 直推内核来「免重启生效」：路由会变，但 Verge 内存里的运行时配置与内核脱节，实测之后 GUI 窗口空白，推回原配置也不恢复，只能重启应用。节点真实流量用独立工作目录、端口和 controller 的临时 mihomo 验收，不停止、不替换当前内核。
 
 ## DNS 泄漏与分流规则
 
