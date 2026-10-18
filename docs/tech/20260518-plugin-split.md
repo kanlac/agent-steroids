@@ -64,6 +64,8 @@ JS-rendered article pages need a headed browser, but `clipping` should not force
 
 ### `guard-payload-size` lives in `telegram`
 
+> 2026-10-17 更新：该 hook 已移除。Claude Code 2.1.212 起客户端自行处理多图请求超限、2.1.257 起对图片按单请求体积上限截断，API 上限也已升到 32MB，不再需要这个临时告警。
+
 The guard hook is especially useful for long-running Claude Code / Telegram / computer-use sessions, and the user requested not to keep it as a separate plugin. It is configured through `plugins/telegram/hooks/hooks.json` together with Telegram time awareness.
 
 ## Installation Manual

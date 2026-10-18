@@ -17,7 +17,7 @@
     {
       "name": "telegram",
       "source": "./plugins/telegram",
-      "description": "Telegram agent operations, notification MCP, and payload guard hook"
+      "description": "Telegram agent operations, notification MCP, and time awareness hook"
     },
     {
       "name": "chrome",

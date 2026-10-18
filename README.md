@@ -4,7 +4,7 @@ Claude Code / Codex 通用增强插件集合。这个仓库同时兼容两种 ag
 
 - `steroids`：主体 Skills 和通用 workflow。
 - `dispatch`：跨 agent 派发，统一模型 / effort 选择、任务交接和结果验收。
-- `telegram`：Claude Code 专用的 Telegram agent 运维、通知 MCP、Telegram hook，并包含 `guard-payload-size`。
+- `telegram`：Claude Code 专用的 Telegram agent 运维、通知 MCP、Telegram hook。
 - `chrome`：可选的每 OS 用户一个进程的共享有头 Chrome provider；Claude Code / Codex 安装后随插件提供 `cdp-chrome` MCP 启动器。
 - `taskdag`：仓库原生的 ADR + Task DAG 数据面——结构化任务/决策文档、vendor 进项目的零依赖生命周期 CLI、生成式 DAG 看板；派发本身交给 `dispatch`。
 
@@ -22,7 +22,7 @@ Claude Code / Codex 通用增强插件集合。这个仓库同时兼容两种 ag
 |---|---|---|---|---|
 | [`steroids`](plugins/steroids/) | Claude + Codex | 主体 Skills：文档处理、书籍阅读、PDF 导出、网页剪藏、论文下载、Agent 记忆管理（诊断/整理/吸收），以及 `/song` | 无 | `paper-download` / `clipping` 的登录态或 CAPTCHA 场景需要 `headed-browser` |
 | [`dispatch`](plugins/dispatch/) | Claude + Codex | `dispatch` skill：按任务特长、复杂度和成本选择模型，统一 effort 标尺，以及 sub-agent / 外部模型 CLI 交接与结果验收 | 无 | 映射到当前 runtime 或本机可用的 agent CLI |
-| [`telegram`](plugins/telegram/) | Claude Code only | `telegram-agents`、`/tg-*`、`/check-release`、`telegram-notify` MCP、Telegram time hook、`guard-payload-size` hook | Claude Code + official Telegram plugin；心跳 workflow 需 Telethon/tmux/launchd | 无 |
+| [`telegram`](plugins/telegram/) | Claude Code only | `telegram-agents`、`/tg-*`、`/check-release`、`telegram-notify` MCP、Telegram time hook | Claude Code + official Telegram plugin；心跳 workflow 需 Telethon/tmux/launchd | 无 |
 | [`chrome`](plugins/chrome/) | Claude + Codex | `cdp-chrome` 每 OS 用户一个进程的共享有头 Chrome provider；Claude/Codex 内置 `cdp-chrome` MCP 启动器，会读取当前用户 steroids 配置 | Chrome、`npx`、Node ≥ 22（`page.mjs` 用内置 WebSocket） | 提供 `headed-browser`，可被 Codex Chrome plugin / 原生 browser-use 替代 |
 | [`taskdag`](plugins/taskdag/) | Claude + Codex | `taskdag` skill：ADR + Task DAG 数据面，含 vendor 进项目的 `taskdag.py`（validate/query/transition/board）与 lane 隔离参考 | Python 3（仅标准库） | 派发能力（`dispatch` skill 或等价物），非硬依赖 |
 
@@ -58,7 +58,6 @@ Claude Code / Codex 通用增强插件集合。这个仓库同时兼容两种 ag
 
 | Hook | Plugin | 说明 |
 |------|--------|------|
-| [`guard-payload-size`](plugins/telegram/hooks/guard-payload-size.sh) | `telegram` | 会话 payload 接近 20MB API 限制时告警，提示执行 `/compact`。临时方案，待官方修复后可移除。 |
 | Telegram time awareness | `telegram` | 在 Telegram reply tool call 前注入当前本地时间，避免主动推送/回复缺少时间上下文。 |
 
 ## MCP Servers
@@ -86,7 +85,7 @@ agent-steroids/
   plugins/
     steroids/            # 主体 skills 和通用 commands
     dispatch/           # 跨 agent 派发 skill（Claude + Codex）
-    telegram/           # Telegram skill/commands/MCP/hooks（含 guard-payload-size）
+    telegram/           # Telegram skill/commands/MCP/hooks
     chrome/             # cdp-chrome provider（含 Claude/Codex MCP launcher 配置）
     taskdag/            # ADR + Task DAG 数据面（Claude + Codex）
   docs/

@@ -32,7 +32,7 @@ claude plugin install steroids@agent-steroids
 ```bash
 claude plugin install chrome@agent-steroids      # 可选：共享有头 Chrome/CDP provider
 claude plugin install dispatch@agent-steroids    # 可选：跨 agent 派发与模型/effort 选择
-claude plugin install telegram@agent-steroids    # Claude Code 专用：Telegram agent 运维 + payload guard
+claude plugin install telegram@agent-steroids    # Claude Code 专用：Telegram agent 运维
 claude plugin install taskdag@agent-steroids     # 可选：ADR + Task DAG 控制面
 ```
 
