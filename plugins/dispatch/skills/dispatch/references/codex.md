@@ -27,8 +27,7 @@ codex exec --model "$DISPATCH_MODEL_ID" \
 | `-c model_reasoning_effort=...` | 在支持该配置键的版本中指定推理强度 |
 | `--skip-git-repo-check` | 当前版本要求 git 仓库、而任务目录不是仓库时使用 |
 
-若 CLI 会继续读取 stdin，末尾加 `< /dev/null`，避免非交互任务等待输入。宿主环境可能通过 alias、wrapper、
-配置文件或托管策略注入审批与沙箱规则；沿用其正式入口，不为绕开限制而改用底层二进制。
+若 CLI 会继续读取 stdin，末尾加 `< /dev/null`，避免非交互任务等待输入。
 
 ## 权限与网络
 
