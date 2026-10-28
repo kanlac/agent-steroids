@@ -5,6 +5,7 @@ description: Send work to subagents or another model's CLI (Codex, OpenCode) and
 
 ## 像派给同事，不像调函数
 
+- **每次委派都主动选择并显式指定模型和推理强度**，包括原生子 agent、外部 CLI、续跑和评审；不要留空，否则会继承主会话、全局配置或 CLI 默认值。用户已指定的选择优先，否则按任务与验收难度选。
 - **已知会派出 4 个及以上 agent，或几条线要跨多轮并行时，必读 `references/batch-orchestration.md`**。
 - **cwd 就是仓库，给入口和关注点，让它自己读**。不贴源码、不预划只读范围。
 - **你知道而它推不出的，写进任务正文**：已修过什么、哪些不能动、怎样算完成、用什么命令验。

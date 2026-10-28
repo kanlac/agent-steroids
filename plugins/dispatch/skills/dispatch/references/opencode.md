@@ -42,13 +42,16 @@ OpenCode 通常把推理档位称为 **variant**。先检查目标模型的有�
 ```bash
 DISPATCH_PROVIDER_ID="replace-with-provider-id"
 DISPATCH_MODEL_ID="replace-with-model-id"
+DISPATCH_VARIANT="replace-with-a-supported-variant"
 
 # 探活
 opencode run --pure -m "$DISPATCH_PROVIDER_ID/$DISPATCH_MODEL_ID" \
+  --variant "$DISPATCH_VARIANT" \
   "只回答两个字：收到" < /dev/null
 
 # 正式任务；按当前 --help 决定是否使用 --auto
 opencode run --pure -m "$DISPATCH_PROVIDER_ID/$DISPATCH_MODEL_ID" --format json \
+  --variant "$DISPATCH_VARIANT" \
   "$(cat prompt.txt)" < /dev/null > events.jsonl 2> stderr.txt
 ```
 
@@ -72,6 +75,7 @@ opencode run --pure -m "$DISPATCH_PROVIDER_ID/$DISPATCH_MODEL_ID" --format json 
 
 ```bash
 opencode run --pure --auto -m "$DISPATCH_PROVIDER_ID/$DISPATCH_MODEL_ID" --format json \
+  --variant "$DISPATCH_VARIANT" \
   -s "$SESSION_ID" "追加指令" < /dev/null > events2.jsonl 2> stderr2.txt
 ```
 

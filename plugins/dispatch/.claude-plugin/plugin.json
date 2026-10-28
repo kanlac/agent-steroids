@@ -1,6 +1,6 @@
 {
   "name": "dispatch",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Cross-agent dispatch guidance for model selection, reasoning effort, task handoff, and result verification",
   "author": {
     "name": "Kan"

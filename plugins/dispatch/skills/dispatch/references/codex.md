@@ -5,16 +5,21 @@
 Codex CLI 的模型、参数、工具和权限策略会随版本、账号与宿主环境变化。派发前查看当前 `codex --version`、
 `codex exec --help` 和运行时提供的模型列表或工具 schema，不把示例中的模型名、沙箱或审批参数当成通用默认值。
 
-下面只展示稳定的调用形状；先把模型变量替换成当前环境实际可用的值：
+原生子 agent 同样要按当前工具 schema 显式传模型和推理强度；完整继承模式若不允许覆盖，就用独立上下文加交接摘要。不要让主会话的高成本配置意外扩散到全部 worker。
+
+下面只展示调用形状；先把模型和强度变量替换成当前环境实际可用、适合本轮任务的值：
 
 ```bash
 DISPATCH_MODEL_ID="replace-with-an-available-model"
+DISPATCH_EFFORT="replace-with-a-supported-effort"
 
 # 探活
-codex exec --model "$DISPATCH_MODEL_ID" "只回答两个字：收到" < /dev/null
+codex exec --model "$DISPATCH_MODEL_ID" -c "model_reasoning_effort=$DISPATCH_EFFORT" \
+  "只回答两个字：收到" < /dev/null
 
 # 正式任务；仅使用当前版本 --help 确认存在的参数
 codex exec --model "$DISPATCH_MODEL_ID" \
+  -c "model_reasoning_effort=$DISPATCH_EFFORT" \
   -o result.md --json "$(cat prompt.txt)" < /dev/null > events.jsonl
 ```
 
