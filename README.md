@@ -41,7 +41,7 @@ Claude Code / Codex 通用增强插件集合。这个仓库同时兼容两种 ag
 | [`skill-console`](plugins/steroids/skills/skill-console/SKILL.md) | `steroids` | 生成本地 Skill 清单控制台，审计 token 用量、description token、重复项路径、Skill 内容预览，并导出选中 Skill 的 `{name, path}` JSON。 |
 | [`hippocampus`](plugins/steroids/skills/hippocampus/SKILL.md) | `steroids` | 管理 Agent 记忆与上下文：①诊断与治疗——扫描全局/项目指令、auto-memory、当前工具定义、skills 与文档，按体量/可用性/新鲜度/矛盾四维打分，生成「记忆精神科确诊书」和逐项确认的 ReviewTable；②吸收新知识——把教训路由到唯一归属并重构，而非追加笔记。内置最短充分表达、渐进披露、工具描述去噪和 auto-memory 中性原则。 |
 | [`telegram-agents`](plugins/telegram/skills/telegram-agents/SKILL.md) | `telegram` | Telegram agent 配置与管理。包括 tmux 会话、Telethon 调度器、launchd 心跳定时任务。 |
-| [`cdp-chrome`](plugins/chrome/skills/cdp-chrome/SKILL.md) | `chrome` | 可选的共享有头 Chrome provider。适合需要持久登录态、用户手动 CAPTCHA、反 bot 页面或 live site inspection 的环境；自带 `page.mjs` 按编号操作页面（编号元素表 + 真实输入事件 + 批量动作 + 执行日志），可选用 TypeSafe Jev 做多步子任务的快速决策；明确独立 CDP profile 与日常 Chrome 的验证边界。 |
+| [`cdp-chrome`](plugins/chrome/skills/cdp-chrome/SKILL.md) | `chrome` | 可选的共享有头 Chrome provider。适合需要持久登录态、用户手动 CAPTCHA、反 bot 页面或 live site inspection 的环境；自带 `page.mjs` 按编号操作页面（编号元素表 + 真实输入事件 + 批量动作 + 执行日志），可选用 TypeSafe Jev 做多步子任务的快速决策；可选的远程 MCP 入口（`remote-mcp.mjs`）供 Claude / ChatGPT 网页端连接器经 Cloudflare Access + Tunnel 使用；明确独立 CDP profile 与日常 Chrome 的验证边界。 |
 | [`taskdag`](plugins/taskdag/skills/taskdag/SKILL.md) | `taskdag` | 仓库原生的 ADR + Task DAG 数据面：任务标 priority/depends_on/lane，零依赖 `taskdag.py` 管 schema 校验、runnable 推导、状态机与单文件 DAG 看板（可发布到仓库外路径）；含初始化/迁移、lane 到 worktree 隔离两份参考。选模型与派发不在本 skill，交给 `dispatch`。 |
 
 ## Commands（Claude Code）

@@ -30,6 +30,7 @@ steroids config file: macOS/Linux `~/.config/steroids.json`, Windows `%APPDATA%\
 | `log_dir` | `~/.config/cdp-chrome/logs` (Windows `%APPDATA%\cdp-chrome\logs`) | `page.mjs` execution log; `false` disables |
 | `typesafe_api_key` | unset | TypeSafe key for `page.mjs run`; the `TYPESAFE_API_KEY` env var takes precedence and is the better place |
 | `jev_model` | `jev-latest` | Pin a versioned Jev model once thresholds are tuned against it |
+| `remote_mcp_socket` | `~/.config/cdp-chrome/remote/mcp.sock` | Unix socket of the optional remote MCP entry |
 
 Do not configure a shared download directory.
 
@@ -41,6 +42,8 @@ Do not configure a shared download directory.
 4. Log in to the needed sites by hand; sessions persist.
 
 MCP: installing the `chrome` plugin registers the `cdp-chrome` server through the plugin-local `.mcp.json`, whose launcher reads the config, validates the listener, and runs `chrome-devtools-mcp --browserUrl http://127.0.0.1:<port>`. Do not add a duplicate project-level `.mcp.json` for the same server.
+
+Remote MCP (optional): `scripts/remote-mcp.mjs` exposes the same `page.mjs` commands as an HTTP MCP server on a unix socket, for Claude / ChatGPT web connectors behind Cloudflare Access + Tunnel. It has no auth of its own; see `references/remote-mcp.md` before exposing it.
 
 ## Target binding
 
