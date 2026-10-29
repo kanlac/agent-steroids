@@ -1,6 +1,6 @@
 # cdp-chrome 远程 MCP 接入：设计文档
 
-> 状态：实施中。服务端（`scripts/remote-mcp.mjs`）、launchd 安装脚本、doctor 检查已完成；Cloudflare Access 与隧道接入待完成
+> 状态：已部署，待在 Claude / ChatGPT 中添加连接器做端到端验证。配置步骤见 `plugins/chrome/skills/cdp-chrome/references/remote-mcp.md`
 > 日期：2026-10-30
 > 关联：[CDP Chrome 统一架构](./20260407-cdp-chrome-architecture.md)、[MCP 进程放大问题](./20260823-cdp-chrome-mcp-process-fanout.md)、[共享浏览器接入层需求](./20260928-cdp-chrome-shared-daemon-requirements.md)
 
@@ -79,7 +79,9 @@ cloudflared（现有隧道新增一条 ingress，源站再验一次 Access JWT�
 
 - 为该主机名建一个**自托管应用**，在高级设置里打开 **Managed OAuth**。Access 因此充当 OAuth 授权服务器：提供 `/.well-known/oauth-authorization-server` 发现端点、动态客户端注册（DCR），并对未认证请求返回 401。
 - 访问策略只放行本人身份。
-- 「允许的回调地址」加入 Claude 的 `https://claude.ai/api/mcp/auth_callback`，以及 ChatGPT 接入时提示的回调地址。
+- 「允许的回调地址」加入 Claude 的 `https://claude.ai/api/mcp/auth_callback` 和 `https://chatgpt.com/*`（ChatGPT 实际用 `https://chatgpt.com/connector_platform_oauth_redirect`）。不放行 localhost / loopback。
+- 登录方式用 Access 自带的一次性验证码（One-time PIN）身份提供方。
+- Managed OAuth 的 access token 有效期 15 分钟，refresh 有效期 720 小时，客户端约一个月需重新登录一次。
 - 远程 MCP 服务自身不做 OAuth，这正是 Managed OAuth 要求的形态。
 
 ### 4.4 客户端
@@ -142,11 +144,20 @@ cloudflared（现有隧道新增一条 ingress，源站再验一次 Access JWT�
 - 4 个并发 `open` 全部记入清单，本次未复现竞态（但读改写仍非原子）。
 - 第二个实例启动被拒绝；`kill -9` 后残留的 socket 在重启时被自动清理。
 
+### 实测（2026-10-30，经公网）
+
+- 未认证 `POST /mcp` 返回 401，`WWW-Authenticate` 带 `resource_metadata`，指向 `/.well-known/cloudflare-access-protected-resource/mcp`；其中 `resource` 等于 `https://<host>/mcp`，满足 Claude 的「完全一致」要求。
+- 授权服务器元数据（`/.well-known/oauth-authorization-server`）提供 authorization、token、registration 端点，支持 S256 PKCE 和 `none` 认证方式（公开客户端）；不支持 CIMD，Claude 会走 DCR。
+- DCR 接受允许列表内的回调地址，其他域名返回 `invalid_client_metadata`。
+- 携带伪造的 `Cf-Access-Jwt-Assertion` 直接请求，被 Access / cloudflared 拒绝（401）。
+- 带 `originRequest.access` 的 unix socket 源站规则能通过 `cloudflared tunnel ingress validate`，未认证路径行为正确；认证后的完整路径待连接器接入时验证。
+- Cloudflare 侧全程用 `cf` CLI（OAuth 登录）完成：创建 Zero Trust 组织、One-time PIN 身份提供方、Access 应用（`--body` 传原始 JSON）。DNS 用 `cloudflared tunnel route dns`。
+
 ## 9. 待验证与开放问题
 
 1. Claude 和 ChatGPT 的 OAuth 客户端是否都满足 Managed OAuth 要求的 RFC 8707（Resource Indicators）。
-2. ChatGPT 的回调地址；以及 Plus/Pro 套餐下 Developer Mode 能否使用写操作（各资料说法不一致）。
-3. cloudflared 的 `originRequest.access` 校验与 unix socket 源站、Managed OAuth 能否同时工作。
+2. Plus/Pro 套餐下 ChatGPT Developer Mode 能否使用写操作（各资料说法不一致）。
+3. 认证后，Access 转发给源站的 JWT 能否通过 cloudflared 的 `originRequest.access` 校验（未认证路径已验证）。
 4. 两端工具调用的超时上限。`run` 可能持续 10–30 秒，若超时，远程是否只暴露单步工具。
 5. 截图作为 image content 的大小上限，是否需要降低质量或缩小视口。
 6. 清单读改写的竞态（第 5 节）：远程会话可能并发调用工具，是否改成原子写入（加锁或 rename）。
@@ -155,8 +166,8 @@ cloudflared（现有隧道新增一条 ingress，源站再验一次 Access JWT�
 ## 10. 实施步骤
 
 1. 远程 MCP 服务：包装 `page.mjs`，监听 unix socket，launchd 常驻。（已完成）
-2. cloudflared：新增 ingress（unix socket 源站 + Access JWT 校验），建 DNS 记录，重启隧道。
-3. Cloudflare Access：建自托管应用，打开 Managed OAuth，配置单一身份策略和回调地址。
+2. cloudflared：新增 ingress（unix socket 源站 + Access JWT 校验），建 DNS 记录，重启隧道。（已完成）
+3. Cloudflare Access：建自托管应用，打开 Managed OAuth，配置单一身份策略和回调地址。（已完成）
 4. 分别在 Claude 和 ChatGPT 添加连接器，配置工具确认策略。
 5. `doctor.sh` 增加远程服务检查：socket 权限、一次只读调用。（已完成）
 
