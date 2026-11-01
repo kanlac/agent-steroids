@@ -43,6 +43,10 @@ description: Send work to subagents or another model's CLI (Codex, OpenCode) and
   两者都没有，看事件流最后一步的结束原因，`length` 是单步输出被推理吃光。
 - **验产物不验转述**。报告会说反提交归属、会声称改了而文件没动；数字要连着产生它的命令看。
 
+## 派活工具 `scripts/dispatch.py`
+
+纯标准库，派 Codex / Command Code（`cmd`）/ Antigravity（`agy`）一条命令搞定：事件流、最终回复、会话号、退出码落进任务目录，模型中途断线或「at capacity」自动续跑，每次开始与结束记一行到 runs 文件，带 token 与费用。`run` 派活（用工具的后台机制跑，等它退出），`status` 打巡检表（`--json` 出机器可读版）。目录与价格表由环境变量 `DISPATCH_ROOT`、`DISPATCH_RUNS` 和同目录 `prices.json` 决定；参数以 `--help` 为准。
+
 ## 各 CLI 的细节
 
 参数和数值都带日期，以当下 `--help` 为准。
