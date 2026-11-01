@@ -25,7 +25,6 @@ import shutil
 import signal
 import subprocess
 import sys
-import threading
 import time
 import unicodedata
 import uuid
@@ -641,7 +640,6 @@ class FileReader:
 
 
 _CACHE = {}
-_CACHE_LOCK = threading.Lock()
 
 
 def read_event_file(path: Path, adapter: Adapter, *, mode="full", cache=None):
@@ -1238,10 +1236,9 @@ def command_run(args):
 def collect_rows(runs_file=None, root=None):
     prices = load_prices()
     runs = read_runs(runs_file or RUNS_FILE)
-    with _CACHE_LOCK:
-        rows = [row_for_run(r, prices, cache=_CACHE) for r in runs]
-        exclude = {(norm_path(r.get("task_dir") or ""), r.get("agent")) for r in runs if r.get("task_dir")}
-        legacy = scan_legacy(root, exclude_pairs=exclude, cache=_CACHE, prices=prices)
+    rows = [row_for_run(r, prices, cache=_CACHE) for r in runs]
+    exclude = {(norm_path(r.get("task_dir") or ""), r.get("agent")) for r in runs if r.get("task_dir")}
+    legacy = scan_legacy(root, exclude_pairs=exclude, cache=_CACHE, prices=prices)
     return rows, legacy, prices
 
 
