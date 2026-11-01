@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""dispatch.py — one dispatcher + live board for coding-agent CLIs.
+"""dispatch.py — one dispatcher + status table for coding-agent CLIs.
 
-Standard library only.  Three subcommands:
+Standard library only.  Two subcommands:
 
   dispatch.py run    --name ... --agent codex|agy|cmd ...
   dispatch.py status
-  dispatch.py board   [--port 8765]
 
 Each run writes its event stream, final reply, session id and exit code into
 the task directory, and one line per start / end into the runs file
@@ -30,14 +29,12 @@ import threading
 import time
 import unicodedata
 import uuid
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 APP_DIR = Path(__file__).resolve().parent
 DEFAULT_ROOT = Path(os.environ.get("DISPATCH_ROOT", str(Path.home() / ".local/state/dispatch")))
 RUNS_FILE = Path(os.environ.get("DISPATCH_RUNS", str(DEFAULT_ROOT / "runs.jsonl")))
 PRICES_FILE = Path(os.environ.get("DISPATCH_PRICES", str(APP_DIR / "prices.json")))
-REFRESH_SECONDS = 10
 LEGACY_STALE_SECONDS = 180
 
 # ---------------------------------------------------------------------------
@@ -954,53 +951,6 @@ def scan_legacy(root=None, *, exclude_pairs=None, cache=None, prices=None):
 
 
 # ---------------------------------------------------------------------------
-# board data
-# ---------------------------------------------------------------------------
-
-def build_data(root=None, runs_file=None):
-    prices = load_prices()
-    runs = read_runs(runs_file or RUNS_FILE)
-    with _CACHE_LOCK:
-        rows = [row_for_run(r, prices, cache=_CACHE) for r in runs]
-        exclude = {(norm_path(r.get("task_dir") or ""), r.get("agent")) for r in runs if r.get("task_dir")}
-        legacy = scan_legacy(root, exclude_pairs=exclude, cache=_CACHE, prices=prices)
-
-    all_rows = rows + legacy
-    running = sum(1 for r in all_rows if r["status"] in ("running", "starting"))
-    by_agent = {}
-    for r in all_rows:
-        a = r.get("agent") or "other"
-        slot = by_agent.setdefault(a, {"tokens": 0, "runs": 0, "running": 0})
-        slot["tokens"] += int(r["usage"].get("total") or 0)
-        slot["runs"] += 1
-        if r["status"] in ("running", "starting"):
-            slot["running"] += 1
-
-    total_tokens = sum(int(r["usage"].get("total") or 0) for r in all_rows)
-    total_elapsed = sum(float(r.get("elapsed_seconds") or 0) for r in all_rows)
-    costs = [r["cost_usd"] for r in all_rows if r.get("cost_usd") is not None]
-    return {
-        "generated_at": now_iso(),
-        "root": str(root or DEFAULT_ROOT),
-        "runs_file": str(runs_file or RUNS_FILE),
-        "refresh_seconds": REFRESH_SECONDS,
-        "runs": rows,
-        "legacy": legacy,
-        "summary": {
-            "running": running,
-            "run_count": len(rows),
-            "legacy_count": len(legacy),
-            "total_tokens": total_tokens,
-            "total_elapsed_seconds": total_elapsed,
-            "total_cost_usd": sum(costs) if costs else None,
-            "priced_rows": len(costs),
-            "by_agent": by_agent,
-            "prices_loaded": bool(prices),
-        },
-    }
-
-
-# ---------------------------------------------------------------------------
 # run
 # ---------------------------------------------------------------------------
 
@@ -1348,331 +1298,13 @@ def command_status(args):
 
 
 # ---------------------------------------------------------------------------
-# board
-# ---------------------------------------------------------------------------
-
-HTML_PAGE = r"""<!doctype html>
-<html lang="zh-CN">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dispatch 看板</title>
-<style>
-  :root {
-    --bg: #0b0e14; --panel: #121722; --panel2: #171e2c; --line: #232c3d;
-    --text: #e6edf7; --muted: #8b98ad; --dim: #5d6b82;
-    --codex: #7c9cff; --agy: #4fd1a5; --cmd: #f2b35c; --other: #b58cff;
-    --ok: #4fd1a5; --fail: #ff6b7a; --warn: #f2b35c; --run: #7c9cff;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); }
-  body {
-    font-family: ui-sans-serif, -apple-system, "SF Pro Text", "PingFang SC", "Hiragino Sans GB", sans-serif;
-    font-size: 14px; line-height: 1.45;
-  }
-  .wrap { max-width: 1480px; margin: 0 auto; padding: 20px 22px 60px; }
-  header { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
-  header h1 { font-size: 20px; letter-spacing: .16em; margin: 0; font-weight: 700; }
-  header h1 span { color: var(--codex); }
-  .sub { color: var(--muted); font-size: 12px; }
-  .live { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 0 rgba(79,209,165,.6); animation: pulse 2s infinite; }
-  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(79,209,165,.5); } 70% { box-shadow: 0 0 0 8px rgba(79,209,165,0); } 100% { box-shadow: 0 0 0 0 rgba(79,209,165,0); } }
-  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 16px; }
-  .stat { background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
-  .stat .k { color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
-  .stat .v { font-size: 26px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
-  .stat .v small { font-size: 12px; color: var(--muted); font-weight: 400; margin-left: 6px; }
-  .charts { display: grid; grid-template-columns: minmax(300px, 1fr) minmax(360px, 1.5fr); gap: 12px; margin-bottom: 16px; }
-  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
-  .panel h2 { margin: 0 0 12px; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
-  .donut-wrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
-  .donut-wrap svg { flex: 0 0 190px; }
-  .legend { display: flex; flex-direction: column; gap: 9px; min-width: 140px; }
-  .legend .item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
-  .swatch { width: 9px; height: 9px; border-radius: 2px; }
-  .legend .pct { color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; }
-  .bars { display: flex; flex-direction: column; gap: 8px; }
-  .bar-row { display: grid; grid-template-columns: minmax(110px, 190px) 1fr 64px; align-items: center; gap: 10px; font-size: 12px; }
-  .bar-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
-  .bar-label .fam { color: var(--dim); font-size: 10px; margin-left: 5px; text-transform: uppercase; }
-  .bar-track { height: 10px; background: #0a0d13; border-radius: 6px; overflow: hidden; }
-  .bar-fill { height: 100%; border-radius: 6px; min-width: 2px; }
-  .bar-val { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .table-wrap { padding: 0; overflow: hidden; }
-  .panel-head { display: flex; align-items: baseline; justify-content: space-between; padding: 16px 16px 10px; }
-  .panel-head h2 { margin: 0; }
-  .scroll { overflow: auto; max-height: 62vh; }
-  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-  th { position: sticky; top: 0; z-index: 2; background: #0f141d; color: var(--muted); text-align: left; font-weight: 600; font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; padding: 9px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-  td { padding: 9px 10px; border-bottom: 1px solid #1a2231; vertical-align: middle; white-space: nowrap; }
-  tr:hover td { background: #141b28; }
-  .name { font-weight: 600; }
-  .alias { color: var(--muted); }
-  .agent { font-weight: 700; letter-spacing: .04em; font-size: 11px; }
-  .a-codex { color: var(--codex); } .a-agy { color: var(--agy); } .a-cmd { color: var(--cmd); } .a-other { color: var(--other); }
-  .status { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; border: 1px solid transparent; }
-  .st-ok { color: var(--ok); background: rgba(79,209,165,.1); border-color: rgba(79,209,165,.25); }
-  .st-failed, .st-killed { color: var(--fail); background: rgba(255,107,122,.1); border-color: rgba(255,107,122,.25); }
-  .st-capacity, .st-max_turns, .st-no_result { color: var(--warn); background: rgba(242,179,92,.1); border-color: rgba(242,179,92,.25); }
-  .st-running, .st-starting { color: var(--run); background: rgba(124,156,255,.12); border-color: rgba(124,156,255,.3); }
-  .st-running::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--run); animation: pulse 1.4s infinite; }
-  .mono { font-variant-numeric: tabular-nums; }
-  .muted { color: var(--muted); }
-  .badge { display: inline-block; margin-left: 6px; padding: 1px 5px; border-radius: 4px; background: #1b2434; color: var(--dim); font-size: 9.5px; letter-spacing: .06em; }
-  .tokbar { display: inline-flex; height: 5px; width: 74px; border-radius: 3px; overflow: hidden; background: #0a0d13; vertical-align: middle; margin-left: 7px; }
-  .tokbar i { display: block; height: 100%; }
-  .err { color: var(--fail); padding: 20px; }
-  @media (max-width: 900px) { .charts { grid-template-columns: 1fr; } .scroll { max-height: none; } }
-</style>
-</head>
-<body>
-<div class="wrap">
-  <header>
-    <h1>DISPATCH<span>_</span></h1>
-    <div class="sub" id="root"></div>
-    <div class="live"><span class="dot"></span><span id="stamp">连接中…</span></div>
-  </header>
-
-  <section class="stats" id="stats"></section>
-
-  <section class="charts">
-    <div class="panel">
-      <h2>Agent 家族 token 占比</h2>
-      <div id="donut" class="donut-wrap"></div>
-    </div>
-    <div class="panel">
-      <h2>各 run token</h2>
-      <div id="bars" class="bars"></div>
-    </div>
-  </section>
-
-  <section class="panel table-wrap">
-    <div class="panel-head">
-      <h2>Runs</h2>
-      <span class="sub" id="count"></span>
-    </div>
-    <div class="scroll">
-      <table>
-        <thead><tr>
-          <th>名字</th><th>化名</th><th>Agent</th><th>模型 / 强度</th><th>状态</th>
-          <th>已跑 / 耗时</th><th>最近活动</th><th>Token</th><th>费用</th>
-        </tr></thead>
-        <tbody id="rows"></tbody>
-      </table>
-    </div>
-  </section>
-</div>
-
-<script>
-const COLORS = {codex:'#7c9cff', agy:'#4fd1a5', cmd:'#f2b35c', other:'#b58cff'};
-const STATUS_LABEL = {ok:'ok', failed:'failed', capacity:'capacity', max_turns:'max turns', no_result:'no result', killed:'killed', running:'running', starting:'starting'};
-
-function esc(v) {
-  return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-function color(a) { return COLORS[a] || COLORS.other; }
-function fmtTokens(n) {
-  n = Number(n || 0);
-  if (n >= 1e9) return (n/1e9).toFixed(2) + 'B';
-  if (n >= 1e6) return (n/1e6).toFixed(2) + 'M';
-  if (n >= 1e3) return (n/1e3).toFixed(1) + 'k';
-  return String(Math.round(n));
-}
-function fmtDur(s) {
-  if (s == null) return '—';
-  s = Math.max(0, Math.round(s));
-  if (s < 60) return s + 's';
-  if (s < 3600) return Math.floor(s/60) + 'm' + String(s%60).padStart(2,'0') + 's';
-  if (s < 86400) return Math.floor(s/3600) + 'h' + String(Math.floor((s%3600)/60)).padStart(2,'0') + 'm';
-  return Math.floor(s/86400) + 'd' + Math.floor((s%86400)/3600) + 'h';
-}
-function fmtAgo(s) {
-  if (s == null) return '—';
-  s = Math.max(0, Math.round(s));
-  if (s < 60) return s + 's 前';
-  if (s < 3600) return Math.floor(s/60) + 'm 前';
-  if (s < 86400) return Math.floor(s/3600) + 'h 前';
-  return Math.floor(s/86400) + 'd 前';
-}
-function fmtCost(v) { return (v == null) ? '—' : '$' + Number(v).toFixed(3); }
-function statusClass(s) { return 'st-' + String(s || 'other').replace(/[^a-z_]/g, ''); }
-
-function renderStats(d) {
-  const s = d.summary;
-  const cards = [
-    ['运行中', s.running, s.run_count + ' runs · ' + s.legacy_count + ' legacy'],
-    ['总 token', fmtTokens(s.total_tokens), 'all agents'],
-    ['总耗时', fmtDur(s.total_elapsed_seconds), 'sum of run durations'],
-    ['总费用', fmtCost(s.total_cost_usd), s.priced_rows ? s.priced_rows + ' priced rows' : 'prices.json 为空'],
-  ];
-  document.getElementById('stats').innerHTML = cards.map(([k,v,sub]) =>
-    `<div class="stat"><div class="k">${esc(k)}</div><div class="v">${esc(v)}<small>${esc(sub)}</small></div></div>`
-  ).join('');
-  document.getElementById('root').textContent = d.root;
-  document.getElementById('count').textContent = (d.runs.length + d.legacy.length) + ' 行 · ' + d.generated_at;
-}
-
-function renderDonut(d) {
-  const entries = Object.entries(d.summary.by_agent || {}).filter(([k,v]) => v.tokens > 0);
-  const total = entries.reduce((a,[,v]) => a + v.tokens, 0);
-  const el = document.getElementById('donut');
-  if (!total) { el.innerHTML = '<div class="muted">暂无 token 数据</div>'; return; }
-  const R = 70, C = 2 * Math.PI * R;
-  let offset = 0;
-  const segs = entries.map(([k,v]) => {
-    const len = v.tokens / total * C;
-    const seg = `<circle r="${R}" cx="100" cy="100" fill="none" stroke="${color(k)}" stroke-width="30" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-offset}" transform="rotate(-90 100 100)"></circle>`;
-    offset += len;
-    return seg;
-  }).join('');
-  const legend = entries.sort((a,b)=>b[1].tokens-a[1].tokens).map(([k,v]) => {
-    const pct = (v.tokens / total * 100).toFixed(1);
-    return `<div class="item"><span class="swatch" style="background:${color(k)}"></span><span class="a-${esc(k)}">${esc(k)}</span><span class="pct">${pct}%</span></div>`;
-  }).join('');
-  el.innerHTML = `
-    <svg width="190" height="190" viewBox="0 0 200 200">
-      <circle r="${R}" cx="100" cy="100" fill="none" stroke="#0a0d13" stroke-width="30"></circle>
-      ${segs}
-      <text x="100" y="96" text-anchor="middle" fill="#e6edf7" font-size="19" font-weight="700">${fmtTokens(total)}</text>
-      <text x="100" y="115" text-anchor="middle" fill="#8b98ad" font-size="10">TOTAL TOKENS</text>
-    </svg>
-    <div class="legend">${legend}</div>`;
-}
-
-function renderBars(rows) {
-  const top = [...rows].sort((a,b) => (b.usage.total||0) - (a.usage.total||0)).slice(0, 12);
-  const max = Math.max(1, ...top.map(r => r.usage.total || 0));
-  const el = document.getElementById('bars');
-  if (!top.length) { el.innerHTML = '<div class="muted">暂无 run</div>'; return; }
-  el.innerHTML = top.map(r => {
-    const pct = Math.max(1, (r.usage.total || 0) / max * 100);
-    return `<div class="bar-row">
-      <div class="bar-label" title="${esc(r.name)}">${esc(r.name)}<span class="fam a-${esc(r.agent)}">${esc(r.agent)}</span></div>
-      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color(r.agent)}"></div></div>
-      <div class="bar-val">${fmtTokens(r.usage.total)}</div>
-    </div>`;
-  }).join('');
-}
-
-function tokenMini(u) {
-  const total = u.total || 1;
-  const a = (u.input||0)/total*100, b = (u.cached||0)/total*100, c = (u.output||0)/total*100;
-  return `<span class="tokbar"><i style="width:${a}%;background:#7c9cff"></i><i style="width:${b}%;background:#3d4d70"></i><i style="width:${c}%;background:#4fd1a5"></i></span>`;
-}
-
-function renderTable(d) {
-  const rows = [...d.runs, ...d.legacy];
-  rows.sort((a,b) => {
-    const ar = (a.status === 'running' || a.status === 'starting') ? 0 : 1;
-    const br = (b.status === 'running' || b.status === 'starting') ? 0 : 1;
-    if (ar !== br) return ar - br;
-    return (a.last_activity_ago || 1e12) - (b.last_activity_ago || 1e12);
-  });
-  document.getElementById('rows').innerHTML = rows.map(r => {
-    const model = r.model ? esc(r.model) + (r.effort ? ' / ' + esc(r.effort) : '') : '—';
-    const legacy = r.legacy ? '<span class="badge">LEGACY</span>' : '';
-    const u = r.usage || {};
-    return `<tr>
-      <td><span class="name">${esc(r.name)}</span>${legacy}</td>
-      <td class="alias">${esc(r.alias)}</td>
-      <td><span class="agent a-${esc(r.agent)}">${esc(r.agent)}</span></td>
-      <td class="muted">${model}</td>
-      <td><span class="status ${statusClass(r.status)}">${esc(STATUS_LABEL[r.status] || r.status)}</span></td>
-      <td class="mono">${fmtDur(r.elapsed_seconds)}</td>
-      <td class="muted">${fmtAgo(r.last_activity_ago)}</td>
-      <td class="mono" title="input ${u.input||0} · cached ${u.cached||0} · output ${u.output||0} · reasoning ${u.reasoning||0}">${fmtTokens(u.total)}${tokenMini(u)}</td>
-      <td class="mono ${r.cost_usd == null ? 'muted' : ''}">${fmtCost(r.cost_usd)}</td>
-    </tr>`;
-  }).join('');
-}
-
-async function tick() {
-  try {
-    const res = await fetch('/data.json', {cache: 'no-store'});
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const d = await res.json();
-    renderStats(d);
-    renderDonut(d);
-    renderBars([...d.runs, ...d.legacy]);
-    renderTable(d);
-    const t = new Date();
-    document.getElementById('stamp').textContent = '更新于 ' + t.toLocaleTimeString('zh-CN', {hour12:false});
-  } catch (e) {
-    document.getElementById('stamp').textContent = '连接失败：' + e.message;
-  }
-}
-tick();
-setInterval(tick, 10000);
-</script>
-</body>
-</html>
-"""
-
-
-class BoardHandler(BaseHTTPRequestHandler):
-    server_version = "dispatch-board/1.0"
-
-    def _send(self, code, body, content_type):
-        if isinstance(body, str):
-            body = body.encode("utf-8")
-        self.send_response(code)
-        self.send_header("Content-Type", content_type)
-        self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-store, max-age=0")
-        self.end_headers()
-        try:
-            self.wfile.write(body)
-        except (BrokenPipeError, ConnectionResetError):
-            pass
-
-    def do_GET(self):
-        path = self.path.split("?", 1)[0]
-        if path in ("/", "/index.html"):
-            self._send(200, HTML_PAGE, "text/html; charset=utf-8")
-        elif path == "/data.json":
-            try:
-                data = build_data()
-                self._send(200, json.dumps(data, ensure_ascii=False), "application/json; charset=utf-8")
-            except Exception as exc:
-                self._send(500, json.dumps({"error": str(exc)}, ensure_ascii=False), "application/json; charset=utf-8")
-        elif path == "/healthz":
-            self._send(200, "ok", "text/plain; charset=utf-8")
-        else:
-            self._send(404, "not found", "text/plain; charset=utf-8")
-
-    def log_message(self, fmt, *args):
-        pass
-
-
-def command_board(args):
-    host = args.host
-    port = args.port
-    try:
-        httpd = ThreadingHTTPServer((host, port), BoardHandler)
-    except OSError as exc:
-        raise SystemExit(f"cannot bind {host}:{port}: {exc}")
-    httpd.daemon_threads = True
-    url = f"http://{host}:{port}/"
-    print(f"[dispatch] board on {url}  (auto-refresh {REFRESH_SECONDS}s)")
-    print(f"[dispatch] runs={RUNS_FILE}")
-    print(f"[dispatch] legacy root={DEFAULT_ROOT}")
-    try:
-        httpd.serve_forever()
-    except KeyboardInterrupt:
-        print("\n[dispatch] board stopped")
-    finally:
-        httpd.server_close()
-
-
-# ---------------------------------------------------------------------------
 # cli
 # ---------------------------------------------------------------------------
 
 def build_parser():
     p = argparse.ArgumentParser(
         prog="dispatch.py",
-        description="统一的 coding-agent 派活工具 + 实时看板",
+        description="统一的 coding-agent 派活工具 + 巡检表",
     )
     sub = p.add_subparsers(dest="command", required=True)
 
@@ -1690,11 +1322,6 @@ def build_parser():
     s = sub.add_parser("status", help="终端里打一张巡检表")
     s.add_argument("--json", action="store_true", help="输出 JSON")
     s.set_defaults(func=command_status)
-
-    b = sub.add_parser("board", help="启动本机看板 HTTP 服务")
-    b.add_argument("--port", type=int, default=8765)
-    b.add_argument("--host", default="127.0.0.1")
-    b.set_defaults(func=command_board)
 
     return p
 

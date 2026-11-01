@@ -304,7 +304,7 @@ class MiscTests(unittest.TestCase):
         self.assertAlmostEqual(dispatch.cost_of(usage, "m", prices), 18.3)
         self.assertIsNone(dispatch.cost_of(usage, "unknown", prices))
 
-    def test_build_data_with_runs_and_legacy(self):
+    def test_collect_rows_with_runs_and_legacy(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td) / "dispatch"
             root.mkdir()
@@ -326,15 +326,13 @@ class MiscTests(unittest.TestCase):
             runs_file.write_text(json.dumps(start) + "\n")
             (live / "events-cmd-0.jsonl").write_text("\n".join(CMD_NO_RESULT) + "\n")
 
-            data = dispatch.build_data(root=root, runs_file=runs_file)
-            self.assertEqual(len(data["runs"]), 1)
-            self.assertEqual(data["runs"][0]["status"], "running")
-            self.assertEqual(data["runs"][0]["usage"]["total"], (383292 - 382976) + 382976 + 1343)
-            self.assertEqual(len(data["legacy"]), 1)
-            self.assertEqual(data["legacy"][0]["name"], "old-task")
-            self.assertEqual(data["legacy"][0]["status"], "ok")
-            self.assertEqual(data["summary"]["running"], 1)
-            self.assertGreaterEqual(data["summary"]["total_tokens"], data["runs"][0]["usage"]["total"])
+            rows, legacy, _ = dispatch.collect_rows(runs_file=runs_file, root=root)
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]["status"], "running")
+            self.assertEqual(rows[0]["usage"]["total"], (383292 - 382976) + 382976 + 1343)
+            self.assertEqual(len(legacy), 1)
+            self.assertEqual(legacy[0]["name"], "old-task")
+            self.assertEqual(legacy[0]["status"], "ok")
 
 
 if __name__ == "__main__":
