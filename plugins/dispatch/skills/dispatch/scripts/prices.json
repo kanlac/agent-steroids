@@ -1,0 +1,4 @@
+{
+  "_readme": "按百万 token 的美元价格：{\"input\": 非缓存输入, \"cached\": 缓存读, \"output\": 输出}。没有价格的模型在页面上显示为 —。只写模型名，不含 provider 前缀时按 --model 原样匹配。",
+  "_example": {"input": 3.0, "cached": 0.3, "output": 15.0}
+}
