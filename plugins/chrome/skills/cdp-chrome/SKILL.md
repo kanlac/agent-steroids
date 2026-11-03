@@ -43,7 +43,7 @@ Do not configure a shared download directory.
 
 MCP: installing the `chrome` plugin registers the `cdp-chrome` server through the plugin-local `.mcp.json`, whose launcher reads the config, validates the listener, and runs `chrome-devtools-mcp --browserUrl http://127.0.0.1:<port>`. Do not add a duplicate project-level `.mcp.json` for the same server.
 
-Remote MCP (optional): `scripts/remote-mcp.mjs` exposes the same `page.mjs` commands as an HTTP MCP server on a unix socket, for Claude / ChatGPT web connectors behind Cloudflare Access + Tunnel. It has no auth of its own; see `references/remote-mcp.md` before exposing it.
+Remote MCP (optional): `scripts/remote-mcp.mjs` exposes the same `page.mjs` commands as an HTTP MCP server on a unix socket, for Claude / ChatGPT web connectors behind Cloudflare Access + Tunnel. It has no auth of its own; see `references/setup-mcp-connector.md` before exposing it.
 
 ## Target binding
 

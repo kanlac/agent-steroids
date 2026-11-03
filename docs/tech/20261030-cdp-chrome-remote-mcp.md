@@ -1,6 +1,6 @@
 # cdp-chrome 远程 MCP 接入：设计文档
 
-> 状态：已部署，待在 Claude / ChatGPT 中添加连接器做端到端验证。配置步骤见 `plugins/chrome/skills/cdp-chrome/references/remote-mcp.md`
+> 状态：已部署，待在 Claude / ChatGPT 中添加连接器做端到端验证。配置步骤见 `plugins/chrome/skills/cdp-chrome/references/setup-mcp-connector.md`
 > 日期：2026-10-30
 > 关联：[CDP Chrome 统一架构](./20260407-cdp-chrome-architecture.md)、[MCP 进程放大问题](./20260823-cdp-chrome-mcp-process-fanout.md)、[共享浏览器接入层需求](./20260928-cdp-chrome-shared-daemon-requirements.md)
 

@@ -65,7 +65,7 @@ if [ -S "$REMOTE_SOCK" ]; then
   fi
   [ "$mode" = "600" ] || { echo "ERROR: remote MCP socket mode is $mode, expected 600." >&2; status=1; }
 else
-  echo "INFO: remote MCP not running (optional; see references/remote-mcp.md)."
+  echo "INFO: remote MCP not running (optional; see references/setup-mcp-connector.md)."
 fi
 
 echo
