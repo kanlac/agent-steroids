@@ -33,6 +33,7 @@ description: Send work to subagents or another model's CLI (Codex, OpenCode) and
 ## 收结果
 
 - **派出去就要有人等**。启动后确认完成会通知你；不会就另起一个后台命令，循环等进程退出，退出时打印退出码和各输出文件大小。并行派多个时一个命令等全部。
+- **后台子代理会被中途打断，而且不通知你**。用户在主会话插话、拒绝某次工具调用，都会让正在跑的后台子代理静默中止，没有完成通知，主会话还以为它在跑（亲历：两个调研子代理分别死在 10:54 和 11:53，一个多小时后才被用户问出来，一条数据都没落盘）。所以：任务书要求每得到一个结果就写进文件，并往进度文件追加一行；启动几分钟后去看产物目录有没有新文件，对不上就读它 transcript 末尾，出现 `Request interrupted` 就是被打断，直接重派，不续等；收到「完成」后核对产物文件真的存在。
 - **启动时估一个时长**，到两倍还没动静，读事件流最后几行判断是在干活还是挂住（长提示词当命令行参数、等 stdin、权限被拒都会静默挂住），别干等。
 - **让它把结果写进文件**，不靠捕获 stdout。夭折时至少拿回已写完的部分。
 - **等进程退出，不等它写的产物文件**。模型死在半路时产物永远不出现，等文件会一直等下去；进程退出后先看退出码和事件流里的 `error`。
@@ -54,3 +55,4 @@ description: Send work to subagents or another model's CLI (Codex, OpenCode) and
 - `references/codex.md` —— 环境发现、通用调用形状、权限与结果诊断
 - `references/batch-orchestration.md` —— 多 agent 批次调度：模型推荐表、统一推理强度标准与编排表
 - `references/opencode.md` —— provider / variant 发现、权限、会话、输出截断与配额诊断
+- `references/commandcode.md` —— Command Code（`cmd -p`）的调用形状、`--yolo` 与自动模式的关系
