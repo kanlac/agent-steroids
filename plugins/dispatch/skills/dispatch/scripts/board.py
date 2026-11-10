@@ -304,14 +304,13 @@ def mutate(change, board_id=None, *, must_exist=False):
         return result
 
 
-def start(*, name, doing, tool, model, effort, cwd=None, task_dir=None, pid=None, lane_id=None, issues=None, session_id="", board_id=None):
+def start(*, name, doing, tool, model, effort, pid, cwd=None, task_dir=None, lane_id=None, issues=None, session_id="", board_id=None):
     board_id = require_board(board_id)
     if not all(str(v).strip() for v in (name, doing, tool, model, effort)):
         raise ValueError("name, doing, tool, model and effort must not be blank")
     issues = [issue_url(value) for value in (issues or [])]
-    pid = os.getppid() if pid is None else pid
     if not alive(pid):
-        raise ValueError("--pid must identify a live local process")
+        raise ValueError(f"--pid {pid!r} is not a live local process; supply the actual worker PID")
     lane_id = lane_id or uuid.uuid4().hex
     now = stamp()
     record = dict(id=lane_id, name=name, doing=doing, tool=tool, model=model, effort=effort,

@@ -56,7 +56,7 @@ description: Send work to subagents or another model's CLI (Codex, OpenCode) and
 
 纯标准库，派 Codex / Command Code（`cmd`）/ Antigravity（`agy`）一条命令搞定：事件流、最终回复、会话号、退出码落进任务目录，模型中途断线或「at capacity」自动续跑，每次开始与结束记一行到 runs 文件，带 token 与费用。`run` 派活（用工具的后台机制跑，等它退出），`status` 打巡检表（`--json` 出机器可读版）。目录与价格表由环境变量 `DISPATCH_ROOT`、`DISPATCH_RUNS` 和同目录 `prices.json` 决定；参数以 `--help` 为准。
 
-`run` 的 `--agent`、`--model`、`--effort`、`--doing` 必填，续跑也重新显式指定；开跑和结束自动登记编排看板。其他工具用 `start` / `end` 登记车道并绑定本机存活 PID，阶段变化用 `update` 改「在做什么」。
+`run` 的 `--agent`、`--model`、`--effort`、`--doing` 必填，续跑也重新显式指定。续跑一律走 `dispatch.py run --resume ...`，每轮自动登记新车道，内部重试保留同一车道；不手动补登。首次登记失败就拒绝派活。其他工具用 `start` / `end` 登记车道，`start --pid` 必填且必须是该工作实际存活的本机进程号，不能借用宿主或编排者 PID。没有独立真实 PID 的工作（如宿主内的 Claude 子代理）不登记看板；阶段变化用 `update` 改「在做什么」。
 
 每个编排会话先用 `new-board` 领取独立 ID；`run` / `start` / `update` / `end` 必须显式传 `--board ID` 或设 `DISPATCH_BOARD`，不要仅按项目共用 ID。
 

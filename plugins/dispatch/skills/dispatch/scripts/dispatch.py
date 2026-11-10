@@ -1063,7 +1063,7 @@ def resolve_resume(adapter: Adapter, task_dir: Path, resume, cwd: Path, runs_fil
 
 
 def board_write(action, **kwargs):
-    """Board failures must never turn an otherwise valid dispatch into a failure."""
+    """Heartbeat/finalization failures warn without changing a running task's result."""
     try:
         action(**kwargs)
         return True
@@ -1134,7 +1134,7 @@ def command_run(args):
             pass  # session metadata is optional and must never prevent dispatch
         return session
 
-    registered = board_write(board.start, name=args.name, doing=args.doing, tool=adapter.key, model=model,
+    board.start(name=args.name, doing=args.doing, tool=adapter.key, model=model,
                 effort=effort, cwd=cwd, task_dir=task_dir, pid=os.getpid(), lane_id=run_id, issues=args.issue, session_id=session or "", board_id=board_id)
     append_json(RUNS_FILE, start_record)
     stopped = threading.Event()
@@ -1144,10 +1144,8 @@ def command_run(args):
             if not board_write(board.update, lane_id=run_id, session_id=discover_session(), board_id=board_id):
                 return
 
-    pulse = None
-    if registered:
-        pulse = threading.Thread(target=heartbeat, daemon=True)
-        pulse.start()
+    pulse = threading.Thread(target=heartbeat, daemon=True)
+    pulse.start()
 
     print(f"[dispatch] {run_id}  {alias}  {adapter.key}  {args.name}", flush=True)
     print(f"[dispatch] task-dir={task_dir}", flush=True)
@@ -1163,11 +1161,9 @@ def command_run(args):
 
     def finish(final_status):
         stopped.set()
-        if pulse is not None:
-            pulse.join()
+        pulse.join()
         board_status = "ok" if final_status == "ok" else "aborted" if final_status == "killed" else "failed"
-        if registered:
-            board_write(board.update, lane_id=run_id, status=board_status, session_id=discover_session(), board_id=board_id)
+        board_write(board.update, lane_id=run_id, status=board_status, session_id=discover_session(), board_id=board_id)
         end_record = {
             "run_id": run_id,
             "ended_at": now_iso(),
@@ -1406,7 +1402,7 @@ def build_parser():
         a.add_argument("--" + key, required=True, type=nonblank)
     a.add_argument("--cwd", type=nonblank, default=None, help="默认当前目录")
     a.add_argument("--task-dir", type=nonblank, default=None, help="可选任务目录")
-    a.add_argument("--pid", type=int, default=None, help="默认调用进程 PID；Claude Code shell 工具显式传 $PPID")
+    a.add_argument("--pid", type=int, required=True, help="实际 worker 的本机存活 PID；不可借用宿主或编排者 PID")
     a.add_argument("--issue", action="append", type=issue_argument, metavar="URL", help="关联 http(s) 网址，可重复")
     a.add_argument("--session", type=nonblank, metavar="ID", help="可选 agent 会话 ID，用于复制续会话命令")
     a.set_defaults(func=command_start)

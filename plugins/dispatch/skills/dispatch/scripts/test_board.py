@@ -66,7 +66,7 @@ class BoardTests(unittest.TestCase):
     def test_cli_requires_board_before_dispatch_or_other_side_effects(self):
         commands = [["run", "--name", "lane", "--agent", "codex", "--model", "m", "--effort", "high",
                      "--doing", "review", "--cwd", str(self.root), "--task-dir", str(self.root / "task"), "--prompt-file", "missing"],
-                    ["start", "--name", "lane", "--tool", "other", "--model", "m", "--effort", "none", "--doing", "review"],
+                    ["start", "--name", "lane", "--tool", "other", "--model", "m", "--effort", "none", "--doing", "review", "--pid", str(os.getpid())],
                     ["update", "--lane", "lane", "--doing", "review"], ["end", "--lane", "lane", "--status", "ok"]]
         env = dict(os.environ)
         env.pop("DISPATCH_BOARD", None)
@@ -211,7 +211,7 @@ class BoardTests(unittest.TestCase):
                   "--cwd", str(self.root), "--pid", str(os.getpid())]
         for command, fields in ((run, ("--agent", "--model", "--effort", "--doing")),
                                 (run + ["--resume", "sid"], ("--model", "--effort", "--doing")),
-                                (manual, ("--name", "--tool", "--model", "--effort", "--doing"))):
+                                (manual, ("--name", "--tool", "--model", "--effort", "--doing", "--pid"))):
             for flag in fields:
                 i = command.index(flag)
                 with self.subTest(command=command[0], flag=flag), contextlib.redirect_stderr(io.StringIO()):
@@ -226,12 +226,12 @@ class BoardTests(unittest.TestCase):
                 parser.parse_args(invalid)
         self.assertFalse(self.path.exists())
 
-    def test_start_only_requires_five_business_fields(self):
+    def test_start_requires_explicit_pid_but_paths_are_optional(self):
         args = dispatch.build_parser().parse_args([
             "start", "--name", "lane", "--tool", "claude-agent", "--model", "chosen",
-            "--effort", "high", "--doing", "review"])
+            "--effort", "high", "--doing", "review", "--pid", str(os.getpid())])
         out = io.StringIO()
-        with patch.object(board.os, "getppid", return_value=os.getpid()), contextlib.redirect_stdout(out):
+        with contextlib.redirect_stdout(out):
             dispatch.command_start(args)
         record = board.snapshot()[0][0]
         self.assertEqual(record["id"], out.getvalue().strip())
@@ -242,7 +242,7 @@ class BoardTests(unittest.TestCase):
     def test_issue_urls_rejected_by_all_cli_commands(self):
         base = {"run": ["--name", "lane", "--agent", "codex", "--model", "m", "--effort", "high",
                          "--doing", "review", "--cwd", ".", "--task-dir", ".", "--prompt-file", "prompt"],
-                "start": ["--name", "lane", "--tool", "other", "--model", "m", "--effort", "none", "--doing", "review"],
+                "start": ["--name", "lane", "--tool", "other", "--model", "m", "--effort", "none", "--doing", "review", "--pid", str(os.getpid())],
                 "update": ["--lane", "lane"]}
         for command, args in base.items():
             for value in ("javascript:alert(1)", "data:text/html,test", "ftp://example.com/a", "/relative", "//example.com/a",
@@ -732,34 +732,80 @@ class BoardTests(unittest.TestCase):
             server.server_close()
             thread.join()
 
-    def test_board_failures_warn_and_do_not_block_run(self):
+    def test_registration_failure_blocks_run_and_resume(self):
         prompt = self.root / "prompt.txt"
         prompt.write_text("test")
-        args = dispatch.build_parser().parse_args([
-            "run", "--name", "lane", "--doing", "检查", "--agent", "codex", "--model", "chosen",
-            "--effort", "high", "--task-dir", str(self.root / "task"), "--cwd", str(self.root),
-            "--prompt-file", str(prompt)])
+        base = ["run", "--name", "lane", "--doing", "检查", "--agent", "codex", "--model", "chosen",
+                "--effort", "high", "--task-dir", str(self.root / "task"), "--cwd", str(self.root),
+                "--prompt-file", str(prompt)]
         future_state = '{"version": 2, "lanes": []}'
         self.path.write_text(future_state)
+        with patch.object(dispatch, "RUNS_FILE", self.root / "runs.jsonl"), \
+                patch.object(dispatch, "execute") as execute, patch.object(dispatch.signal, "signal"):
+            for extra in ([], ["--resume", "session-id"]):
+                with self.subTest(resume=extra):
+                    with self.assertRaisesRegex(SystemExit, "unsupported board state format"):
+                        dispatch.main(base + extra)
+                    for error in (PermissionError("read-only"), KeyError("bad lane")):
+                        with patch.object(board, "start", side_effect=error), self.assertRaises(type(error)):
+                            dispatch.command_run(dispatch.build_parser().parse_args(base + extra))
+            execute.assert_not_called()
+        self.assertEqual(self.path.read_text(), future_state)
+        self.assertFalse((self.root / "runs.jsonl").exists())
+
+    def test_start_rejects_missing_or_dead_pid_without_state(self):
+        argv = [sys.executable, str(Path(dispatch.__file__)), "start", "--board", "test-board",
+                "--name", "lane", "--tool", "other", "--model", "m", "--effort", "none", "--doing", "review"]
+        missing = subprocess.run(argv, capture_output=True, text=True)
+        self.assertEqual(missing.returncode, 2)
+        self.assertIn("--pid", missing.stderr)
+        with subprocess.Popen([sys.executable, "-c", "pass"]) as proc:
+            proc.wait()
+        self.assertFalse(board.alive(proc.pid))
+        dead = subprocess.run(argv + ["--pid", str(proc.pid)], capture_output=True, text=True)
+        self.assertNotEqual(dead.returncode, 0)
+        self.assertIn(str(proc.pid), dead.stderr)
+        self.assertIn("not a live local process", dead.stderr)
+        self.assertEqual(dead.stdout, "")
+        self.assertFalse(self.path.exists())
+        with self.assertRaises(TypeError):
+            board.start(name="lane", doing="review", tool="other", model="m", effort="none")
+
+    def test_resume_after_aborted_lane_automatically_registers_new_round(self):
+        prompt = self.root / "prompt.txt"
+        prompt.write_text("continue")
+        task = self.root / "task"
+        task.mkdir()
+        (task / "session.txt").write_text("saved-session")
+        old = self.start(name="lane", session_id="saved-session", task_dir=task)
+        board.update(old, status="aborted")
+        argv = ["run", "--name", "lane", "--doing", "复核", "--agent", "codex", "--model", "selected",
+                "--effort", "high", "--task-dir", str(task), "--cwd", str(self.root), "--prompt-file", str(prompt)]
+        ids = {old}
         def fake_execute(cmd, cwd, event_path, stderr_path, merge_stderr):
+            running, ended = board.snapshot()
+            self.assertEqual(len(running), 1)
+            lane = running[0]
+            self.assertNotIn(lane["id"], ids)
+            ids.add(lane["id"])
+            self.assertEqual(lane["session_id"], "saved-session")
+            self.assertEqual((lane["model"], lane["effort"], lane["pid"]), ("selected", "high", os.getpid()))
+            self.assertTrue(board.alive(lane["pid"]))
+            self.assertEqual(next(l for l in ended if l["id"] == old)["status"], "aborted")
+            self.assertEqual(cmd[cmd.index("resume") + 1], "saved-session")
             event_path.write_text('{"type":"turn.completed"}\n')
             return 0
-        errors = io.StringIO()
         with patch.object(dispatch, "RUNS_FILE", self.root / "runs.jsonl"), \
-                patch.object(dispatch, "execute", side_effect=fake_execute) as execute, \
-                patch.object(dispatch.signal, "signal"), contextlib.redirect_stdout(io.StringIO()), \
-                contextlib.redirect_stderr(errors):
-            self.assertEqual(dispatch.command_run(args), 0)
-            for error in (PermissionError("read-only"), KeyError("bad lane")):
-                with patch.object(board, "start", side_effect=error):
-                    self.assertEqual(dispatch.command_run(args), 0)
-            self.assertEqual(execute.call_count, 3)
-        self.assertEqual(self.path.read_text(), future_state)
-        self.assertIn("unsupported board state format", errors.getvalue())
-        self.assertIn("warning:", errors.getvalue())
+                patch.object(dispatch, "execute", side_effect=fake_execute), \
+                patch.object(dispatch.signal, "signal"), contextlib.redirect_stdout(io.StringIO()):
+            for resume in ("auto", "saved-session"):
+                self.assertEqual(dispatch.main(argv + ["--resume", resume]), 0)
+        running, ended = board.snapshot()
+        self.assertFalse(running)
+        self.assertEqual({l["id"] for l in ended}, ids)
         records = dispatch.read_runs(self.root / "runs.jsonl")
-        self.assertEqual(len(records), 3)
-        self.assertTrue(all(record["status"] == "ok" for record in records))
+        self.assertEqual({r["run_id"] for r in records}, ids - {old})
+        self.assertTrue(all(r["resume_of"] == "saved-session" and r["status"] == "ok" for r in records))
 
     def test_board_update_failure_does_not_change_run_result(self):
         prompt = self.root / "prompt.txt"

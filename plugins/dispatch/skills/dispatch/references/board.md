@@ -34,23 +34,23 @@ python3 scripts/dispatch.py run --name review --agent codex \
   --cwd "$PWD" --task-dir ./task --prompt-file ./followup.txt --resume auto < /dev/null
 ```
 
-`--agent`、`--model`、`--effort`、`--doing` 每轮必填，空白值同样报错，不从上轮沿用。内部自动重试属于同一轮、同一车道，保留本轮选择。`run` 开始时自动登记，打印的 run ID 就是车道 ID；退出时自动记录正常、失败或中止状态。无结果也属于失败，失败任务返回非零退出码。看板登记、心跳或收尾写入失败只输出警告，不阻止派活，也不覆盖无法识别的新版本状态文件。
+`--agent`、`--model`、`--effort`、`--doing` 每轮必填，空白值同样报错，不从上轮沿用。内部自动重试属于同一轮、同一车道，保留本轮选择。续跑一律走 `dispatch.py run --resume ...`，不绕过工具直接调用底层 CLI，也不手动补登。`run` 每轮开始时自动登记新车道（包括显式会话号和 `auto` 续跑），打印的 run ID 就是车道 ID；旧轮次保持结束状态。退出时自动记录正常、失败或中止状态。无结果也属于失败，失败任务返回非零退出码。首次看板登记失败会报错并拒绝启动 worker，不覆盖无法识别的新版本状态文件；登记成功后的心跳或收尾写入失败只输出警告，不改变任务结果。
 
 没有推理强度旋钮时显式填 `--effort none`：`agy` 只接受 `none`；`cmd` 填 `none` 时不向 CLI 传 effort 参数。`codex` 把所选值原样传给 CLI；能否调节、支持哪些值应按目标工具和模型确认，登记本身不证明配置已生效。
 
 ## 手动车道与阶段更新
 
-不经过 `run` 的 Claude 子代理、OpenCode 或其他 CLI，也使用同一份状态。在显式选择看板后，业务字段只有 `--name`、`--tool`、`--model`、`--effort`、`--doing` 必填。`--cwd` 默认当前目录，`--task-dir` 可省略、存为 `null`。`--tool` 是自由文本，不限制工具名；`start` 仅输出唯一车道 ID，后续按 ID 操作，同名车道不会覆盖。
+不经过 `run` 且有独立真实进程的 OpenCode 或其他 CLI，也使用同一份状态。`--pid` 必填，并在登记时校验本机进程存活；不存在就拒绝登记。没有独立真实 PID 的工作（如宿主内的 Claude 子代理）不登记看板，不能借用宿主、编排者或临时 shell 的 PID。在显式选择看板后，业务字段 `--name`、`--tool`、`--model`、`--effort`、`--doing` 也必填。`--cwd` 默认当前目录，`--task-dir` 可省略、存为 `null`。`--tool` 是自由文本，不限制工具名；`start` 仅输出唯一车道 ID，后续按 ID 操作，同名车道不会覆盖。
 
 ```bash
 LANE_ID=$(python3 scripts/dispatch.py start --name audit \
-  --tool claude-agent --model "$MODEL" --effort "$EFFORT" --doing "检查接口契约" \
-  --pid "$PPID")
+  --tool opencode --model "$MODEL" --effort "$EFFORT" --doing "检查接口契约" \
+  --pid "$WORKER_PID")
 python3 scripts/dispatch.py update --lane "$LANE_ID" --doing "复核修复与测试"
 python3 scripts/dispatch.py end --lane "$LANE_ID" --status ok
 ```
 
-在 **Claude Code 子代理的 shell 工具里，`$PPID` 是长期存活的 `claude` 进程**，因此上例显式传 `--pid "$PPID"`；不要传 `$$`，那是本次短命 shell。其他 CLI 优先显式传 worker PID。`--pid` 省略时默认调用进程 PID（脚本的直接父进程），仅适用于调用进程本身长期存活的场景。绑定宿主 PID 无法发现子代理单独静默中断，编排者仍需显式 `end`。`end` 必须选 `ok` / `failed` / `aborted`，它只记状态、不杀进程。车道结束后不能更新或复活；下一轮重新登记并选择模型、强度和工具。
+`end` 必须选 `ok` / `failed` / `aborted`，它只记状态、不杀进程。车道结束后不能更新或复活；下一轮重新登记并选择模型、强度和工具。
 
 `run` / `start` / `update` 都可重复传 `--issue URL` 关联网址，只接受完整的 http(s) URL，不限托管平台。`update` 传 issue 时整体替换列表；省略则保留，`--clear-issues` 清空，可单独改 issue 而不传 `--doing`：
 
@@ -70,6 +70,8 @@ python3 scripts/dispatch.py update --lane "$LANE_ID" --session "$SESSION_ID"
 ```
 
 行内显示前 8 位，悬停显示将复制的完整命令。Claude Code 车道运行中复制 `claude attach <id>`，不加 cd；它接入用 `claude --bg` 启动、仍在后台运行的会话，退出接入后会话继续运行。已结束车道复制 `cd <cwd> && claude --resume <id>`，从保存的记录重开；对仍在跑的会话用 resume 会另起副本。其他已知工具的命令前加 `cd <cwd> && `，工作目录与 ID 按 POSIX shell 规则引用；未知工具只复制完整 ID。复制先尝试 Clipboard API，失败（如 HTTP 机器名页面）后用隐藏 textarea + execCommand；成功短暂提示「已复制」，仍失败则选中显示完整 ID，供手动复制。Windows 用户需在支持 POSIX shell 的终端中粘贴这些命令。
+
+这些底层 CLI 命令供人工接入和查阅会话；编排任务的续跑仍须使用 `dispatch.py run --resume ...`，由工具登记本轮模型、强度与车道。
 
 下表于 2026-11-10 逐项查本机 CLI 帮助核实，代码映射固定复用；工具升级后以实际 `--help` 为准。仅生成续接命令，不会自动执行。
 
