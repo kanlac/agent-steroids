@@ -164,6 +164,14 @@ class BoardTests(unittest.TestCase):
         self.assertIn("{{DATA}} \\u003c/script\\u003e\\u003cb\\u003e检查", page)
         self.assertEqual(self.payload(page)["running"][0]["doing"], doing)
 
+    def test_page_refresh_is_bounded_and_cannot_stall(self):
+        code = re.findall(r"<script>(.*?)</script>", board.template(), re.S)[0]
+        consts = {k: float(v) for k, v in re.findall(r"\b(POLL_MS|FETCH_MS) = ([0-9.]+e3)", code)}
+        self.assertLess(consts["FETCH_MS"], consts["POLL_MS"])
+        self.assertIn("new AbortController()", code)
+        self.assertIn("signal: pull.signal", code)
+        self.assertRegex(code, r"finally \{[^}]*setTimeout\(poll, POLL_MS\)")
+
     def test_bad_json_is_not_overwritten(self):
         self.path.write_text("broken")
         with self.assertRaises(ValueError):
