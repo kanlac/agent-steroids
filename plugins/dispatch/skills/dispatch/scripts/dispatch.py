@@ -1386,7 +1386,9 @@ def build_parser():
     b = sub.add_parser("board", help="启动只读网页；默认仅绑定自动发现的 Tailscale IPv4")
     b.add_argument("--host", help="显式绑定地址；本机验证可用 127.0.0.1")
     b.add_argument("--port", type=int, default=board.DEFAULT_PORT)
-    b.set_defaults(func=lambda args: board.serve(args.host, args.port))
+    b.add_argument("--allow-host", action="append", default=[], metavar="NAME",
+                   help="额外允许的访问主机名（不含端口）；可重复")
+    b.set_defaults(func=lambda args: board.serve(args.host, args.port, args.allow_host))
     return p
 
 

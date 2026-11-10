@@ -12,6 +12,7 @@ import os
 import re
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import time
 import uuid
@@ -223,9 +224,11 @@ def policy():
 
 
 class Server(ThreadingHTTPServer):
-    def __init__(self, address, handler):
+    def __init__(self, address, handler, allow_hosts=()):
+        names = list(dict.fromkeys(host_name(name) for name in (*allow_hosts, address[0])))
         super().__init__(address, handler)
-        self.expected_host = f"{address[0]}:{self.server_port}".lower()
+        self.allowed_hosts = {f"{name}:{self.server_port}" for name in names}
+        self.urls = [f"http://{name}:{self.server_port}/" for name in names]
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -233,7 +236,7 @@ class Handler(BaseHTTPRequestHandler):
         if not super().parse_request():
             return False
         hosts = self.headers.get_all("Host", [])
-        if len(hosts) != 1 or hosts[0].lower() != self.server.expected_host:
+        if len(hosts) != 1 or hosts[0].lower() not in self.server.allowed_hosts:
             self.send_error(400, "Host does not match board address")
             return False
         return True
@@ -273,10 +276,42 @@ def tailscale_host():
         raise ValueError("cannot get Tailscale IPv4; specify --host (e.g. --host 127.0.0.1)") from exc
 
 
-def serve(host, port):
+def host_name(value):
+    """Accept exact DNS names or IPv4 literals, never URLs, ports or wildcards."""
+    name = value.rstrip(".").lower()
+    if len(name) > 253 or not all(re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", label)
+                                 for label in name.split(".")):
+        raise ValueError(f"invalid host name: {value!r}; use NAME without scheme or port")
+    return name
+
+
+def tailscale_names():
+    try:
+        result = subprocess.run(["tailscale", "status", "--json"], capture_output=True,
+                                text=True, timeout=5, check=True)
+        own = json.loads(result.stdout)["Self"]
+        dns = own.get("DNSName") or ""
+        hostname = own.get("HostName") or ""
+        names = []
+        for value in (dns.split(".")[0], hostname.split(".")[0], hostname, dns):
+            if value:
+                try:
+                    names.append(host_name(value))
+                except ValueError:
+                    continue  # raw OS hostnames may contain spaces; DNSName remains usable
+        return list(dict.fromkeys(names))
+    except (OSError, subprocess.SubprocessError, ValueError, KeyError, TypeError, AttributeError) as exc:
+        print(f"[dispatch] cannot discover Tailscale names: {exc}; use --allow-host NAME", file=sys.stderr)
+        return []
+
+
+def serve(host, port, allow_hosts=()):
+    automatic = host is None
     host = host or tailscale_host()
-    with Server((host, port), Handler) as server:
-        print(f"Dispatch board: http://{host}:{server.server_port}/", flush=True)
+    names = tailscale_names() if automatic else []
+    with Server((host, port), Handler, [*names, *allow_hosts]) as server:
+        for url in server.urls:
+            print(f"Dispatch board: {url}", flush=True)
         try:
             server.serve_forever()
         except KeyboardInterrupt:

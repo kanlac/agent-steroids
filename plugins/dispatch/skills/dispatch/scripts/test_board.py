@@ -222,6 +222,89 @@ class BoardTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "--host"):
                 board.tailscale_host()
 
+    def test_tailscale_names_use_only_self_and_strip_trailing_dots(self):
+        status = {"Self": {"DNSName": "Worker.Mesh-Test.ts.net.", "HostName": "Worker."},
+                  "Peer": {"other": {"DNSName": "other.mesh-test.ts.net."}}}
+        with patch.object(board.subprocess, "run") as run:
+            run.return_value.stdout = json.dumps(status)
+            self.assertEqual(board.tailscale_names(), ["worker", "worker.mesh-test.ts.net"])
+            self.assertEqual(run.call_args.args[0], ["tailscale", "status", "--json"])
+            status["Self"]["HostName"] = "Raw OS Name"
+            run.return_value.stdout = json.dumps(status)
+            self.assertEqual(board.tailscale_names(), ["worker", "worker.mesh-test.ts.net"])
+            run.return_value.stdout = json.dumps({"Self": {"HostName": "fallback"}})
+            self.assertEqual(board.tailscale_names(), ["fallback"])
+
+    def test_tailscale_name_discovery_failure_is_optional(self):
+        with patch.object(board.subprocess, "run") as run, contextlib.redirect_stderr(io.StringIO()) as errors:
+            for value in ("not json", "{}", '{"Self": null}'):
+                run.return_value.stdout = value
+                self.assertEqual(board.tailscale_names(), [])
+            run.side_effect = FileNotFoundError("tailscale")
+            self.assertEqual(board.tailscale_names(), [])
+        self.assertIn("--allow-host", errors.getvalue())
+
+    def test_default_server_announces_name_urls_before_ip(self):
+        def tailscale(argv, **kwargs):
+            result = subprocess.CompletedProcess(argv, 0)
+            result.stdout = ("100.101.102.103\n" if argv[1:] == ["ip", "-4"] else
+                             json.dumps({"Self": {"DNSName": "worker.mesh-test.ts.net.", "HostName": "worker"}}))
+            return result
+        with patch.object(board.subprocess, "run", side_effect=tailscale), patch.object(board, "Server") as server, \
+                contextlib.redirect_stdout(io.StringIO()) as out:
+            instance = server.return_value.__enter__.return_value
+            instance.urls = ["http://worker:18743/", "http://worker.mesh-test.ts.net:18743/",
+                             "http://alias:18743/", "http://100.101.102.103:18743/"]
+            instance.serve_forever.side_effect = KeyboardInterrupt
+            board.serve(None, 18743, ["alias"])
+            server.assert_called_once_with(("100.101.102.103", 18743), board.Handler,
+                                           ["worker", "worker.mesh-test.ts.net", "alias"])
+        self.assertEqual(out.getvalue().splitlines()[0], "Dispatch board: http://worker:18743/")
+        self.assertIn("http://100.101.102.103:18743/", out.getvalue())
+
+    def test_explicit_bind_does_not_discover_tailscale_and_cli_allows_repeats(self):
+        args = dispatch.build_parser().parse_args([
+            "board", "--host", "127.0.0.1", "--allow-host", "alias", "--allow-host", "other.example"])
+        with patch.object(board, "serve") as serve:
+            args.func(args)
+            serve.assert_called_once_with("127.0.0.1", board.DEFAULT_PORT, ["alias", "other.example"])
+        with patch.object(board.subprocess, "run") as run, patch.object(board, "Server") as server, \
+                contextlib.redirect_stdout(io.StringIO()):
+            server.return_value.__enter__.return_value.serve_forever.side_effect = KeyboardInterrupt
+            board.serve("127.0.0.1", 18743, ["alias"])
+            run.assert_not_called()
+
+    def test_hostname_allowlist_accepts_exact_names_with_same_port_only(self):
+        server = board.Server(("127.0.0.1", 0), board.Handler,
+                              ["worker", "worker.mesh-test.ts.net.", "Alias", "alias"])
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            port = server.server_port
+            self.assertEqual(server.urls, [f"http://worker:{port}/", f"http://worker.mesh-test.ts.net:{port}/",
+                                          f"http://alias:{port}/", f"http://127.0.0.1:{port}/"])
+            for host, expected in ((f"worker:{port}", 200), (f"WORKER:{port}", 200),
+                                   (f"worker.mesh-test.ts.net:{port}", 200), (f"alias:{port}", 200),
+                                   (f"127.0.0.1:{port}", 200), ("worker", 400), ("worker:1", 400),
+                                   (f"other.mesh-test.ts.net:{port}", 400),
+                                   (f"worker.attacker.example:{port}", 400)):
+                with self.subTest(host=host):
+                    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+                    try:
+                        connection.request("GET", "/", headers={"Host": host})
+                        response = connection.getresponse()
+                        self.assertEqual(response.status, expected)
+                        response.read()
+                    finally:
+                        connection.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join()
+        for value in ("", "http://worker", "worker:18743", "*.example", "worker/path", "worker\r\nHeader: value"):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                board.Server(("127.0.0.1", 0), board.Handler, [value])
+
     def test_http_read_only_and_escapes_fields(self):
         self.start(name='<script>alert("x")</script>', doing="审查 & 复核", effort="high")
         server = board.Server(("127.0.0.1", 0), board.Handler)
@@ -260,7 +343,7 @@ class BoardTests(unittest.TestCase):
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         try:
-            expected = server.expected_host
+            expected = f"127.0.0.1:{server.server_port}"
             for method, hosts in (("GET", []), ("GET", ["untrusted.invalid"]),
                                   ("GET", ["127.0.0.1:1"]), ("GET", [expected, expected]),
                                   ("POST", ["untrusted.invalid"]), ("HEAD", ["untrusted.invalid"])):
