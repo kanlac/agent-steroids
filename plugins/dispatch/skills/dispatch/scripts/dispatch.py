@@ -376,7 +376,6 @@ class CodexAdapter(Adapter):
         cmd.extend([
             "-m", model,
             "-c", f"model_reasoning_effort={effort}",
-            "-c", "service_tier=default",
             "-o", str(result_path),
             "--json",
             prompt,

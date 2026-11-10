@@ -117,7 +117,7 @@ class CodexTests(unittest.TestCase):
         self.assertEqual(cmd[1], "exec")
         self.assertIn("gpt-6.1-sol", cmd)
         self.assertIn("model_reasoning_effort=low", cmd)
-        self.assertIn("service_tier=default", cmd)
+        self.assertFalse(any("service_tier" in a for a in cmd))
         self.assertIn("--json", cmd)
         self.assertEqual(cmd[-1], "hi")
 
