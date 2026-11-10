@@ -157,6 +157,7 @@ class BoardTests(unittest.TestCase):
             dispatch.command_start(args)
         record = board.snapshot()[0][0]
         self.assertEqual(record["session_id"], "session-first")
+        self.assertEqual(record["resume_command"], "claude attach session-first")
         dispatch.command_update(dispatch.build_parser().parse_args([
             "update", "--lane", record["id"], "--session", "session-second"]))
         self.assertEqual(board.snapshot()[0][0]["session_id"], "session-second")
@@ -177,8 +178,10 @@ class BoardTests(unittest.TestCase):
                     "agy": ["agy", "--conversation"]}
         for tool, argv in expected.items():
             with self.subTest(tool=tool):
-                command = board.resume_command(tool, sid, cwd)
-                self.assertEqual(shlex.split(command), ["cd", cwd, "&&", *argv, sid])
+                for status in ("running", "ok", "failed", "aborted"):
+                    command = board.resume_command(tool, sid, cwd, status)
+                    expected = ["claude", "attach", sid] if argv[0] == "claude" and status == "running" else ["cd", cwd, "&&", *argv, sid]
+                    self.assertEqual(shlex.split(command), expected)
         self.assertEqual(board.resume_command("unknown", sid, cwd), sid)
         self.assertEqual(board.resume_command("codex", "", cwd), "")
         self.start(session_id='</script><img/src=x/onerror=alert(1)>')
@@ -186,6 +189,13 @@ class BoardTests(unittest.TestCase):
         self.assertNotIn('</script><img', page)
         record = self.payload(page)["running"][0]
         self.assertIn("</script><img", record["session_id"])
+
+    def test_ended_claude_lane_copies_resume_with_cwd(self):
+        lane = self.start(session_id="session-id")
+        self.assertEqual(board.snapshot()[0][0]["resume_command"], "claude attach session-id")
+        board.update(lane, status="ok")
+        record = self.payload(board.render())["ended"][0]
+        self.assertEqual(record["resume_command"], f"cd {shlex.quote(str(self.root.resolve()))} && claude --resume session-id")
 
     def test_run_live_session_discovery_and_resume(self):
         prompt = self.root / "prompt.txt"

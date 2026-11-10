@@ -111,12 +111,14 @@ def locked(path):
                 fcntl.flock(lock, fcntl.LOCK_UN)
 
 
-def resume_command(tool, session_id, cwd):
+def resume_command(tool, session_id, cwd, status="running"):
     if not session_id:
         return ""
     command = RESUME_COMMANDS.get(str(tool).strip().lower())
     if not command:
         return session_id
+    if command[0] == "claude" and status == "running":
+        return shlex.join(["claude", "attach", session_id])
     resume = shlex.join([*command, session_id])
     return f"cd {shlex.quote(cwd)} && {resume}" if cwd else resume
 
@@ -273,7 +275,7 @@ def snapshot():
         lane["elapsed_seconds"] = max(0, end - epoch(lane["started_at"]))
         lane["updated_ago_seconds"] = max(0, now - epoch(lane["updated_at"]))
         lane["issue_links"] = issue_links(lane["issues"])
-        lane["resume_command"] = resume_command(lane["tool"], lane["session_id"], lane["cwd"])
+        lane["resume_command"] = resume_command(lane["tool"], lane["session_id"], lane["cwd"], lane["status"])
     return running, ended
 
 

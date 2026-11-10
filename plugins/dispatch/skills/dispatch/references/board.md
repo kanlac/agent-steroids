@@ -51,13 +51,13 @@ python3 scripts/dispatch.py update --lane "$LANE_ID" --clear-issues
 python3 scripts/dispatch.py update --lane "$LANE_ID" --session "$SESSION_ID"
 ```
 
-行内显示前 8 位，悬停显示将复制的完整命令。已知工具的命令前加 `cd <cwd> && `，工作目录与 ID 按 POSIX shell 规则引用；未知工具只复制完整 ID。复制先尝试 Clipboard API，失败（如 HTTP 机器名页面）后用隐藏 textarea + execCommand；成功短暂提示「已复制」，仍失败则选中显示完整 ID，供手动复制。Windows 用户需在支持 POSIX shell 的终端中粘贴这些命令。
+行内显示前 8 位，悬停显示将复制的完整命令。Claude Code 车道运行中复制 `claude attach <id>`，不加 cd；它接入用 `claude --bg` 启动、仍在后台运行的会话，退出接入后会话继续运行。已结束车道复制 `cd <cwd> && claude --resume <id>`，从保存的记录重开；对仍在跑的会话用 resume 会另起副本。其他已知工具的命令前加 `cd <cwd> && `，工作目录与 ID 按 POSIX shell 规则引用；未知工具只复制完整 ID。复制先尝试 Clipboard API，失败（如 HTTP 机器名页面）后用隐藏 textarea + execCommand；成功短暂提示「已复制」，仍失败则选中显示完整 ID，供手动复制。Windows 用户需在支持 POSIX shell 的终端中粘贴这些命令。
 
 下表于 2026-11-10 逐项查本机 CLI 帮助核实，代码映射固定复用；工具升级后以实际 `--help` 为准。仅生成续接命令，不会自动执行。
 
 | 工具字段 | 复制的续会话命令（不含 cd 前缀） | 核实入口 / 版本 |
 |---|---|---|
-| `claude` / `claude-agent` / `claude-code` | `claude --resume <id>` | `claude --help` / 2.1.321 |
+| `claude` / `claude-agent` / `claude-code` | 运行中：`claude attach <id>`；已结束：`claude --resume <id>` | `claude --help`、`claude attach --help` / 2.1.321 |
 | `codex` | `codex resume <id>` | `codex resume --help` / 0.163.0-alpha.10.2 |
 | `opencode` | `opencode --session <id>` | `opencode --help` / 1.19.4 |
 | `cmd` | `cmd --resume <id>` | `cmd --help` / 1.88.2 |
