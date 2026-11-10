@@ -1,7 +1,7 @@
 {
   "name": "dispatch",
-  "version": "1.3.1",
-  "description": "Cross-agent dispatch guidance for model selection, reasoning effort, task handoff, and result verification",
+  "version": "1.5.0",
+  "description": "Cross-agent dispatch with explicit model and reasoning effort selection, task handoff, result verification, and a zero-dependency orchestration board",
   "author": {
     "name": "Kan"
   },
@@ -17,7 +17,7 @@
   "interface": {
     "displayName": "Agent Steroids Dispatch",
     "shortDescription": "Choose and brief subagents, then verify their work.",
-    "longDescription": "A focused cross-runtime skill for selecting a suitable worker model and reasoning effort, handing off bounded work to subagents or external model CLIs, diagnosing failed runs, and verifying returned artifacts.",
+    "longDescription": "Select a worker model and reasoning effort, hand off work to subagents or model CLIs, verify artifacts, and track automatic or manual lanes on a read-only orchestration board.",
     "developerName": "Kan",
     "category": "Developer Tools",
     "capabilities": [

@@ -1,11 +1,11 @@
 ---
 name: dispatch
-description: Send work to subagents or another model's CLI (Codex, OpenCode) and get a usable answer back. Use for multi-agent orchestration, second-opinion review, independent design, bulk generation, or anything worth a different model's eyes.
+description: Send work to subagents or another model's CLI (Codex, OpenCode) and get a usable answer back. Use for multi-agent orchestration, second-opinion review, independent design, bulk generation, or maintaining a live orchestration board of automatic and manual lanes.
 ---
 
 ## 像派给同事，不像调函数
 
-- **每次委派都主动选择并显式指定模型和推理强度**，包括原生子 agent、外部 CLI、续跑和评审；不要留空，否则会继承主会话、全局配置或 CLI 默认值。用户已指定的选择优先，否则按任务与验收难度选。
+- **每次委派都主动选择并显式指定模型和推理强度**，包括原生子 agent、外部 CLI、续跑和评审；不要留空，否则会继承主会话、全局配置或 CLI 默认值。用户已指定的选择优先，否则按任务与验收难度选。没有推理强度旋钮时显式记 `none`，不能省略或虚填档位。
 - **已知会派出 4 个及以上 agent，或几条线要跨多轮并行时，必读 `references/batch-orchestration.md`**。
 - **cwd 就是仓库，给入口和关注点，让它自己读**。不贴源码、不预划只读范围。
 - **你知道而它推不出的，写进任务正文**：已修过什么、哪些不能动、怎样算完成、用什么命令验。
@@ -47,6 +47,10 @@ description: Send work to subagents or another model's CLI (Codex, OpenCode) and
 ## 派活工具 `scripts/dispatch.py`
 
 纯标准库，派 Codex / Command Code（`cmd`）/ Antigravity（`agy`）一条命令搞定：事件流、最终回复、会话号、退出码落进任务目录，模型中途断线或「at capacity」自动续跑，每次开始与结束记一行到 runs 文件，带 token 与费用。`run` 派活（用工具的后台机制跑，等它退出），`status` 打巡检表（`--json` 出机器可读版）。目录与价格表由环境变量 `DISPATCH_ROOT`、`DISPATCH_RUNS` 和同目录 `prices.json` 决定；参数以 `--help` 为准。
+
+`run` 的 `--agent`、`--model`、`--effort`、`--doing` 必填，续跑也重新显式指定；开跑和结束自动登记编排看板。其他工具用 `start` / `end` 登记车道并绑定本机存活 PID，阶段变化用 `update` 改「在做什么」。
+
+`board` 提供亮色只读网页，默认仅绑定 Tailscale 地址；显示运行中与最近结束的 20 条。看板独立于原巡检账本；状态文件位置、无强度旋钮的 `none` 语义、PID 判活限制与调用示例见 `references/20261110-board.md`。
 
 ## 各 CLI 的细节
 

@@ -12,7 +12,7 @@
     {
       "name": "dispatch",
       "source": "./plugins/dispatch",
-      "description": "Cross-agent dispatch guidance for model selection, reasoning effort, task handoff, and result verification"
+      "description": "Cross-agent dispatch with explicit model and reasoning effort selection, task handoff, result verification, and a zero-dependency orchestration board"
     },
     {
       "name": "telegram",

@@ -1,15 +1,8 @@
 #!/usr/bin/env python3
-"""dispatch.py — one dispatcher + status table for coding-agent CLIs.
+"""Standard-library dispatcher, terminal status and read-only orchestration board.
 
-Standard library only.  Two subcommands:
-
-  dispatch.py run    --name ... --agent codex|agy|cmd ...
-  dispatch.py status
-
-Each run writes its event stream, final reply, session id and exit code into
-the task directory, and one line per start / end into the runs file
-($DISPATCH_RUNS, default $DISPATCH_ROOT/runs.jsonl). Task directories without a
-runs record (older runs) are found by scanning $DISPATCH_ROOT.
+Run `dispatch.py --help` for commands. Task output and the runs.jsonl ledger
+remain separate from the bounded, atomically replaced board state.
 """
 
 from __future__ import annotations
@@ -26,9 +19,12 @@ import signal
 import subprocess
 import sys
 import time
+import threading
 import unicodedata
 import uuid
 from pathlib import Path
+
+import board
 
 APP_DIR = Path(__file__).resolve().parent
 DEFAULT_ROOT = Path(os.environ.get("DISPATCH_ROOT", str(Path.home() / ".local/state/dispatch")))
@@ -217,8 +213,6 @@ def usage_cmd(raw):
 
 class Adapter:
     key = "base"
-    default_model = ""
-    default_effort = None
     retry_sleep = 60
     max_retries = 0
     merge_stderr = False
@@ -316,8 +310,6 @@ class Adapter:
 
 class CodexAdapter(Adapter):
     key = "codex"
-    default_model = "gpt-6.1-sol"
-    default_effort = "high"
     retry_sleep = 120
     max_retries = 6
     merge_stderr = True
@@ -382,8 +374,8 @@ class CodexAdapter(Adapter):
         if resume:
             cmd.extend(["resume", str(resume)])
         cmd.extend([
-            "-m", model or self.default_model,
-            "-c", f"model_reasoning_effort={effort or self.default_effort}",
+            "-m", model,
+            "-c", f"model_reasoning_effort={effort}",
             "-c", "service_tier=default",
             "-o", str(result_path),
             "--json",
@@ -394,7 +386,6 @@ class CodexAdapter(Adapter):
 
 class AgyAdapter(Adapter):
     key = "agy"
-    default_model = "gemini-4-argon-medium"
     merge_stderr = False
     EV_RE = re.compile(r"^events-agy-(\d+)\.jsonl$")
 
@@ -451,7 +442,7 @@ class AgyAdapter(Adapter):
         binary = os.environ.get("DISPATCH_AGY_BIN") or "agy"
         cmd = [
             binary, "-p", prompt,
-            "--model", model or self.default_model,
+            "--model", model,
             "--dangerously-skip-permissions",
             "--output-format", "stream-json",
             "--print-timeout", "0",
@@ -463,7 +454,6 @@ class AgyAdapter(Adapter):
 
 class CmdAdapter(Adapter):
     key = "cmd"
-    default_model = "deepseek/deepseek-v4.1-flash"
     retry_sleep = 60
     max_retries = 3
     merge_stderr = False
@@ -557,11 +547,11 @@ class CmdAdapter(Adapter):
         binary = os.environ.get("DISPATCH_CMD_BIN") or "cmd"
         cmd = [
             binary, "-p", prompt,
-            "-m", model or self.default_model,
+            "-m", model,
             "--yolo", "--trust", "--skip-onboarding", "--no-auto-update",
             "--output-format", "json", "--max-turns", "1500",
         ]
-        if effort:
+        if effort != "none":
             cmd.extend(["--effort", effort])
         if resume:
             cmd.extend(["--resume", str(resume)])
@@ -1088,10 +1078,10 @@ def command_run(args):
     except OSError as exc:
         raise SystemExit(f"cannot read prompt file: {exc}")
 
-    model = args.model or adapter.default_model
-    effort = args.effort or adapter.default_effort
-    if adapter.key == "agy" and effort is not None:
-        raise SystemExit("agy adapter does not support --effort; choose a model with the required effort")
+    model = args.model
+    effort = args.effort
+    if adapter.key == "agy" and effort != "none":
+        raise ValueError("agy has no effort control; explicitly use --effort none")
     alias = alias_for(task_dir)
     resume_session, cwd, cwd_overridden = resolve_resume(adapter, task_dir, args.resume, cwd, RUNS_FILE)
 
@@ -1100,6 +1090,8 @@ def command_run(args):
     start_record = {
         "run_id": run_id,
         "name": args.name,
+        "doing": args.doing,
+        "pid": os.getpid(),
         "alias": alias,
         "agent": adapter.key,
         "model": model,
@@ -1110,7 +1102,21 @@ def command_run(args):
         "started_at": started,
         "resume_of": resume_session,
     }
+    board.start(name=args.name, doing=args.doing, tool=adapter.key, model=model,
+                effort=effort, cwd=cwd, task_dir=task_dir, pid=os.getpid(), lane_id=run_id)
     append_json(RUNS_FILE, start_record)
+    stopped = threading.Event()
+
+    def heartbeat():
+        while not stopped.wait(board.HEARTBEAT_SECONDS):
+            try:
+                board.update(run_id)
+            except (OSError, ValueError) as exc:
+                print(f"[dispatch] board heartbeat stopped: {exc}", file=sys.stderr, flush=True)
+                return
+
+    pulse = threading.Thread(target=heartbeat, daemon=True)
+    pulse.start()
 
     print(f"[dispatch] {run_id}  {alias}  {adapter.key}  {args.name}", flush=True)
     print(f"[dispatch] task-dir={task_dir}", flush=True)
@@ -1127,6 +1133,13 @@ def command_run(args):
     current_prompt = prompt
 
     def finish(final_status):
+        stopped.set()
+        pulse.join()
+        board_status = "ok" if final_status == "ok" else "aborted" if final_status == "killed" else "failed"
+        try:
+            board.update(run_id, status=board_status)
+        except (OSError, ValueError) as exc:
+            print(f"[dispatch] cannot finish board lane: {exc}", file=sys.stderr, flush=True)
         end_record = {
             "run_id": run_id,
             "ended_at": now_iso(),
@@ -1227,6 +1240,7 @@ def command_run(args):
             except Exception:
                 status = "failed"
         finish(status)
+    return 0 if status == "ok" else (rc if rc and rc > 0 else 1)
 
 
 # ---------------------------------------------------------------------------
@@ -1298,21 +1312,42 @@ def command_status(args):
 # cli
 # ---------------------------------------------------------------------------
 
+def nonblank(value):
+    value = value.strip()
+    if not value:
+        raise argparse.ArgumentTypeError("must not be blank")
+    return value
+
+
+def command_start(args):
+    print(board.start(name=args.name, doing=args.doing, tool=args.tool, model=args.model,
+                      effort=args.effort, cwd=args.cwd, task_dir=args.task_dir, pid=args.pid))
+
+
+def command_update(args):
+    board.update(args.lane, doing=args.doing)
+
+
+def command_end(args):
+    board.update(args.lane, status=args.status)
+
+
 def build_parser():
     p = argparse.ArgumentParser(
         prog="dispatch.py",
-        description="统一的 coding-agent 派活工具 + 巡检表",
+        description="coding-agent 派活、巡检与编排看板（仅 Python 标准库）",
     )
     sub = p.add_subparsers(dest="command", required=True)
 
     r = sub.add_parser("run", help="派一个任务（前台运行）")
-    r.add_argument("--name", required=True, help="这个 agent 在干什么，例如「Dorico-小谱号修复」")
+    r.add_argument("--name", required=True, type=nonblank, help="简短车道名")
+    r.add_argument("--doing", required=True, type=nonblank, help="当前在做什么")
     r.add_argument("--agent", required=True, choices=sorted(ADAPTERS.keys()))
     r.add_argument("--task-dir", required=True, help="派活目录（事件/结果/会话文件写这里）")
     r.add_argument("--cwd", required=True, help="agent 的工作目录")
     r.add_argument("--prompt-file", required=True, help="提示词文件")
-    r.add_argument("--model", default=None)
-    r.add_argument("--effort", default=None, help="codex/cmd 推理强度；可用值以当前 CLI 和模型为准")
+    r.add_argument("--model", required=True, type=nonblank)
+    r.add_argument("--effort", required=True, type=nonblank, help="显式选择推理强度；不可调工具必须填 none（agy 仅接受 none）")
     r.add_argument("--resume", default=None, help="会话号，或 auto（读 task-dir 里的会话号文件）")
     r.set_defaults(func=command_run)
 
@@ -1320,13 +1355,36 @@ def build_parser():
     s.add_argument("--json", action="store_true", help="输出 JSON")
     s.set_defaults(func=command_status)
 
+    a = sub.add_parser("start", help="登记外部车道，输出车道 ID；PID 必须为本机存活的长期进程")
+    for key in ("name", "doing", "tool", "model", "effort", "cwd", "task-dir"):
+        a.add_argument("--" + key, required=True, type=nonblank)
+    a.add_argument("--pid", required=True, type=int, help="worker PID；无独立 PID 的子代理填编排宿主 PID")
+    a.set_defaults(func=command_start)
+
+    u = sub.add_parser("update", help="更新车道当前在做什么")
+    u.add_argument("--lane", required=True, type=nonblank)
+    u.add_argument("--doing", required=True, type=nonblank)
+    u.set_defaults(func=command_update)
+
+    e = sub.add_parser("end", help="标记车道结束（只记状态，不终止进程）")
+    e.add_argument("--lane", required=True, type=nonblank)
+    e.add_argument("--status", required=True, choices=("ok", "failed", "aborted"))
+    e.set_defaults(func=command_end)
+
+    b = sub.add_parser("board", help="启动只读网页；默认仅绑定自动发现的 Tailscale IPv4")
+    b.add_argument("--host", help="显式绑定地址；本机验证可用 127.0.0.1")
+    b.add_argument("--port", type=int, default=board.DEFAULT_PORT)
+    b.set_defaults(func=lambda args: board.serve(args.host, args.port))
     return p
 
 
 def main(argv=None):
     args = build_parser().parse_args(argv)
-    args.func(args)
+    try:
+        return args.func(args)
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"dispatch: {exc}") from exc
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

@@ -44,3 +44,5 @@ codex exec --model "$DISPATCH_MODEL_ID" \
 
 同时保留最终结果文件和事件流。若退出码为 0 但结果为空，检查最后一个事件的停止原因、权限拒绝和配额错误；
 不要把某台机器上曾出现的故障形状当成所有环境的固定行为。
+
+编排看板：使用 `dispatch.py run` 时每轮显式传 `--model`、`--effort`、`--doing`（包括 `--resume`）；直接调用 CLI 或原生子代理时用 `start` / `end` 登记，阶段变化用 `update`。没有强度旋钮时登记 `none`；命令与 PID 约束见 [编排看板](20261110-board.md)。

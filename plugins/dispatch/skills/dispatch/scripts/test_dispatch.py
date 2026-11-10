@@ -2,6 +2,7 @@
 """Unit tests for dispatch.py using fragments of real event streams."""
 
 import json
+import os
 import tempfile
 import time
 import unittest
@@ -168,7 +169,7 @@ class AgyTests(unittest.TestCase):
 
     def test_command_shape(self):
         cmd = self.adapter.build_command(
-            prompt="hi", model="gemini-3.8-flash-low", effort=None, resume="conv",
+            prompt="hi", model="gemini-3.8-flash-low", effort="none", resume="conv",
             event_path=Path("/tmp/e.jsonl"), result_path=Path("/tmp/r.md"),
         )
         self.assertIn("--dangerously-skip-permissions", cmd)
@@ -235,14 +236,15 @@ class CmdTests(unittest.TestCase):
                 "run", "--name", "effort regression", "--agent", "cmd",
                 "--task-dir", str(task_dir), "--cwd", str(root),
                 "--prompt-file", str(prompt_file), "--model", model,
-                "--effort", "high",
+                "--effort", "high", "--doing", "验证强度传递",
             ])
 
             def fake_execute(cmd, cwd, event_path, stderr_path, merge_stderr):
                 event_path.write_text("\n".join(CMD_OK) + "\n", encoding="utf-8")
                 return 0
 
-            with patch.object(dispatch, "RUNS_FILE", runs_file), \
+            with patch.dict(os.environ, {"DISPATCH_BOARD_STATE": str(root / "board.json")}), \
+                    patch.object(dispatch, "RUNS_FILE", runs_file), \
                     patch.object(dispatch, "execute", side_effect=fake_execute) as execute, \
                     patch.object(dispatch.signal, "signal"), patch("builtins.print"):
                 dispatch.command_run(args)

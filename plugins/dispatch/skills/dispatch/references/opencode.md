@@ -105,3 +105,5 @@ OpenRouter 派工前先用 API key 查 `GET https://openrouter.ai/api/v1/auth/ke
 立刻抬到 stdout 和退出码。
 
 不要把固定时间窗口、错误文本或 token 数写成跨 provider 规律；只按当前运行留下的证据判断。
+
+编排看板：使用 `dispatch.py run` 时每轮显式传 `--model`、`--effort`、`--doing`（包括 `--resume`）；直接调用 CLI 或原生子代理时用 `start` / `end` 登记，阶段变化用 `update`。没有强度旋钮时登记 `none`；命令与 PID 约束见 [编排看板](20261110-board.md)。
