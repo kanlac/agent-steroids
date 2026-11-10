@@ -277,7 +277,7 @@ class BoardTests(unittest.TestCase):
         self.assertEqual(len(set(ids)), 12)
         self.assertEqual({r["id"] for r in json.loads(self.path.read_text())["lanes"]}, set(ids))
 
-    def test_pid_death_freezes_duration_at_last_update_without_writing(self):
+    def test_pid_death_freezes_duration_and_persists_count_once(self):
         proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
         try:
             lane = self.start(pid=proc.pid)
@@ -290,13 +290,19 @@ class BoardTests(unittest.TestCase):
             proc.kill()
             proc.wait(timeout=5)
         before = self.path.read_bytes()
+        persisted = None
         for _ in range(2):
             running, ended = board.snapshot()
             self.assertFalse(running)
             self.assertEqual(ended[0]["id"], lane)
             self.assertEqual(ended[0]["status"], "aborted")
             self.assertEqual(ended[0]["elapsed_seconds"], 17)
-        self.assertEqual(before, self.path.read_bytes())
+            current = self.path.read_bytes()
+            if persisted is not None:
+                self.assertEqual(persisted, current)
+            persisted = current
+        self.assertNotEqual(before, persisted)
+        self.assertEqual(json.loads(persisted)["totals"]["aborted"], 1)
         self.assertFalse(board.alive(proc.pid))
         self.assertFalse(board.alive(-1))
         if os.name != "nt":
@@ -337,6 +343,46 @@ class BoardTests(unittest.TestCase):
         self.assertIn("new AbortController()", code)
         self.assertIn("signal: pull.signal", code)
         self.assertRegex(code, r"finally \{[^}]*setTimeout\(poll, POLL_MS\)")
+
+    def test_totals_survive_days_and_history_truncation(self):
+        for i in range(25):
+            with patch.object(board, "stamp", return_value=f"2026-01-{i+1:02d}T00:00:00+00:00"):
+                lane = self.start()
+                board.update(lane, status=("ok", "failed", "aborted")[i % 3])
+        for now in ("2026-02-01T00:00:00+00:00", "2027-02-01T00:00:00+00:00"):
+            with patch.object(board.time, "time", return_value=board.epoch(now)):
+                payload = self.payload(board.render())
+            self.assertEqual(payload["totals"], {"ok": 9, "failed": 8, "aborted": 8})
+            self.assertEqual(len(payload["ended"]), 20)
+        for _ in range(3):
+            board.mutate(lambda lanes: None)
+            self.assertEqual(self.payload(board.render())["totals"], {"ok": 9, "failed": 8, "aborted": 8})
+
+    def test_legacy_totals_initialized_once_from_available_records(self):
+        lane = self.start()
+        board.update(lane, status="failed")
+        data = json.loads(self.path.read_text())
+        del data["totals"]
+        self.path.write_text(json.dumps(data))
+        for _ in range(3):
+            self.assertEqual(self.payload(board.render())["totals"], {"ok": 0, "failed": 1, "aborted": 0})
+        stored = json.loads(self.path.read_text())
+        self.assertTrue(stored["lanes"][0]["counted"])
+        self.assertEqual(stored["version"], 1)
+        with self.assertRaises(ValueError):
+            board.update(lane, status="failed")
+        self.assertEqual(self.payload(board.render())["totals"]["failed"], 1)
+
+    def test_concurrent_pid_reconciliation_counts_once(self):
+        self.start()
+        def dead(lanes):
+            lanes[0]["pid"] = -1
+        board.mutate(dead)
+        code = "import board; board.snapshot()"
+        procs = [subprocess.Popen([sys.executable, "-c", code], cwd=Path(board.__file__).parent) for _ in range(6)]
+        for proc in procs:
+            self.assertEqual(proc.wait(timeout=10), 0)
+        self.assertEqual(self.payload(board.render())["totals"], {"ok": 0, "failed": 0, "aborted": 1})
 
     def test_bad_json_is_not_overwritten(self):
         self.path.write_text("broken")

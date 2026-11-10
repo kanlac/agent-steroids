@@ -222,9 +222,8 @@ function stat(value, label, status, warn) {
     h("b", null, String(value)), h("span", null, glyph(status), label));
 }
 
-function summary(lanes, t) {
-  const midnight = new Date(t).setHours(0, 0, 0, 0);
-  const count = status => lanes.filter(l => l.status === status && l.end >= midnight).length;
+function summary(lanes) {
+  const count = status => data.totals[status];
   const running = lanes.filter(l => l.status === "running");
   const groups = new Map();
   for (const l of [...running].sort((a, b) => a.level - b.level)) {
@@ -234,8 +233,8 @@ function summary(lanes, t) {
   const parts = [...groups];
   return [
     h("div", {cls: "stats"},
-      stat(running.length, "运行中", "running"), stat(count("ok"), "今天完成", "ok"),
-      stat(count("failed"), "今天失败", "failed", "bad"), stat(count("aborted"), "今天中止", "aborted"),
+      stat(running.length, "运行中", "running"), stat(count("ok"), "完成", "ok"),
+      stat(count("failed"), "失败", "failed", "bad"), stat(count("aborted"), "中止", "aborted"),
       stat(running.filter(l => l.stale).length, "超 10 分钟无更新", "stale", "warn")),
     h("div", {cls: "split"}, h("h2", null, "运行中车道的推理强度"),
       parts.length ? [
@@ -348,8 +347,8 @@ function group(title, lanes, note, rows) {
 
 function draw() {
   const t = now(), lanes = [...data.running, ...data.ended].map(l => view(l, t));
-  el.summary.replaceChildren(...summary(lanes, t));
-  el.foot.textContent = `已结束的车道只保留最近 ${data.history_limit} 条，今天的计数按这些记录统计。点一条车道可展开详情。`;
+  el.summary.replaceChildren(...summary(lanes));
+  el.foot.textContent = `已结束的车道只保留最近 ${data.history_limit} 条，累计计数包含已移出列表的车道。点一条车道可展开详情。`;
   if (!lanes.length) {
     el.board.replaceChildren(h("p", {cls: "empty"}, "还没有车道。用 dispatch.py run 派活，或用 start 登记车道后，它会出现在这里。"));
     return syncText();

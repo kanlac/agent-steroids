@@ -194,12 +194,28 @@ def partition(lanes):
     return running, ended
 
 
+def account_ended(data):
+    """Count terminal transitions once, before history can be truncated."""
+    changed = "totals" not in data
+    if changed:
+        data["totals"] = {"ok": 0, "failed": 0, "aborted": 0}
+        for lane in data["lanes"]:
+            lane.pop("counted", None)  # legacy initialization starts from retained records
+    for lane in data["lanes"]:
+        if lane["status"] in data["totals"] and not lane.get("counted", False):
+            data["totals"][lane["status"]] += 1
+            lane["counted"] = True
+            changed = True
+    return changed
+
+
 def mutate(change):
     path = state_path()
     with locked(path):
         data = load(path)
         reconcile(data["lanes"])
         result = change(data["lanes"])
+        account_ended(data)
         running, ended = partition(data["lanes"])
         keep = {r["id"] for r in running + ended}
         data["lanes"] = [r for r in data["lanes"] if r["id"] in keep]
@@ -266,9 +282,14 @@ def update(lane_id, *, doing=None, status=None, issues=None, session_id=None):
     mutate(change)
 
 
-def snapshot():
-    # Atomic replacement makes reads safe without a write lock or read-side writes.
-    running, ended = partition(reconcile(load(state_path())["lanes"]))
+def snapshot(*, include_totals=False):
+    data = load(state_path())
+    reconcile(data["lanes"])
+    if account_ended(data):
+        # Recheck under the writer lock: concurrent readers must not double count.
+        mutate(lambda lanes: None)
+        data = load(state_path())
+    running, ended = partition(data["lanes"])
     now = time.time()
     for lane in running + ended:
         end = epoch(lane["ended_at"]) if lane["ended_at"] else now
@@ -276,7 +297,7 @@ def snapshot():
         lane["updated_ago_seconds"] = max(0, now - epoch(lane["updated_at"]))
         lane["issue_links"] = issue_links(lane["issues"])
         lane["resume_command"] = resume_command(lane["tool"], lane["session_id"], lane["cwd"], lane["status"])
-    return running, ended
+    return (running, ended, data["totals"]) if include_totals else (running, ended)
 
 
 def template():
@@ -286,8 +307,8 @@ def template():
 def render():
     """Embed the snapshot as JSON the page script draws from; `<`, `>` and `&` are escaped
     so no user string can close the data block or open markup."""
-    running, ended = snapshot()
-    data = json.dumps({"now": time.time(), "history_limit": HISTORY_LIMIT,
+    running, ended, totals = snapshot(include_totals=True)
+    data = json.dumps({"now": time.time(), "history_limit": HISTORY_LIMIT, "totals": totals,
                        "running": running, "ended": ended}, ensure_ascii=False)
     for raw, safe in (("&", "\\u0026"), ("<", "\\u003c"), (">", "\\u003e")):
         data = data.replace(raw, safe)
