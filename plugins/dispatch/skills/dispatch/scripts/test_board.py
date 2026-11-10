@@ -19,6 +19,7 @@ import unittest
 from unittest.mock import patch
 from urllib.error import HTTPError
 from urllib.request import urlopen, Request
+from urllib.parse import unquote
 
 import board
 import dispatch
@@ -178,6 +179,27 @@ class BoardTests(unittest.TestCase):
             server.shutdown()
             server.server_close()
             thread.join()
+
+    def test_shared_inline_logo_favicon_and_data_only_image_policy(self):
+        self.start()
+        for page in (board.render(), board.render_index()):
+            self.assertIn('<svg width="28" height="28" class="board-logo" aria-hidden="true"', page)
+            favicon = re.search(r'<link rel="icon" type="image/svg\+xml" href="([^"]+)"', page)[1]
+            self.assertTrue(favicon.startswith("data:image/svg+xml,"))
+            self.assertNotIn("#", favicon)
+            self.assertIn("%23", favicon)
+            svg = unquote(favicon.split(",", 1)[1])
+            self.assertIn('fill="var(--e6,#412686)"', svg)
+            self.assertIn('fill="var(--e1,#aa98ff)"', svg)
+            self.assertNotIn("href=", svg)
+        directives = dict(part.strip().split(" ", 1) for part in board.policy().split(";") if part.strip())
+        self.assertEqual(directives["img-src"], "data:")
+        self.assertEqual(directives["default-src"], "'none'")
+        self.assertEqual(directives["connect-src"], "'self'")
+        self.assertEqual(directives["frame-ancestors"], "'none'")
+        self.assertTrue(all(source.startswith("'sha256-") for source in directives["script-src"].split()))
+        self.assertNotIn("http:", board.policy())
+        self.assertNotIn("https:", board.policy())
 
     def test_required_fields_even_on_resume(self):
         parser = dispatch.build_parser()

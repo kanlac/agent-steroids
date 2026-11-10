@@ -18,7 +18,7 @@ import sys
 import tempfile
 import time
 import uuid
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 HISTORY_LIMIT = 20
 HEARTBEAT_SECONDS = 5
@@ -376,8 +376,13 @@ def snapshot(board_id=None, *, include_totals=False):
     return (running, ended, data["totals"]) if include_totals else (running, ended)
 
 
+def brand_page(page):
+    svg = Path(__file__).with_name("board-logo.svg").read_text(encoding="utf-8").strip()
+    return page.replace("{{LOGO}}", svg).replace("{{FAVICON}}", "data:image/svg+xml," + quote(svg, safe=""))
+
+
 def template():
-    return Path(__file__).with_name("board.html").read_text(encoding="utf-8")
+    return brand_page(Path(__file__).with_name("board.html").read_text(encoding="utf-8"))
 
 
 def render(board_id=None):
@@ -412,7 +417,7 @@ def render_index():
         except (OSError, ValueError, KeyError, TypeError):
             detail = '<p class="muted">无法读取状态</p>'
         cards.append(f'<a class="card" href="/b/{name}"><h2>{name}</h2>{detail}</a>')
-    return Path(__file__).with_name("boards.html").read_text(encoding="utf-8").replace(
+    return brand_page(Path(__file__).with_name("boards.html").read_text(encoding="utf-8")).replace(
         "{{BOARDS}}", "".join(cards) or '<p class="muted">还没有看板</p>')
 
 
@@ -420,7 +425,7 @@ def policy():
     """CSP allowing only the template's own inline script, by hash."""
     hashes = " ".join("'sha256-%s'" % base64.b64encode(hashlib.sha256(code.encode("utf-8")).digest()).decode()
                       for code in re.findall(r"<script>(.*?)</script>", template(), re.S))
-    return (f"default-src 'none'; style-src 'unsafe-inline'; script-src {hashes}; "
+    return (f"default-src 'none'; style-src 'unsafe-inline'; img-src data:; script-src {hashes}; "
             "connect-src 'self'; frame-ancestors 'none'")
 
 
