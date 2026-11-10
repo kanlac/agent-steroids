@@ -261,7 +261,8 @@ class Adapter:
             "lines": 0,
         }
 
-    def _flags_from_text(self, acc, text):
+    def _flags_from_error(self, acc, text):
+        """Only call with diagnostics from an error event or stderr error line."""
         low = (text or "").lower()
         if "at capacity" in low:
             acc["flags"].add("capacity")
@@ -273,11 +274,25 @@ class Adapter:
         if not raw.strip():
             return acc
         acc["lines"] += 1
-        self._flags_from_text(acc, raw)
         try:
             obj = json.loads(raw)
         except (ValueError, TypeError):
             obj = None
+        if obj is None and self.merge_stderr:
+            # Codex stderr shares the JSONL file. Ignore ordinary text and log
+            # levels other than ERROR; JSON tool output never enters this path.
+            if re.match(r"^\s*(?:\d{4}-\d{2}-\d{2}T\S+\s+)?(?:ERROR\b|error:)", raw, re.I):
+                self._flags_from_error(acc, raw)
+        elif isinstance(obj, dict):
+            event = obj.get("event") if isinstance(obj.get("event"), dict) else obj
+            if event.get("type") in ("error", "turn.failed") or event.get("event") == "error":
+                message = event.get("message")
+                error = event.get("error")
+                self._flags_from_error(acc, message if isinstance(message, str) else "")
+                if isinstance(error, dict):
+                    self._flags_from_error(acc, str(error.get("message") or ""))
+                elif isinstance(error, str):
+                    self._flags_from_error(acc, error)
         self.feed(acc, obj, raw)
         return acc
 
@@ -327,12 +342,6 @@ class CodexAdapter(Adapter):
             acc["has_result"] = True
             acc["done"] = True
         elif t in ("turn.failed", "error"):
-            msg = ""
-            if isinstance(obj.get("message"), str):
-                msg = obj["message"]
-            if isinstance(obj.get("error"), dict):
-                msg += " " + str(obj["error"].get("message") or "")
-            self._flags_from_text(acc, msg)
             acc["flags"].add("failed")
             acc["status_raw"] = "error"
             acc["done"] = True

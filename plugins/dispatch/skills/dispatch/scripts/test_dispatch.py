@@ -109,6 +109,43 @@ class CodexTests(unittest.TestCase):
         self.assertIsNone(self.adapter.auto_resume(
             acc, 1, {"attempt": 6, "delay": 0, "max_attempts": self.adapter.max_retries}))
 
+    def test_content_mentions_do_not_trigger_error_flags(self):
+        text = "at capacity; max turns; max_turns; max-turns; quota exceeded"
+        events = [
+            {"type": "item.completed", "item": {"type": "agent_message", "text": text}},
+            {"type": "item.completed", "item": {"type": "command_execution", "aggregated_output": "ERROR: " + text}},
+            {"type": "item.completed", "item": {"type": "mcp_tool_call", "result": {"message": text}}},
+        ]
+        for event in events:
+            with self.subTest(event=event):
+                acc = consume_all(self.adapter, [CODEX_OK[0], json.dumps(event), CODEX_OK[-1]])
+                self.assertEqual(acc["flags"], set())
+                self.assertEqual(self.adapter.classify(acc, 0), "ok")
+                self.assertIsNone(self.adapter.auto_resume(acc, 1, {"attempt": 0, "delay": 0, "max_attempts": 6}))
+
+    def test_capacity_error_sources_are_recognized_individually(self):
+        errors = [
+            '{"type":"error","message":"Selected model is at capacity"}',
+            '{"type":"turn.failed","error":{"message":"Selected model is at capacity"}}',
+            "2026-11-11T00:00:00Z ERROR codex_core: Selected model is at capacity",
+            "Error: Selected model is at capacity",
+        ]
+        for error in errors:
+            with self.subTest(error=error):
+                acc = consume_all(self.adapter, [CODEX_OK[0], error])
+                self.assertEqual(self.adapter.classify(acc, 1), "capacity")
+                self.assertEqual(self.adapter.auto_resume(
+                    acc, 1, {"attempt": 0, "delay": 0, "max_attempts": 6})["reason"], "capacity")
+        for line in ("at capacity", "INFO: documenting at capacity", "2026-11-11T00:00:00Z INFO at capacity"):
+            with self.subTest(line=line):
+                acc = consume_all(self.adapter, [line, CODEX_OK[-1]])
+                self.assertEqual(self.adapter.classify(acc, 0), "ok")
+
+    def test_max_turns_only_from_error_diagnostics(self):
+        for message in ("max turns exceeded", "max_turns exceeded", "max-turns exceeded"):
+            acc = consume_all(self.adapter, [json.dumps({"type": "error", "message": message})])
+            self.assertEqual(self.adapter.classify(acc, 1), "max_turns")
+
     def test_command_shape(self):
         cmd = self.adapter.build_command(
             prompt="hi", model="gpt-6.1-sol", effort="low", resume=None,
@@ -262,6 +299,20 @@ class CmdTests(unittest.TestCase):
 
 
 class MiscTests(unittest.TestCase):
+    def test_successful_results_do_not_trigger_text_flags(self):
+        text = "at capacity max_turns quota exceeded"
+        for key, lines in (("cmd", CMD_OK), ("agy", AGY_OK)):
+            adapter = dispatch.ADAPTERS[key]
+            result = json.loads(lines[-1])
+            if key == "cmd":
+                result["finalText"] = text
+            else:
+                result["result"]["response"] = text
+            with self.subTest(agent=key):
+                acc = consume_all(adapter, lines[:-1] + [json.dumps(result)])
+                self.assertEqual(acc["flags"], set())
+                self.assertEqual(adapter.classify(acc, 0), "ok")
+
     def test_alias_is_stable(self):
         a = dispatch.alias_for(Path("/tmp/some/task"))
         b = dispatch.alias_for(Path("/tmp/some/task"))
