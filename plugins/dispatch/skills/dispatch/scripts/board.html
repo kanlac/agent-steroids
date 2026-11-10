@@ -61,6 +61,7 @@ body.late .summary,body.late .lanes{opacity:.5}
 .group p{margin:0;font-size:12px;color:var(--muted)}
 .empty{margin:0;padding:14px 0 18px;color:var(--muted);border-top:1px solid var(--grid)}
 
+.issues{display:flex;flex-wrap:wrap;gap:4px 12px;margin:0 0 8px 20px;min-width:0}.issues a{font-size:12px;color:var(--run);text-underline-offset:3px;overflow-wrap:anywhere;max-width:100%}
 .lane{border-top:1px solid var(--grid)}
 .row{appearance:none;border:0;background:none;font:inherit;color:inherit;text-align:left;width:calc(100% + 40px);margin:0 -20px;padding:0 20px;cursor:pointer;align-items:center}
 .row:hover,.lane.open .row{background:var(--hover)}
@@ -267,6 +268,16 @@ function details(l, t) {
     item("工作目录", l.cwd, "wide mono"), item("任务目录", l.task_dir, "wide mono"), item("车道 ID", l.id, "wide mono"));
 }
 
+function issueLinks(links) {
+  return h("div", {cls: "issues"}, (links || []).map(link => {
+    try {
+      const url = new URL(link.url);
+      if (!["http:", "https:"].includes(url.protocol)) return null;
+      return h("a", {href: link.url, target: "_blank", rel: "noopener noreferrer", title: link.url}, link.label);
+    } catch (_) { return null; }
+  }));
+}
+
 function laneRow(l, x, list, t, t0) {
   const open = opened.has(l.id), x0 = x(l.start), x1 = x(l.end ?? t), cut = l.start < t0;
   const bar = (cls, a, b) => h("span", {cls: `bar ${cls}` + (cut && a === x0 ? " cut" : ""), style: {left: a + "%", width: Math.max(0, b - a) + "%"}});
@@ -289,6 +300,7 @@ function laneRow(l, x, list, t, t0) {
       h("span", {cls: "track", "data-id": l.id}, list.map(v => h("span", {cls: "gl", style: {left: x(v) + "%"}})),
         h("span", {cls: "nowline", style: {left: x(t) + "%"}}), marks),
       h("span", {cls: "time"}, dur(l.elapsed))),
+    l.issue_links?.length > 0 && issueLinks(l.issue_links),
     open && h("div", {cls: "detail"}, details(l, t)));
 }
 

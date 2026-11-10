@@ -1103,6 +1103,7 @@ def command_run(args):
         "run_id": run_id,
         "name": args.name,
         "doing": args.doing,
+        "issues": args.issue or [],
         "pid": os.getpid(),
         "alias": alias,
         "agent": adapter.key,
@@ -1115,7 +1116,7 @@ def command_run(args):
         "resume_of": resume_session,
     }
     registered = board_write(board.start, name=args.name, doing=args.doing, tool=adapter.key, model=model,
-                effort=effort, cwd=cwd, task_dir=task_dir, pid=os.getpid(), lane_id=run_id)
+                effort=effort, cwd=cwd, task_dir=task_dir, pid=os.getpid(), lane_id=run_id, issues=args.issue)
     append_json(RUNS_FILE, start_record)
     stopped = threading.Event()
 
@@ -1329,13 +1330,22 @@ def nonblank(value):
     return value
 
 
+def issue_argument(value):
+    try:
+        return board.issue_url(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+
+
 def command_start(args):
     print(board.start(name=args.name, doing=args.doing, tool=args.tool, model=args.model,
-                      effort=args.effort, cwd=args.cwd, task_dir=args.task_dir, pid=args.pid))
+                      effort=args.effort, cwd=args.cwd, task_dir=args.task_dir, pid=args.pid, issues=args.issue))
 
 
 def command_update(args):
-    board.update(args.lane, doing=args.doing)
+    if args.doing is None and args.issue is None and not args.clear_issues:
+        raise ValueError("update requires --doing, --issue or --clear-issues")
+    board.update(args.lane, doing=args.doing, issues=[] if args.clear_issues else args.issue)
 
 
 def command_end(args):
@@ -1359,6 +1369,7 @@ def build_parser():
     r.add_argument("--model", required=True, type=nonblank)
     r.add_argument("--effort", required=True, type=nonblank, help="显式选择推理强度；不可调工具必须填 none（agy 仅接受 none）")
     r.add_argument("--resume", default=None, help="会话号，或 auto（读 task-dir 里的会话号文件）")
+    r.add_argument("--issue", action="append", type=issue_argument, metavar="URL", help="关联 http(s) 网址，可重复")
     r.set_defaults(func=command_run)
 
     s = sub.add_parser("status", help="终端里打一张巡检表")
@@ -1371,11 +1382,16 @@ def build_parser():
     a.add_argument("--cwd", type=nonblank, default=None, help="默认当前目录")
     a.add_argument("--task-dir", type=nonblank, default=None, help="可选任务目录")
     a.add_argument("--pid", type=int, default=None, help="默认调用进程 PID；Claude Code shell 工具显式传 $PPID")
+    a.add_argument("--issue", action="append", type=issue_argument, metavar="URL", help="关联 http(s) 网址，可重复")
     a.set_defaults(func=command_start)
 
     u = sub.add_parser("update", help="更新车道当前在做什么")
     u.add_argument("--lane", required=True, type=nonblank)
-    u.add_argument("--doing", required=True, type=nonblank)
+    u.add_argument("--doing", type=nonblank, help="更新当前在做什么（可只改 issue）")
+    issue_group = u.add_mutually_exclusive_group()
+    issue_group.add_argument("--issue", action="append", type=issue_argument, metavar="URL",
+                             help="完整 http(s) 网址，可重复；整体替换 issue 列表")
+    issue_group.add_argument("--clear-issues", action="store_true", help="清空 issue 列表")
     u.set_defaults(func=command_update)
 
     e = sub.add_parser("end", help="标记车道结束（只记状态，不终止进程）")

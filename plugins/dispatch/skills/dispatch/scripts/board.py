@@ -16,6 +16,7 @@ import sys
 import tempfile
 import time
 import uuid
+from urllib.parse import urlsplit
 
 HISTORY_LIMIT = 20
 HEARTBEAT_SECONDS = 5
@@ -99,6 +100,49 @@ def locked(path):
                 fcntl.flock(lock, fcntl.LOCK_UN)
 
 
+def issue_url(value):
+    """Validate CLI input before any best-effort board writes take place."""
+    try:
+        if not isinstance(value, str) or re.search(r"[\s\\]", value):
+            raise ValueError()
+        parsed = urlsplit(value)
+        if parsed.scheme.lower() not in ("http", "https") or not parsed.netloc or not parsed.hostname:
+            raise ValueError()
+        try:
+            ipaddress.ip_address(parsed.hostname)
+        except ValueError:
+            host_name(parsed.hostname.encode("idna").decode("ascii"))
+        parsed.port  # reject malformed or out-of-range ports
+    except (ValueError, TypeError):
+        raise ValueError("issue URL must be a complete http(s) URL") from None
+    return value
+
+
+def issue_links(issues):
+    """Derive short labels; unsafe URLs in edited state never become links."""
+    links = []
+    for value in issues if isinstance(issues, list) else []:
+        try:
+            url = issue_url(value)
+        except ValueError:
+            continue
+        parsed = urlsplit(url)
+        host = parsed.hostname.lower()
+        path = parsed.path.rstrip("/")
+        match = None
+        if host in ("github.com", "www.github.com"):
+            match = re.fullmatch(r"/([^/]+/([^/]+))/(?:issues|pull)/(\d+)", path)
+        elif host in ("gitlab.com", "www.gitlab.com") or "/-/" in path:
+            match = re.fullmatch(r"/(.+/([^/]+))/-/(?:issues|merge_requests)/(\d+)", path)
+            if not match and host in ("gitlab.com", "www.gitlab.com"):
+                match = re.fullmatch(r"/(.+/([^/]+))/(?:issues|merge_requests)/(\d+)", path)
+        repo = (host, match[1]) if match else None
+        links.append((url, host, match, repo))
+    multiple = len({repo for _, _, _, repo in links if repo}) > 1
+    return [{"url": url, "label": (f"{match[2]}#{match[3]}" if multiple else f"#{match[3]}")
+             if match else host} for url, host, match, _ in links]
+
+
 def load(path):
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -106,6 +150,8 @@ def load(path):
         return {"version": 1, "lanes": []}
     if not isinstance(data, dict) or data.get("version") != 1 or not isinstance(data.get("lanes"), list):
         raise ValueError("unsupported board state format")
+    for lane in data["lanes"]:
+        lane.setdefault("issues", [])
     return data
 
 
@@ -146,9 +192,10 @@ def mutate(change):
         return result
 
 
-def start(*, name, doing, tool, model, effort, cwd=None, task_dir=None, pid=None, lane_id=None):
+def start(*, name, doing, tool, model, effort, cwd=None, task_dir=None, pid=None, lane_id=None, issues=None):
     if not all(str(v).strip() for v in (name, doing, tool, model, effort)):
         raise ValueError("name, doing, tool, model and effort must not be blank")
+    issues = [issue_url(value) for value in (issues or [])]
     pid = os.getppid() if pid is None else pid
     if not alive(pid):
         raise ValueError("--pid must identify a live local process")
@@ -157,7 +204,7 @@ def start(*, name, doing, tool, model, effort, cwd=None, task_dir=None, pid=None
     record = dict(id=lane_id, name=name, doing=doing, tool=tool, model=model, effort=effort,
                   cwd=str(Path(cwd or Path.cwd()).expanduser().resolve()),
                   task_dir=str(Path(task_dir).expanduser().resolve()) if task_dir else None, pid=pid,
-                  started_at=now, updated_at=now, ended_at=None, status="running")
+                  started_at=now, updated_at=now, ended_at=None, status="running", issues=issues)
 
     def add(lanes):
         if any(r["id"] == lane_id for r in lanes):
@@ -167,7 +214,9 @@ def start(*, name, doing, tool, model, effort, cwd=None, task_dir=None, pid=None
     return mutate(add)
 
 
-def update(lane_id, *, doing=None, status=None):
+def update(lane_id, *, doing=None, status=None, issues=None):
+    if issues is not None:
+        issues = [issue_url(value) for value in issues]
     def change(lanes):
         for lane in lanes:
             if lane["id"] != lane_id:
@@ -179,6 +228,8 @@ def update(lane_id, *, doing=None, status=None):
                 if not doing.strip():
                     raise ValueError("doing must not be blank")
                 lane["doing"] = doing
+            if issues is not None:
+                lane["issues"] = issues
             lane["updated_at"] = now
             if status is not None:
                 if status not in ("ok", "failed", "aborted"):
@@ -197,6 +248,7 @@ def snapshot():
         end = epoch(lane["ended_at"]) if lane["ended_at"] else now
         lane["elapsed_seconds"] = max(0, end - epoch(lane["started_at"]))
         lane["updated_ago_seconds"] = max(0, now - epoch(lane["updated_at"]))
+        lane["issue_links"] = issue_links(lane["issues"])
     return running, ended
 
 

@@ -34,6 +34,15 @@ python3 scripts/dispatch.py end --lane "$LANE_ID" --status ok
 
 在 **Claude Code 子代理的 shell 工具里，`$PPID` 是长期存活的 `claude` 进程**，因此上例显式传 `--pid "$PPID"`；不要传 `$$`，那是本次短命 shell。其他 CLI 优先显式传 worker PID。`--pid` 省略时默认调用进程 PID（脚本的直接父进程），仅适用于调用进程本身长期存活的场景。绑定宿主 PID 无法发现子代理单独静默中断，编排者仍需显式 `end`；运行中车道超过 10 分钟没有更新时，网页会标出警示，并把最后一次更新之后的时段画成虚线尾巴，可据此识别静默中断。`end` 必须选 `ok` / `failed` / `aborted`，它只记状态、不杀进程。车道结束后不能更新或复活；下一轮重新登记并选择模型、强度和工具。
 
+`run` / `start` / `update` 都可重复传 `--issue URL` 关联网址，只接受完整的 http(s) URL，不限托管平台。`update` 传 issue 时整体替换列表；省略则保留，`--clear-issues` 清空，可单独改 issue 而不传 `--doing`：
+
+```bash
+python3 scripts/dispatch.py update --lane "$LANE_ID" --issue https://tracker.example/tickets/163 --issue https://tracker.example/tickets/164
+python3 scripts/dispatch.py update --lane "$LANE_ID" --clear-issues
+```
+
+车道行内的链接在新标签打开；GitHub / GitLab issue 或 PR 显示 `#163`，同一车道关联多个仓库时显示 `repo#163`，其他网址显示主机名。
+
 ## 网页服务
 
 ```bash
@@ -50,7 +59,7 @@ HTTP `Host` 必须匹配绑定地址或白名单中的名称，且带同一个�
 
 默认状态文件为 `$XDG_STATE_HOME/dispatch/board.json`；未设置 XDG 时为 `~/.local/state/dispatch/board.json`。可用 `DISPATCH_BOARD_STATE` 指定完整文件路径，所有登记进程和网页服务必须使用同一路径。默认 `runs.jsonl` 也在同一个 XDG `dispatch/` 目录；显式 `DISPATCH_ROOT` / `DISPATCH_RUNS` 仍可覆盖任务根目录与账本路径。两份数据各司其职：原有 `status` 仍是运行账本巡检表，并非看板的手动车道清单。
 
-JSON 顶层为 `{"version": 1, "lanes": [...]}`。每条车道包含 `id`、`name`、`doing`、`tool`、`model`、`effort`、`cwd`、`task_dir`、`pid`、`started_at`、`updated_at`、`ended_at`、`status`。时间用带时区的 ISO 8601；状态为 `running` / `ok` / `failed` / `aborted`。进程锁侧文件加同目录临时文件原子替换，避免并发写坏或丢更新；坏 JSON 会报错，不覆盖。每次写入保留全部运行中和最近 20 条结束记录，不把看板当历史归档。
+JSON 顶层为 `{"version": 1, "lanes": [...]}`。每条车道包含 `id`、`name`、`doing`、`tool`、`model`、`effort`、`cwd`、`task_dir`、`pid`、`started_at`、`updated_at`、`ended_at`、`status`、`issues`（网址列表）。旧数据缺少 `issues` 时视为空列表，状态格式仍为 v1。时间用带时区的 ISO 8601；状态为 `running` / `ok` / `failed` / `aborted`。进程锁侧文件加同目录临时文件原子替换，避免并发写坏或丢更新；坏 JSON 会报错，不覆盖。每次写入保留全部运行中和最近 20 条结束记录，不把看板当历史归档。
 
 `run` 每 5 秒更新 `updated_at`，包括等待自动重试期间；手动车道在 `update` 时更新时间。读取时检查本机 PID，消失即按 `updated_at` 显示中止并冻结时长，网页不回写文件。下次命令写入时会持久化这次判定并截断历史。自动车道异常中止的时长通常少算不超过一个心跳间隔；手动车道可能少算更多。PID 复用、僵尸进程及跨机器共享状态无法可靠辨别，状态文件应放在启动任务的本机文件系统；同一任务目录的并发 CLI 执行仍需由编排者隔离。
 

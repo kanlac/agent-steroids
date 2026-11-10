@@ -82,6 +82,72 @@ class BoardTests(unittest.TestCase):
         self.assertIsNone(record["task_dir"])
         self.assertEqual(record["pid"], os.getpid())
 
+    def test_issue_urls_rejected_by_all_cli_commands(self):
+        base = {"run": ["--name", "lane", "--agent", "codex", "--model", "m", "--effort", "high",
+                         "--doing", "review", "--cwd", ".", "--task-dir", ".", "--prompt-file", "prompt"],
+                "start": ["--name", "lane", "--tool", "other", "--model", "m", "--effort", "none", "--doing", "review"],
+                "update": ["--lane", "lane"]}
+        for command, args in base.items():
+            for value in ("javascript:alert(1)", "data:text/html,test", "ftp://example.com/a", "/relative", "//example.com/a",
+                          "https:///missing", "https://", "https://example.com:bad", "https://example.com/\n", "http:\\example.com"):
+                with self.subTest(command=command, value=value), contextlib.redirect_stderr(io.StringIO()):
+                    with self.assertRaises(SystemExit):
+                        dispatch.build_parser().parse_args([command, *args, "--issue", value])
+            parsed = dispatch.build_parser().parse_args([command, *args, "--issue", "https://example.com/a", "--issue", "http://example.com/b"])
+            self.assertEqual(parsed.issue, ["https://example.com/a", "http://example.com/b"])
+
+    def test_issues_replace_clear_and_leave_existing_work_unchanged(self):
+        lane = self.start(issues=["https://example.com/first"])
+        parser = dispatch.build_parser()
+        dispatch.command_update(parser.parse_args(["update", "--lane", lane, "--doing", "next phase"]))
+        self.assertEqual(board.snapshot()[0][0]["issues"], ["https://example.com/first"])
+        dispatch.command_update(parser.parse_args(["update", "--lane", lane, "--issue", "https://example.com/second"]))
+        record = board.snapshot()[0][0]
+        self.assertEqual(record["doing"], "next phase")
+        self.assertEqual(record["issues"], ["https://example.com/second"])
+        dispatch.command_update(parser.parse_args(["update", "--lane", lane, "--clear-issues"]))
+        self.assertEqual(board.snapshot()[0][0]["issues"], [])
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            parser.parse_args(["update", "--lane", lane, "--clear-issues", "--issue", "https://example.com"])
+        with self.assertRaises(ValueError):
+            dispatch.command_update(parser.parse_args(["update", "--lane", lane]))
+        with self.assertRaises(ValueError):
+            self.start(issues=["javascript:alert(1)"])
+
+    def test_legacy_state_missing_issues_stays_v1(self):
+        self.start()
+        data = json.loads(self.path.read_text())
+        del data["lanes"][0]["issues"]
+        self.path.write_text(json.dumps(data))
+        before = self.path.read_bytes()
+        self.assertEqual(board.load(self.path)["lanes"][0]["issues"], [])
+        lane = self.payload(board.render())["running"][0]
+        self.assertEqual((lane["issues"], lane["issue_links"]), ([], []))
+        self.assertEqual(self.path.read_bytes(), before)
+        self.assertEqual(data["version"], 1)
+
+    def test_issue_labels(self):
+        github = "https://github.com/owner/alpha/issues/163"
+        pr = "https://github.com/owner/alpha/pull/164?tab=files"
+        gitlab = "https://gitlab.com/group/subgroup/beta/-/merge_requests/25"
+        self.assertEqual([r["label"] for r in board.issue_links([github, pr])], ["#163", "#164"])
+        self.assertEqual([r["label"] for r in board.issue_links([github, pr, gitlab])], ["alpha#163", "alpha#164", "beta#25"])
+        self.assertEqual(board.issue_links(["https://gitlab.com/group/beta/-/issues/12"])[0]["label"], "#12")
+        self.assertEqual(board.issue_links(["https://tracker.example/ticket/163"])[0]["label"], "tracker.example")
+        self.assertEqual(board.issue_links(["https://github.com.attacker.example/owner/alpha/issues/163"])[0]["label"], "github.com.attacker.example")
+
+    def test_issue_payload_escaping_and_unsafe_edited_state(self):
+        url = 'https://tracker.example/?q=\"><img/src=x/onerror=alert(1)>'
+        self.start(issues=[url])
+        page = board.render()
+        self.assertNotIn('<img', page)
+        self.assertIn('\\u003cimg', page)
+        self.assertEqual(self.payload(page)["running"][0]["issue_links"], [{"url": url, "label": "tracker.example"}])
+        def corrupt(lanes):
+            lanes[0]["issues"] = ["javascript:alert(1)", "data:text/html,test", url]
+        board.mutate(corrupt)
+        self.assertEqual(board.snapshot()[0][0]["issue_links"], [{"url": url, "label": "tracker.example"}])
+
     def test_manual_lifecycle_and_invalid_ids(self):
         lane = self.start()
         board.update(lane, doing="复核修改")
@@ -427,7 +493,7 @@ class BoardTests(unittest.TestCase):
         args = dispatch.build_parser().parse_args([
             "run", "--name", "lane", "--doing", "检查", "--agent", "codex", "--model", "selected",
             "--effort", "medium", "--task-dir", str(self.root / "task"),
-            "--cwd", str(self.root), "--prompt-file", str(prompt), "--resume", "session"])
+            "--cwd", str(self.root), "--prompt-file", str(prompt), "--resume", "session", "--issue", "https://example.com/task"])
         cases = [(0, '{"type":"turn.completed"}', "ok"), (1, '', "failed"),
                  (0, '', "failed"), (-9, '', "aborted"), (dispatch.Terminated(), '', "aborted")]
         for rc, event, expected in cases:
@@ -438,6 +504,7 @@ class BoardTests(unittest.TestCase):
                 self.assertEqual(running[0]["effort"], "medium")
                 self.assertEqual(running[0]["model"], "selected")
                 self.assertIn("resume", cmd)
+                self.assertEqual(running[0]["issues"], ["https://example.com/task"])
                 board.update(running[0]["id"], doing="阶段二")
                 # Observe heartbeat without relying on a clock tick's wall time.
                 deadline = time.monotonic() + 2
