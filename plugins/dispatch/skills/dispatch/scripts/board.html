@@ -7,7 +7,7 @@
 <style>
 :root{color-scheme:light;
   --page:#f2f4f6;--surface:#fff;--ink:#161a1f;--ink-2:#4b535d;--muted:#78818b;--grid:#e8ebee;--axis:#c4cad1;--hair:rgba(22,26,31,.09);--hover:#f6f8fa;
-  --run:#2a78d6;--ok:#13865f;--fail:#d03b3b;--abort:#8f99a3;--warn:#9a5600;--warn-mark:#e3a234;--warn-bg:#fff3dc;--fail-text:#b42d2a;
+  --run:#2a78d6;--ok:#13865f;--fail:#d03b3b;--abort:#8f99a3;--warn:#9a5600;--fail-text:#b42d2a;
   /* effort: one-hue ordinal ramp, minimal → max */
   --e0:#c4cad1;--e1:#aa98ff;--e2:#9481e8;--e3:#7e6acf;--e4:#6953b6;--e5:#543d9e;--e6:#412686;
   font:14px/1.5 system-ui,-apple-system,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
@@ -26,7 +26,6 @@ h1{overflow-wrap:anywhere;min-width:0;max-width:100%;margin:0;font-size:22px;fon
 .stat b{font-size:28px;line-height:1.1;font-weight:650}
 .stat span{display:flex;align-items:center;gap:6px;color:var(--ink-2);font-size:13px;white-space:nowrap}
 .stat.zero b{color:var(--muted);font-weight:500}
-.stat.warn b,.stat.warn span{color:var(--warn)}
 .stat.bad b,.stat.bad span{color:var(--fail-text)}
 .split{flex:1;min-width:240px;max-width:460px;display:flex;flex-direction:column;justify-content:center;gap:8px}
 .split h2{margin:0;font-size:13px;font-weight:500;color:var(--ink-2)}
@@ -43,7 +42,6 @@ h1{overflow-wrap:anywhere;min-width:0;max-width:100%;margin:0;font-size:22px;fon
 .g.ok{color:var(--ok)}.g.ok::before{content:"✓"}
 .g.failed{color:var(--fail)}.g.failed::before{content:"✕"}
 .g.aborted{color:var(--abort)}.g.aborted::before{content:"⊘"}
-.g.stale{color:var(--warn-mark)}.g.stale::before{content:"⚠"}
 
 .board{background:var(--surface);border:1px solid var(--hair);border-radius:12px;padding:0 20px 8px}
 body.late .summary,body.late .lanes{opacity:.5}
@@ -67,7 +65,7 @@ body.late .summary,body.late .lanes{opacity:.5}
 .row{appearance:none;border:0;background:none;font:inherit;color:inherit;text-align:left;width:calc(100% + 40px);margin:0 -20px;padding:0 20px;cursor:pointer;align-items:center}
 .row:hover,.lane.open .row{background:var(--hover)}
 .row:focus-visible{outline:2px solid var(--run);outline-offset:-2px;border-radius:6px}
-.who{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"name tools" "doing doing" "quiet quiet";align-items:baseline;gap:1px 10px;padding:10px 0;min-width:0}
+.who{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"name tools" "doing doing";align-items:baseline;gap:1px 10px;padding:10px 0;min-width:0}
 .name{grid-area:name;display:flex;align-items:baseline;gap:6px;min-width:0;max-width:100%;font-weight:600}
 .name .g{align-self:center;margin-right:-2px}
 .name b{font-weight:600;overflow-wrap:anywhere}
@@ -75,8 +73,6 @@ body.late .summary,body.late .lanes{opacity:.5}
 .doing{grid-area:doing;padding-left:20px;color:var(--ink);overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .tools{grid-area:tools;display:flex;gap:10px;min-width:0;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden}
 .tools span{overflow:hidden;text-overflow:ellipsis;min-width:0}
-.quiet{grid-area:quiet;justify-self:start;margin-left:20px;font-size:12px;color:var(--muted)}
-.chip{display:inline-flex;align-items:center;gap:4px;padding:0 6px;border-radius:4px;background:var(--warn-bg);color:var(--warn);font-weight:600}
 .eff{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2);min-width:0}
 .eff span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pips{display:inline-flex;align-items:flex-end;gap:2px;height:16px;flex:none}
@@ -87,12 +83,10 @@ body.late .summary,body.late .lanes{opacity:.5}
 .gl,.nowline{position:absolute;top:0;bottom:0;width:1px;background:var(--grid)}
 .nowline{background:var(--run);width:2px;margin-left:-1px;opacity:.7}
 .bar{position:absolute;top:50%;height:10px;margin-top:-5px;border-radius:3px;min-width:3px}
-.bar.tail{min-width:0}
 .bar.running{background:var(--run);border-radius:3px 0 0 3px}
 .bar.ok{background:var(--ok)}
 .bar.failed{background:var(--fail)}
 .bar.aborted{background:repeating-linear-gradient(135deg,var(--abort) 0 2px,#fff 2px 5px);box-shadow:inset 0 0 0 1px var(--abort)}
-.bar.tail{background:repeating-linear-gradient(135deg,var(--warn-mark) 0 2px,#fff 2px 5px);border-radius:0;height:6px;margin-top:-3px}
 .bar.cut{border-top-left-radius:0;border-bottom-left-radius:0}
 .clip,.before{position:absolute;left:0;top:50%;transform:translateY(-50%);font-size:12px;line-height:1;color:var(--ink-2);white-space:nowrap}
 .clip{left:-12px;font-size:16px;font-weight:700;margin-top:-1px}
@@ -100,7 +94,6 @@ body.late .summary,body.late .lanes{opacity:.5}
 .before{color:var(--muted);background:var(--surface);padding:2px 4px 2px 0}
 .head{position:absolute;top:50%;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:var(--run);box-shadow:0 0 0 2px var(--surface)}
 .head::after{content:"";position:absolute;inset:-5px;border-radius:50%;border:2px solid var(--run);opacity:0;animation:pulse 2s ease-out infinite;animation-delay:inherit}
-.lane.stale .head{background:var(--warn-mark)}.lane.stale .head::after{display:none}
 @keyframes pulse{0%{transform:scale(.5);opacity:.6}100%{transform:scale(1.4);opacity:0}}
 @media (prefers-reduced-motion:reduce){.head::after{animation:none}}
 
@@ -120,9 +113,9 @@ body.late .summary,body.late .lanes{opacity:.5}
   h1{font-size:20px}
   .sync{flex-basis:100%}
   .summary{gap:16px;margin:14px 0 16px}
-  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px 0;width:100%}
+  .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px 0;width:100%}
   .stat,.stat:first-child{padding:0 12px;border-left:1px solid var(--axis)}
-  .stat:nth-child(3n+1){padding-left:0;border-left:0}
+  .stat:nth-child(2n+1){padding-left:0;border-left:0}
   .stat b{font-size:24px}
   .split{max-width:none}
   .board{padding:0 12px 6px;border-radius:10px}
@@ -134,7 +127,7 @@ body.late .summary,body.late .lanes{opacity:.5}
   .row .time{align-self:end}.row .eff{align-self:start;justify-content:flex-end}
   .eff span{max-width:72px}
   .row .track{min-height:16px}
-  .who{grid-template-columns:minmax(0,1fr);grid-template-areas:"name" "doing" "tools" "quiet"}
+  .who{grid-template-columns:minmax(0,1fr);grid-template-areas:"name" "doing" "tools"}
   .tools{padding-left:20px;flex-wrap:wrap;gap:0 10px;white-space:normal}
   .tools span{overflow-wrap:anywhere}
   .detail{margin:0 -12px;padding:2px 12px 14px 32px}
@@ -156,7 +149,7 @@ body.late .summary,body.late .lanes{opacity:.5}
 "use strict";
 const LEVELS = ["minimal", "low", "medium", "high", "xhigh", "max"]; // pips = index + 1; none or unknown = 0
 const STATUS = {running: "运行中", ok: "完成", failed: "失败", aborted: "中止"};
-const STALE_MS = 10 * 60e3, POLL_MS = 5e3, FETCH_MS = 4e3, LATE_MS = 15e3;
+const POLL_MS = 5e3, FETCH_MS = 4e3, LATE_MS = 15e3;
 const STEPS = [5, 10, 15, 30, 60, 120, 180, 360, 720].map(m => m * 60e3);
 const $ = id => document.getElementById(id);
 const el = {sync: $("sync"), summary: $("summary"), board: $("board"), foot: $("foot"), tip: $("tip")};
@@ -193,8 +186,7 @@ const ago = ms => ms < 60e3 ? "刚刚" : span(ms) + "前";
 function view(lane, t) {
   const start = Date.parse(lane.started_at), upd = Date.parse(lane.updated_at);
   const end = lane.ended_at ? Date.parse(lane.ended_at) : null;
-  return {...lane, start, upd, end, quiet: t - upd, elapsed: (end ?? t) - start,
-    stale: lane.status === "running" && t - upd > STALE_MS,
+  return {...lane, start, upd, end, elapsed: (end ?? t) - start,
     level: LEVELS.indexOf(String(lane.effort).toLowerCase()) + 1};
 }
 
@@ -217,8 +209,8 @@ function pips(level) {
   return h("span", {cls: "pips", "aria-hidden": "true"}, LEVELS.map((_, i) =>
     h("i", {style: {height: 6 + i * 2 + "px", background: i < level ? `var(--e${level})` : ""}})));
 }
-function stat(value, label, status, warn) {
-  return h("div", {cls: "stat " + (value ? warn || "" : "zero")},
+function stat(value, label, status, tone) {
+  return h("div", {cls: "stat " + (value ? tone || "" : "zero")},
     h("b", null, String(value)), h("span", null, glyph(status), label));
 }
 
@@ -234,8 +226,7 @@ function summary(lanes) {
   return [
     h("div", {cls: "stats"},
       stat(running.length, "运行中", "running"), stat(count("ok"), "完成", "ok"),
-      stat(count("failed"), "失败", "failed", "bad"), stat(count("aborted"), "中止", "aborted"),
-      stat(running.filter(l => l.stale).length, "超 10 分钟无更新", "stale", "warn")),
+      stat(count("failed"), "失败", "failed", "bad"), stat(count("aborted"), "中止", "aborted")),
     h("div", {cls: "split"}, h("h2", null, "运行中车道的推理强度"),
       parts.length ? [
         h("div", {cls: "splitbar", role: "img", "aria-label": parts.map(([k, g]) => `${k} ${g.n}`).join("，")},
@@ -263,7 +254,7 @@ function details(l, t) {
     item("在做", l.doing, "wide"),
     item("状态", STATUS[l.status] || l.status), item("工具", l.tool), item("模型", l.model), item("推理强度", l.effort),
     item("开始", when(l.start, true)),
-    l.end ? item("结束", `${when(l.end, true)}（${ago(t - l.end)}）`) : item("最后更新", `${when(l.upd, true)}（${ago(l.quiet)}）`),
+    l.end ? item("结束", `${when(l.end, true)}（${ago(t - l.end)}）`) : item("最后更新", when(l.upd, true)),
     item(l.end ? "用时" : "已运行", dur(l.elapsed)), item("PID", l.pid),
     item("工作目录", l.cwd, "wide mono"), item("任务目录", l.task_dir, "wide mono"), item("车道 ID", l.id, "wide mono"));
 }
@@ -318,19 +309,16 @@ function laneRow(l, x, list, t, t0) {
   const bar = (cls, a, b) => h("span", {cls: `bar ${cls}` + (cut && a === x0 ? " cut" : ""), style: {left: a + "%", width: Math.max(0, b - a) + "%"}});
   // A record wholly before the axis gets a label, not a bar; one that starts before it gets a ‹ edge.
   const marks = l.end !== null && l.end <= t0 ? [h("span", {cls: "before"}, `‹ 早于时间轴：${day(l.start)} → ${day(l.end)}`)]
-    : l.stale ? [bar("running", x0, x(Math.max(l.upd, t0))), bar("tail", x(Math.max(l.upd, t0)), x1)]
     : [bar(l.status, x0, x1)];
   if (cut && (l.end ?? t) > t0) marks.push(h("span", {cls: "clip", title: `开始于 ${day(l.start)}`}, "‹"));
   if (l.status === "running") marks.push(h("span", {cls: "head", style: {left: x1 + "%", animationDelay: -(Date.now() % 2000) + "ms"}}));
-  const quiet = l.stale ? h("span", {cls: "quiet chip"}, `⚠ ${span(l.quiet)}没有更新`)
-    : l.status === "running" && l.quiet >= 60e3 && h("span", {cls: "quiet"}, "更新于 " + ago(l.quiet));
-  return h("div", {cls: `lane ${l.status}` + (l.stale ? " stale" : "") + (open ? " open" : "")},
+  return h("div", {cls: `lane ${l.status}` + (open ? " open" : "")},
     h("button", {cls: "cols row", type: "button", "data-id": l.id, "aria-expanded": String(open)},
       h("span", {cls: "who"},
         h("span", {cls: "name"}, glyph(l.status), h("b", null, l.name),
           l.status !== "running" && h("span", {cls: "word"}, STATUS[l.status] || l.status)),
         h("span", {cls: "tools"}, h("span", null, l.tool), h("span", null, l.model)),
-        h("span", {cls: "doing"}, l.doing), quiet),
+        h("span", {cls: "doing"}, l.doing)),
       h("span", {cls: "eff", title: "推理强度"}, pips(l.level), h("span", null, l.effort)),
       h("span", {cls: "track", "data-id": l.id}, list.map(v => h("span", {cls: "gl", style: {left: x(v) + "%"}})),
         h("span", {cls: "nowline", style: {left: x(t) + "%"}}), marks),
@@ -382,7 +370,7 @@ function fillTip(id) {
   el.tip.replaceChildren(h("b", null, dur(l.elapsed)),
     h("p", null, `${l.name}，${STATUS[l.status] || l.status}`),
     h("p", null, `${when(l.start)} → ${l.end ? when(l.end) : "现在"}`),
-    h("p", null, l.end ? `结束于 ${ago(t - l.end)}` : `最后更新 ${ago(l.quiet)}`));
+    l.end && h("p", null, `结束于 ${ago(t - l.end)}`));
 }
 function hideTip() { tipId = null; el.tip.hidden = true; }
 el.board.addEventListener("pointermove", e => {
