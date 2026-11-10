@@ -5,6 +5,7 @@ import base64
 from contextlib import contextmanager
 import datetime as dt
 import hashlib
+import html
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import ipaddress
 import json
@@ -38,8 +39,71 @@ def state_root():
     return Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))).expanduser()
 
 
-def state_path():
+def board_id(value):
+    if not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]{0,63}", value):
+        raise ValueError("board ID must be 1-64 letters, digits or hyphens, starting with a letter or digit")
+    return value.lower()
+
+
+def require_board(value=None):
+    value = value if value is not None else os.environ.get("DISPATCH_BOARD")
+    if value is None:
+        raise ValueError("board ID required: use --board ID or export DISPATCH_BOARD=ID; claim one with new-board")
+    return board_id(value)
+
+
+def legacy_path():
     return Path(os.environ.get("DISPATCH_BOARD_STATE", str(state_root() / "dispatch/board.json"))).expanduser()
+
+
+def boards_dir():
+    return Path(os.environ.get("DISPATCH_BOARD_DIR", str(legacy_path().parent / "boards"))).expanduser()
+
+
+def state_path(value=None):
+    return boards_dir() / (require_board(value) + ".json")
+
+
+def migrate_legacy():
+    old = legacy_path()
+    if not old.exists():
+        return
+    with locked(old):
+        if not old.exists():
+            return
+        load(old)  # refuse unknown/corrupt formats without moving or overwriting data
+        target = state_path("default")
+        with locked(target):
+            if target.exists():
+                raise ValueError("legacy board and boards/default.json both exist; resolve manually; neither was changed")
+            os.replace(old, target)
+
+
+def new_board(prefix="board"):
+    prefix = board_id(prefix)
+    if len(prefix) > 48:
+        raise ValueError("board prefix must be at most 48 characters")
+    migrate_legacy()
+    while True:
+        value = prefix + "-" + uuid.uuid4().hex[:8]
+        path = state_path(value)
+        with locked(path):
+            if path.exists():
+                continue
+            data = {"version": 1, "lanes": []}
+            account_ended(data)
+            write_state(path, data)
+            return value
+
+
+def delete_board(value, *, confirm=False):
+    value = require_board(value)
+    if not confirm:
+        raise ValueError("deleting a board requires --confirm")
+    migrate_legacy()
+    path = state_path(value)
+    with locked(path):
+        path.unlink()  # retain the stable lock file; never terminate any worker
 
 
 def stamp():
@@ -209,9 +273,26 @@ def account_ended(data):
     return changed
 
 
-def mutate(change):
-    path = state_path()
+def write_state(path, data):
+    fd, temporary = tempfile.mkstemp(prefix=".board-", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as out:
+            json.dump(data, out, ensure_ascii=False, indent=2)
+            out.flush()
+            os.fsync(out.fileno())
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+def mutate(change, board_id=None, *, must_exist=False):
+    value = require_board(board_id)
+    migrate_legacy()
+    path = state_path(value)
     with locked(path):
+        if must_exist and not path.is_file():
+            raise FileNotFoundError(f"board not found: {value}")
         data = load(path)
         reconcile(data["lanes"])
         result = change(data["lanes"])
@@ -219,20 +300,12 @@ def mutate(change):
         running, ended = partition(data["lanes"])
         keep = {r["id"] for r in running + ended}
         data["lanes"] = [r for r in data["lanes"] if r["id"] in keep]
-        fd, temporary = tempfile.mkstemp(prefix=".board-", dir=path.parent)
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as out:
-                json.dump(data, out, ensure_ascii=False, indent=2)
-                out.flush()
-                os.fsync(out.fileno())
-            os.replace(temporary, path)
-        finally:
-            if os.path.exists(temporary):
-                os.unlink(temporary)
+        write_state(path, data)
         return result
 
 
-def start(*, name, doing, tool, model, effort, cwd=None, task_dir=None, pid=None, lane_id=None, issues=None, session_id=""):
+def start(*, name, doing, tool, model, effort, cwd=None, task_dir=None, pid=None, lane_id=None, issues=None, session_id="", board_id=None):
+    board_id = require_board(board_id)
     if not all(str(v).strip() for v in (name, doing, tool, model, effort)):
         raise ValueError("name, doing, tool, model and effort must not be blank")
     issues = [issue_url(value) for value in (issues or [])]
@@ -251,10 +324,11 @@ def start(*, name, doing, tool, model, effort, cwd=None, task_dir=None, pid=None
             raise ValueError(f"lane already exists: {lane_id}")
         lanes.append(record)
         return lane_id
-    return mutate(add)
+    return mutate(add, board_id)
 
 
-def update(lane_id, *, doing=None, status=None, issues=None, session_id=None):
+def update(lane_id, *, doing=None, status=None, issues=None, session_id=None, board_id=None):
+    board_id = require_board(board_id)
     if issues is not None:
         issues = [issue_url(value) for value in issues]
     def change(lanes):
@@ -279,16 +353,18 @@ def update(lane_id, *, doing=None, status=None, issues=None, session_id=None):
                 lane.update(status=status, ended_at=now)
             return
         raise ValueError(f"unknown lane: {lane_id}")
-    mutate(change)
+    mutate(change, board_id)
 
 
-def snapshot(*, include_totals=False):
-    data = load(state_path())
+def snapshot(board_id=None, *, include_totals=False):
+    board_id = require_board(board_id)
+    migrate_legacy()
+    data = load(state_path(board_id))
     reconcile(data["lanes"])
     if account_ended(data):
         # Recheck under the writer lock: concurrent readers must not double count.
-        mutate(lambda lanes: None)
-        data = load(state_path())
+        mutate(lambda lanes: None, board_id, must_exist=True)
+        data = load(state_path(board_id))
     running, ended = partition(data["lanes"])
     now = time.time()
     for lane in running + ended:
@@ -304,15 +380,40 @@ def template():
     return Path(__file__).with_name("board.html").read_text(encoding="utf-8")
 
 
-def render():
+def render(board_id=None):
     """Embed the snapshot as JSON the page script draws from; `<`, `>` and `&` are escaped
     so no user string can close the data block or open markup."""
-    running, ended, totals = snapshot(include_totals=True)
+    board_id = require_board(board_id)
+    running, ended, totals = snapshot(board_id, include_totals=True)
     data = json.dumps({"now": time.time(), "history_limit": HISTORY_LIMIT, "totals": totals,
                        "running": running, "ended": ended}, ensure_ascii=False)
     for raw, safe in (("&", "\\u0026"), ("<", "\\u003c"), (">", "\\u003e")):
         data = data.replace(raw, safe)
-    return template().replace("{{DATA}}", data)
+    return template().replace("{{BOARD}}", html.escape(board_id, quote=True)).replace("{{DATA}}", data)
+
+
+def render_index():
+    migrate_legacy()
+    cards = []
+    for path in sorted(boards_dir().glob("*.json")):
+        try:
+            value = board_id(path.stem)
+            if value != path.stem:
+                continue
+        except ValueError:
+            continue
+        name = html.escape(value, quote=True)
+        try:
+            running, ended, totals = snapshot(value, include_totals=True)
+            activity = max((lane["updated_at"] for lane in running + ended), default="")
+            updated = dt.datetime.fromisoformat(activity).astimezone().strftime("%Y-%m-%d %H:%M:%S") if activity else "暂无活动"
+            detail = (f'<p><b>{len(running)}</b> 运行中</p><p>完成 {html.escape(str(totals["ok"]))} · 失败 {html.escape(str(totals["failed"]))} · 中止 {html.escape(str(totals["aborted"]))}</p>'
+                      f'<p class="muted">最近活动 {html.escape(updated)}</p>')
+        except (OSError, ValueError, KeyError, TypeError):
+            detail = '<p class="muted">无法读取状态</p>'
+        cards.append(f'<a class="card" href="/b/{name}"><h2>{name}</h2>{detail}</a>')
+    return Path(__file__).with_name("boards.html").read_text(encoding="utf-8").replace(
+        "{{BOARDS}}", "".join(cards) or '<p class="muted">还没有看板</p>')
 
 
 def policy():
@@ -342,11 +443,24 @@ class Handler(BaseHTTPRequestHandler):
         return True
 
     def do_GET(self):
-        if self.path != "/":
-            self.send_error(404)
-            return
         try:
-            body = render().encode("utf-8")
+            if self.path == "/":
+                page = render_index()
+            elif self.path.startswith("/b/"):
+                try:
+                    value = board_id(self.path[3:])
+                except ValueError:
+                    self.send_error(400, "Invalid board ID")
+                    return
+                migrate_legacy()
+                if not state_path(value).is_file():
+                    self.send_error(404, "Board not found")
+                    return
+                page = render(value)
+            else:
+                self.send_error(404)
+                return
+            body = page.encode("utf-8")
             csp = policy()
         except (OSError, ValueError, KeyError, TypeError):
             self.send_error(503, "Cannot read board state")
@@ -406,6 +520,7 @@ def tailscale_names():
 
 
 def serve(host, port, allow_hosts=()):
+    migrate_legacy()
     automatic = host is None
     host = host or tailscale_host()
     names = tailscale_names() if automatic else []

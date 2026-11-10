@@ -2,6 +2,24 @@
 
 看板用于随时查看车道，不承担调度、结果验收或终止进程。纯 Python 标准库，无构建、npm 或 pip 依赖。`dispatch.py --help` 与各子命令的 `--help` 是参数入口。
 
+## 看板归属
+
+每个编排会话领取一个独立 ID；同一项目的两个编排者也要用不同 ID，不按 cwd 自动合并。ID 只允许 1–64 位字母、数字和连字符，首位为字母或数字，统一转为小写。领取后用环境变量保存在当前编排者的命令环境，或每次传 `--board ID`（优先于环境变量）：
+
+```bash
+export DISPATCH_BOARD="$(python3 scripts/dispatch.py new-board --prefix review)"
+# 输出形如 review-9fc7a182，同时建立空看板。也可自行指定项目名加编排会话前几位。
+python3 scripts/dispatch.py update --board "$DISPATCH_BOARD" --lane "$LANE_ID" --doing "复核结果"
+```
+
+`run` / `start` / `update` / `end` 没有 ID 会在执行前报错并提示设置方式，不能隐式落入默认看板。`new-board` 不需要已有 ID，`--prefix` 最长 48 字符。长时间无活动的看板保留，主动清理用：
+
+```bash
+python3 scripts/dispatch.py delete-board --board "$DISPATCH_BOARD" --confirm
+```
+
+只删除该看板的状态文件，保留稳定锁文件，不杀 worker、不删任务目录；应在该编排者不再使用看板时执行，后续 `start` 仍可重新建立同名看板。网页读取不会重新建立被删的看板。
+
 ## 自动派活
 
 以下命令均假设当前目录是本 skill 的目录。模型与强度占位值必须换成当前环境实际可用、适合本轮任务的选择。
@@ -22,7 +40,7 @@ python3 scripts/dispatch.py run --name review --agent codex \
 
 ## 手动车道与阶段更新
 
-不经过 `run` 的 Claude 子代理、OpenCode 或其他 CLI，也使用同一份状态。只有 `--name`、`--tool`、`--model`、`--effort`、`--doing` 必填。`--cwd` 默认当前目录，`--task-dir` 可省略、存为 `null`。`--tool` 是自由文本，不限制工具名；`start` 仅输出唯一车道 ID，后续按 ID 操作，同名车道不会覆盖。
+不经过 `run` 的 Claude 子代理、OpenCode 或其他 CLI，也使用同一份状态。在显式选择看板后，业务字段只有 `--name`、`--tool`、`--model`、`--effort`、`--doing` 必填。`--cwd` 默认当前目录，`--task-dir` 可省略、存为 `null`。`--tool` 是自由文本，不限制工具名；`start` 仅输出唯一车道 ID，后续按 ID 操作，同名车道不会覆盖。
 
 ```bash
 LANE_ID=$(python3 scripts/dispatch.py start --name audit \
@@ -73,11 +91,15 @@ python3 scripts/dispatch.py board --allow-host board.example --allow-host altern
 
 默认端口 `18743`，默认只绑定 `tailscale ip -4` 返回的地址；取不到就报错并提示 `--host`，不会回退到全网卡。默认绑定时还会从 `tailscale status --json` 的 `Self.DNSName` / `Self.HostName` 读取本机短名和 MagicDNS 全名，去掉末尾点，加入访问白名单；不会允许其他节点名称。终端打印所有允许的 URL，优先打印机器名地址。其他设备可用短名或全名 URL 打开，需具有对应 Tailscale 网络访问权限。读取名称失败会警告并保留 IP 访问，可用 `--allow-host NAME` 手动补充。显式 `--host` 可用于本机验证或自行选择网络。前台手动运行，Ctrl-C 关闭；不安装服务、不改系统设置。
 
-HTTP `Host` 必须匹配绑定地址或白名单中的名称，且带同一个服务端口；缺失、重复、错误端口或未允许的名称返回 400。`--allow-host NAME` 可重复指定，默认绑定和显式 `--host` 均可使用；只传名称，不带协议、路径、端口或通配符，不会改变监听地址。显式 `--host` 时不自动发现 Tailscale 名称。请使用终端打印的 URL；本地代理若无法访问 Tailscale IP，可改用机器名 URL。网页只接受根路径 GET，其他路径 404，写请求不支持；每次请求读状态，数据更新不需要重启。页面把状态作为转义后的 JSON 嵌入，由内联脚本绘制（CSP 只放行该脚本的哈希，不加载任何外部资源），每 5 秒在后台重新拉取根路径并原地重绘，不整页刷新，展开的详情保持不变；单次拉取超过 4 秒即放弃，下一轮照常进行；连续 15 秒拉不到数据会在顶部警示并淡化旧数据。内容：顶部概览（运行中、累计完成 / 失败 / 中止、超时未更新的数量，运行中车道的推理强度分布），下面是全部运行中车道和最近结束的 **20 条**共用一条时间轴的时间线（时间轴从最早的运行中车道或 8 小时内结束的记录起，最长 24 小时；开始早于时间轴的条在左端带 ‹ 标记，整段早于时间轴的记录不画条，只写出起止日期时间），点一行展开工具、模型、目录、PID 等详情。亮色；窄屏下每行改为上下排列，不横向滚动。没有鉴权或 TLS，依靠绑定地址和网络访问控制；不要把它直接暴露到公网。
+HTTP `Host` 必须匹配绑定地址或白名单中的名称，且带同一个服务端口；缺失、重复、错误端口或未允许的名称返回 400。`--allow-host NAME` 可重复指定，默认绑定和显式 `--host` 均可使用；只传名称，不带协议、路径、端口或通配符，不会改变监听地址。显式 `--host` 时不自动发现 Tailscale 名称。请使用终端打印的 URL；本地代理若无法访问 Tailscale IP，可改用机器名 URL。根路径 `/` 列出全部看板的 ID、运行中数、最近活动时间与累计完成 / 失败 / 中止；点开 `/b/<ID>` 是独立时间线，标题和页头显示 ID。非法 ID 返回 400，不存在的看板返回 404，其他路径 404；网页仅支持 GET，写请求不支持；每次请求读状态，数据更新不需要重启。页面把状态作为转义后的 JSON 嵌入，由内联脚本绘制（CSP 只放行该脚本的哈希，不加载任何外部资源），每 5 秒在后台重新拉取根路径并原地重绘，不整页刷新，展开的详情保持不变；单次拉取超过 4 秒即放弃，下一轮照常进行；连续 15 秒拉不到数据会在顶部警示并淡化旧数据。内容：顶部概览（运行中、累计完成 / 失败 / 中止、超时未更新的数量，运行中车道的推理强度分布），下面是全部运行中车道和最近结束的 **20 条**共用一条时间轴的时间线（时间轴从最早的运行中车道或 8 小时内结束的记录起，最长 24 小时；开始早于时间轴的条在左端带 ‹ 标记，整段早于时间轴的记录不画条，只写出起止日期时间），点一行展开工具、模型、目录、PID 等详情。亮色；窄屏下每行改为上下排列，不横向滚动。没有鉴权或 TLS，依靠绑定地址和网络访问控制；不要把它直接暴露到公网。
 
 ## 状态与时长
 
-默认状态文件为 `$XDG_STATE_HOME/dispatch/board.json`；未设置 XDG 时为 `~/.local/state/dispatch/board.json`。可用 `DISPATCH_BOARD_STATE` 指定完整文件路径，所有登记进程和网页服务必须使用同一路径。默认 `runs.jsonl` 也在同一个 XDG `dispatch/` 目录；显式 `DISPATCH_ROOT` / `DISPATCH_RUNS` 仍可覆盖任务根目录与账本路径。两份数据各司其职：原有 `status` 仍是运行账本巡检表，并非看板的手动车道清单。
+默认每个看板保存为 `$XDG_STATE_HOME/dispatch/boards/<ID>.json`；未设置 XDG 时为 `~/.local/state/dispatch/boards/<ID>.json`。`DISPATCH_BOARD_DIR` 可覆盖整个看板目录，所有登记进程和网页服务必须指向同一目录；`DISPATCH_BOARD` 只决定写操作归属，服务始终展示整个目录。
+
+旧的 `dispatch/board.json` 会在首次操作或打开服务时原子迁移到 `boards/default.json`，车道、累计数和其他字段原样保留；不会把后续未指定 ID 的写操作导向 default。若要续用旧看板，显式设 `DISPATCH_BOARD=default`。兼容原 `DISPATCH_BOARD_STATE`：它现在仅指定旧文件迁移来源，未设 `DISPATCH_BOARD_DIR` 时新目录取其父目录下的 `boards/`。若旧文件和目标 default 同时存在，会报错且两者都不改，需人工处理，避免覆盖数据；升级时应让服务和写入者使用同版脚本，不让旧版继续写单文件。
+
+默认 `runs.jsonl` 仍在 XDG `dispatch/` 目录；显式 `DISPATCH_ROOT` / `DISPATCH_RUNS` 仍可覆盖任务根目录与账本路径。两份数据各司其职：原有 `status` 仍是运行账本巡检表，并非看板的手动车道清单。
 
 JSON 顶层为 `{"version": 1, "lanes": [...], "totals": {"ok": 0, "failed": 0, "aborted": 0}}`。`totals` 是累计结束计数，每条结束车道用 `counted: true` 标记只计一次；先计数再截断历史，不跨天清零。旧文件没有 totals 时，从现有保留记录初始化并持久化；此前已经移出列表的历史无法追溯。每条车道包含 `id`、`name`、`doing`、`tool`、`model`、`effort`、`cwd`、`task_dir`、`pid`、`started_at`、`updated_at`、`ended_at`、`status`、`issues`（网址列表）、`session_id`（会话号，未知为空字符串）。旧数据缺少 `issues` / `session_id` 时分别视为空列表 / 空字符串，状态格式仍为 v1。时间用带时区的 ISO 8601；状态为 `running` / `ok` / `failed` / `aborted`。进程锁侧文件加同目录临时文件原子替换，避免并发写坏或丢更新；坏 JSON 会报错，不覆盖。每次写入保留全部运行中和最近 20 条结束记录，不把看板当历史归档。
 

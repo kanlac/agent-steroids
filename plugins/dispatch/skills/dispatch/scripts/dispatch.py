@@ -1076,6 +1076,7 @@ def board_write(action, **kwargs):
 
 
 def command_run(args):
+    board_id = board.require_board(args.board)
     signal.signal(signal.SIGTERM, _on_signal)
     signal.signal(signal.SIGINT, _on_signal)
     adapter = ADAPTERS[args.agent]
@@ -1101,6 +1102,7 @@ def command_run(args):
     started = now_iso()
     start_record = {
         "run_id": run_id,
+        "board_id": board_id,
         "name": args.name,
         "doing": args.doing,
         "issues": args.issue or [],
@@ -1134,13 +1136,13 @@ def command_run(args):
         return session
 
     registered = board_write(board.start, name=args.name, doing=args.doing, tool=adapter.key, model=model,
-                effort=effort, cwd=cwd, task_dir=task_dir, pid=os.getpid(), lane_id=run_id, issues=args.issue, session_id=session or "")
+                effort=effort, cwd=cwd, task_dir=task_dir, pid=os.getpid(), lane_id=run_id, issues=args.issue, session_id=session or "", board_id=board_id)
     append_json(RUNS_FILE, start_record)
     stopped = threading.Event()
 
     def heartbeat():
         while not stopped.wait(board.HEARTBEAT_SECONDS):
-            if not board_write(board.update, lane_id=run_id, session_id=discover_session()):
+            if not board_write(board.update, lane_id=run_id, session_id=discover_session(), board_id=board_id):
                 return
 
     pulse = None
@@ -1166,7 +1168,7 @@ def command_run(args):
             pulse.join()
         board_status = "ok" if final_status == "ok" else "aborted" if final_status == "killed" else "failed"
         if registered:
-            board_write(board.update, lane_id=run_id, status=board_status, session_id=discover_session())
+            board_write(board.update, lane_id=run_id, status=board_status, session_id=discover_session(), board_id=board_id)
         end_record = {
             "run_id": run_id,
             "ended_at": now_iso(),
@@ -1346,6 +1348,13 @@ def nonblank(value):
     return value
 
 
+def board_argument(value):
+    try:
+        return board.board_id(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+
+
 def issue_argument(value):
     try:
         return board.issue_url(value)
@@ -1355,17 +1364,18 @@ def issue_argument(value):
 
 def command_start(args):
     print(board.start(name=args.name, doing=args.doing, tool=args.tool, model=args.model,
-                      effort=args.effort, cwd=args.cwd, task_dir=args.task_dir, pid=args.pid, issues=args.issue, session_id=args.session or ""))
+                      effort=args.effort, cwd=args.cwd, task_dir=args.task_dir, pid=args.pid, issues=args.issue, session_id=args.session or "", board_id=args.board))
 
 
 def command_update(args):
+    board_id = board.require_board(args.board)
     if args.doing is None and args.issue is None and not args.clear_issues and args.session is None:
         raise ValueError("update requires --doing, --issue, --clear-issues or --session")
-    board.update(args.lane, doing=args.doing, issues=[] if args.clear_issues else args.issue, session_id=args.session)
+    board.update(args.lane, doing=args.doing, issues=[] if args.clear_issues else args.issue, session_id=args.session, board_id=board_id)
 
 
 def command_end(args):
-    board.update(args.lane, status=args.status)
+    board.update(args.lane, status=args.status, board_id=args.board)
 
 
 def build_parser():
@@ -1423,6 +1433,16 @@ def build_parser():
     b.add_argument("--allow-host", action="append", default=[], metavar="NAME",
                    help="额外允许的访问主机名（不含端口）；可重复")
     b.set_defaults(func=lambda args: board.serve(args.host, args.port, args.allow_host))
+    for command in (r, a, u, e):
+        command.add_argument("--board", type=board_argument, metavar="ID",
+                             help="必填归属（或设 DISPATCH_BOARD）；用 new-board 领取 ID")
+    n = sub.add_parser("new-board", help="领取独立看板 ID 并建立空看板；例：new-board --prefix review")
+    n.add_argument("--prefix", type=board_argument, default="board", help="可读前缀，最长 48 字符")
+    n.set_defaults(func=lambda args: print(board.new_board(args.prefix)))
+    d = sub.add_parser("delete-board", help="删除看板状态文件；不终止 worker、不删任务产物")
+    d.add_argument("--board", type=board_argument, metavar="ID", help="看板 ID，或设 DISPATCH_BOARD")
+    d.add_argument("--confirm", action="store_true", required=True, help="显式确认删除")
+    d.set_defaults(func=lambda args: board.delete_board(args.board, confirm=args.confirm))
     return p
 
 

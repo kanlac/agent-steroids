@@ -50,7 +50,9 @@ description: Send work to subagents or another model's CLI (Codex, OpenCode) and
 
 `run` 的 `--agent`、`--model`、`--effort`、`--doing` 必填，续跑也重新显式指定；开跑和结束自动登记编排看板。其他工具用 `start` / `end` 登记车道并绑定本机存活 PID，阶段变化用 `update` 改「在做什么」。
 
-`board` 提供亮色只读网页，默认仅绑定 Tailscale 地址；显示运行中与最近结束的 20 条。看板独立于原巡检账本；状态文件位置、无强度旋钮的 `none` 语义、PID 判活限制与调用示例见 `references/board.md`。
+每个编排会话先用 `new-board` 领取独立 ID；`run` / `start` / `update` / `end` 必须显式传 `--board ID` 或设 `DISPATCH_BOARD`，不要仅按项目共用 ID。
+
+`board` 提供根页列表和各 ID 独立的亮色只读网页，默认仅绑定 Tailscale 地址；显示运行中与最近结束的 20 条。看板独立于原巡检账本；状态文件位置、无强度旋钮的 `none` 语义、PID 判活限制与调用示例见 `references/board.md`。
 
 ## 各 CLI 的细节
 

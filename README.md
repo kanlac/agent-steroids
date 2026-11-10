@@ -21,7 +21,7 @@ Claude Code / Codex 通用增强插件集合。这个仓库同时兼容两种 ag
 | Plugin | Runtime | 包含内容 | 硬依赖 | 可选 / capability 依赖 |
 |---|---|---|---|---|
 | [`steroids`](plugins/steroids/) | Claude + Codex | 主体 Skills：文档处理、书籍阅读、PDF 导出、网页剪藏、论文下载、Agent 记忆管理（诊断/整理/吸收），以及 `/song` | 无 | `paper-download` / `clipping` 的登录态或 CAPTCHA 场景需要 `headed-browser` |
-| [`dispatch`](plugins/dispatch/) | Claude + Codex | `dispatch` skill：按任务特长、复杂度和成本选择模型，统一 effort 标尺，sub-agent / 外部模型 CLI 交接与结果验收，以及零依赖只读编排看板 | Python 3（仅标准库） | 映射到当前 runtime 或本机可用的 agent CLI |
+| [`dispatch`](plugins/dispatch/) | Claude + Codex | `dispatch` skill：按任务特长、复杂度和成本选择模型，统一 effort 标尺，sub-agent / 外部模型 CLI 交接与结果验收，以及按编排者隔离、共用服务的零依赖只读编排看板 | Python 3（仅标准库） | 映射到当前 runtime 或本机可用的 agent CLI |
 | [`telegram`](plugins/telegram/) | Claude Code only | `telegram-agents`、`/tg-*`、`/check-release`、`telegram-notify` MCP、Telegram time hook | Claude Code + official Telegram plugin；心跳 workflow 需 Telethon/tmux/launchd | 无 |
 | [`chrome`](plugins/chrome/) | Claude + Codex | `cdp-chrome` 每 OS 用户一个进程的共享有头 Chrome provider；Claude/Codex 内置 `cdp-chrome` MCP 启动器，会读取当前用户 steroids 配置 | Chrome、`npx`、Node ≥ 22（`page.mjs` 用内置 WebSocket） | 提供 `headed-browser`，可被 Codex Chrome plugin / 原生 browser-use 替代 |
 | [`taskdag`](plugins/taskdag/) | Claude + Codex | `taskdag` skill：ADR + Task DAG 数据面，含 vendor 进项目的 `taskdag.py`（validate/query/transition/board）与 lane 隔离参考 | Python 3（仅标准库） | 派发能力（`dispatch` skill 或等价物），非硬依赖 |
@@ -34,7 +34,7 @@ Claude Code / Codex 通用增强插件集合。这个仓库同时兼容两种 ag
 | [`read-book`](plugins/steroids/skills/read-book/SKILL.md) | `steroids` | EPUB 书籍中英双语翻译，以及阅读和讨论书籍内容。 |
 | [`youtube-bilingual-transcript`](plugins/steroids/skills/youtube-bilingual-transcript/SKILL.md) | `steroids` | 把 YouTube 链接转成中英对照单页 HTML 阅读稿。yt-dlp 抓字幕+章节，agent 翻译并策展，脚本渲染带时间戳跳转、带序号章节目录、重点高亮、专有名词内联点击注释。 |
 | [`html-to-pdf`](plugins/steroids/skills/html-to-pdf/SKILL.md) | `steroids` | 将样式化 HTML 转为高质量单页 PDF。自动处理动态元素（scroll-snap、CSS 动画、IntersectionObserver），含可复用生成脚本。 |
-| [`dispatch`](plugins/dispatch/skills/dispatch/SKILL.md) | `dispatch` | 把活派给 subagent 或其他模型 CLI：每次显式指定并核验模型 / effort，配合模型推荐表、调用契约、静默失败排查、显式 session 串行续问、编排表，以及怎么审收回来的报告；`dispatch.py` 自动 / 手动车道登记、阶段更新、issue 链接关联与跳转、会话 ID 与续接命令复制，以及 Tailscale / MagicDNS 只读编排看板（运行中与最近结束 20 条的共享时间线，累计完成 / 失败 / 中止计数，标出推理强度和长时间未更新的车道）。 |
+| [`dispatch`](plugins/dispatch/skills/dispatch/SKILL.md) | `dispatch` | 把活派给 subagent 或其他模型 CLI：每次显式指定并核验模型 / effort，配合模型推荐表、调用契约、静默失败排查、显式 session 串行续问、编排表，以及怎么审收回来的报告；`dispatch.py` 自动 / 手动车道登记、阶段更新、issue 链接关联与跳转、会话 ID 与续接命令复制，以及 按编排者 ID 隔离的 Tailscale / MagicDNS 只读编排看板（运行中与最近结束 20 条的共享时间线，累计完成 / 失败 / 中止计数，标出推理强度和长时间未更新的车道）。 |
 | [`clipping`](plugins/steroids/skills/clipping/SKILL.md) | `steroids` | 将网页文章保存为本地 Markdown 笔记。支持微信公众号等 JS 渲染页面；对信息图/表格截图可使用 PaddleOCR 提取文本并重构为 Markdown 表格。 |
 | [`paper-download`](plugins/steroids/skills/paper-download/SKILL.md) | `steroids` | 学术论文检索与下载。三级策略：HTTP/OA 直链、headless 解析、headed browser 登录/CAPTCHA。`cdp-chrome` 只是可选 provider。 |
 | [`clash-verge-config`](plugins/steroids/skills/clash-verge-config/SKILL.md) | `steroids` | Clash Verge Rev / mihomo / Stash 客户端配置即代码：保留字段与 enhance 管线、不中断 provider 热刷新、隔离内核验收、Stash Override、运行态 controller、规则/provider/真实连接闭环、DNS 与浏览器泄漏、TUN 回环。 |

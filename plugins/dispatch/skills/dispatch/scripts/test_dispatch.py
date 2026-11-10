@@ -243,7 +243,7 @@ class CmdTests(unittest.TestCase):
                 event_path.write_text("\n".join(CMD_OK) + "\n", encoding="utf-8")
                 return 0
 
-            with patch.dict(os.environ, {"DISPATCH_BOARD_STATE": str(root / "board.json")}), \
+            with patch.dict(os.environ, {"DISPATCH_BOARD_DIR": str(root / "boards"), "DISPATCH_BOARD_STATE": str(root / "board.json"), "DISPATCH_BOARD": "test-board"}), \
                     patch.object(dispatch, "RUNS_FILE", runs_file), \
                     patch.object(dispatch, "execute", side_effect=fake_execute) as execute, \
                     patch.object(dispatch.signal, "signal"), patch("builtins.print"):

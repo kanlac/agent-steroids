@@ -29,8 +29,10 @@ class BoardTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        self.path = self.root / "board.json"
-        env = patch.dict(os.environ, {"DISPATCH_BOARD_STATE": str(self.path)})
+        self.path = self.root / "boards/test-board.json"
+        self.path.parent.mkdir()
+        env = patch.dict(os.environ, {"DISPATCH_BOARD_STATE": str(self.root / "board.json"),
+                                     "DISPATCH_BOARD_DIR": str(self.path.parent), "DISPATCH_BOARD": "test-board"})
         env.start()
         self.addCleanup(env.stop)
 
@@ -44,6 +46,138 @@ class BoardTests(unittest.TestCase):
     def payload(page):
         match = re.search(r'<script type="application/json" id="board-data">(.*?)</script>', page, re.S)
         return json.loads(match[1])
+
+    def test_boards_isolate_lanes_totals_and_cli_override(self):
+        self.start(board_id="alpha", lane_id="same", name="first")
+        self.start(board_id="beta", lane_id="same", name="second")
+        dispatch.command_update(dispatch.build_parser().parse_args([
+            "update", "--board", "alpha", "--lane", "same", "--doing", "first only"]))
+        self.assertEqual(board.snapshot("alpha")[0][0]["doing"], "first only")
+        self.assertEqual(board.snapshot("beta")[0][0]["doing"], "检查边界")
+        dispatch.command_end(dispatch.build_parser().parse_args([
+            "end", "--board", "alpha", "--lane", "same", "--status", "ok"]))
+        self.assertEqual(self.payload(board.render("alpha"))["totals"]["ok"], 1)
+        self.assertEqual(self.payload(board.render("beta"))["totals"]["ok"], 0)
+        self.assertEqual(len(board.snapshot("beta")[0]), 1)
+        self.assertNotEqual(board.state_path("alpha"), board.state_path("beta"))
+        self.assertFalse(self.path.exists())  # explicit --board overrides DISPATCH_BOARD
+
+    def test_cli_requires_board_before_dispatch_or_other_side_effects(self):
+        commands = [["run", "--name", "lane", "--agent", "codex", "--model", "m", "--effort", "high",
+                     "--doing", "review", "--cwd", str(self.root), "--task-dir", str(self.root / "task"), "--prompt-file", "missing"],
+                    ["start", "--name", "lane", "--tool", "other", "--model", "m", "--effort", "none", "--doing", "review"],
+                    ["update", "--lane", "lane", "--doing", "review"], ["end", "--lane", "lane", "--status", "ok"]]
+        env = dict(os.environ)
+        env.pop("DISPATCH_BOARD", None)
+        with patch.dict(os.environ, env, clear=True), patch.object(dispatch, "execute") as execute:
+            for args in commands:
+                with self.subTest(command=args[0]), self.assertRaisesRegex(SystemExit, "--board ID or export DISPATCH_BOARD"):
+                    dispatch.main(args)
+            execute.assert_not_called()
+            self.assertFalse((self.root / "task").exists())
+        for value in ("", "../escape", "foo/bar", "foo_bar", "<script>", "a%2fb", "-start", "a"*65):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                board.state_path(value)
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                dispatch.build_parser().parse_args(["end", "--board", value, "--lane", "lane", "--status", "ok"])
+        self.assertEqual(board.board_id("Review-9FC7"), "review-9fc7")
+
+    def test_legacy_migration_preserves_data_and_is_idempotent(self):
+        self.start(name="legacy")
+        board.update(board.snapshot()[0][0]["id"], status="ok")
+        legacy = board.legacy_path()
+        original = self.path.read_bytes()
+        self.path.replace(legacy)
+        board.migrate_legacy()
+        self.assertFalse(legacy.exists())
+        self.assertEqual(board.state_path("default").read_bytes(), original)
+        board.migrate_legacy()
+        self.assertEqual(board.snapshot("default")[1][0]["name"], "legacy")
+        self.assertEqual(self.payload(board.render("default"))["totals"]["ok"], 1)
+        legacy.write_bytes(original)
+        with self.assertRaisesRegex(ValueError, "neither was changed"):
+            board.migrate_legacy()
+        self.assertEqual(legacy.read_bytes(), original)
+        self.assertEqual(board.state_path("default").read_bytes(), original)
+
+    def test_claim_and_confirmed_deletion_only_remove_selected_state(self):
+        first = board.new_board("review")
+        second = board.new_board("review")
+        self.assertRegex(first, r"^review-[a-f0-9]{8}$")
+        self.assertNotEqual(first, second)
+        self.assertEqual(board.snapshot(first), ([], []))
+        with self.assertRaisesRegex(ValueError, "--confirm"):
+            board.delete_board(first)
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            dispatch.build_parser().parse_args(["delete-board", "--board", first])
+        dispatch.main(["delete-board", "--board", first, "--confirm"])
+        self.assertFalse(board.state_path(first).exists())
+        self.assertTrue(Path(str(board.state_path(first)) + ".lock").exists())
+        self.assertTrue(board.state_path(second).exists())
+        with self.assertRaises(FileNotFoundError):
+            board.snapshot(first)
+        self.assertFalse(board.state_path(first).exists())
+
+    def test_run_explicit_board_captured_for_heartbeat_and_finish(self):
+        prompt = self.root / "prompt"
+        prompt.write_text("review")
+        args = dispatch.build_parser().parse_args([
+            "run", "--board", "worker-board", "--name", "lane", "--agent", "codex", "--model", "m",
+            "--effort", "high", "--doing", "review", "--cwd", str(self.root), "--task-dir", str(self.root / "task"), "--prompt-file", str(prompt)])
+        observed = []
+        def fake_execute(cmd, cwd, event_path, stderr_path, merge_stderr):
+            observed.append(board.snapshot("worker-board")[0][0]["doing"])
+            event_path.write_text('{"type":"thread.started","thread_id":"session-id"}\n')
+            deadline = time.monotonic()+2
+            while time.monotonic() < deadline:
+                if board.snapshot("worker-board")[0][0]["session_id"]:
+                    break
+                time.sleep(.01)
+            observed.append(board.snapshot("worker-board")[0][0]["session_id"])
+            event_path.write_text(event_path.read_text()+'{"type":"turn.completed"}\n')
+            return 0
+        with patch.object(dispatch, "RUNS_FILE", self.root / "runs.jsonl"), \
+                patch.object(dispatch, "execute", side_effect=fake_execute), patch.object(dispatch.signal, "signal"), \
+                patch.object(board, "HEARTBEAT_SECONDS", .01), contextlib.redirect_stdout(io.StringIO()):
+            result = dispatch.command_run(args)
+        self.assertEqual(result, 0)
+        self.assertEqual(observed, ["review", "session-id"])
+        self.assertEqual(board.snapshot("worker-board")[1][0]["status"], "ok")
+        self.assertFalse(self.path.exists())
+        self.assertEqual(dispatch.read_runs(self.root / "runs.jsonl")[0]["board_id"], "worker-board")
+
+    def test_root_lists_all_boards_and_validated_board_routes(self):
+        self.start(board_id="alpha", name="alpha-task")
+        lane = self.start(board_id="beta", name="beta-task")
+        board.update(lane, status="failed", board_id="beta")
+        (self.path.parent / 'bad<script>.json').write_text('{}')
+        server = board.Server(("127.0.0.1", 0), board.Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        origin = f"http://127.0.0.1:{server.server_port}"
+        try:
+            with urlopen(origin + "/") as response:
+                page = response.read().decode()
+                self.assertIn('href="/b/alpha"', page)
+                self.assertIn('href="/b/beta"', page)
+                self.assertIn("最近活动", page)
+                self.assertIn("失败 1", page)
+                self.assertNotIn('bad<script>', page)
+                self.assertIn("frame-ancestors 'none'", response.headers["Content-Security-Policy"])
+            with urlopen(origin + "/b/alpha") as response:
+                page = response.read().decode()
+                self.assertIn("<title>alpha · 编排看板</title>", page)
+                self.assertIn("alpha-task", page)
+                self.assertNotIn("beta-task", page)
+            for path, status in (("/b/../escape", 400), ("/b/%3Cscript%3E", 400), ("/b/not-found", 404)):
+                with self.assertRaises(HTTPError) as exc:
+                    urlopen(origin + path)
+                self.assertEqual(exc.exception.code, status)
+                exc.exception.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join()
 
     def test_required_fields_even_on_resume(self):
         parser = dispatch.build_parser()
@@ -392,18 +526,18 @@ class BoardTests(unittest.TestCase):
 
     def test_xdg_location(self):
         with patch.dict(os.environ, {"XDG_STATE_HOME": str(self.root)}, clear=True):
-            self.assertEqual(board.state_path(), self.root / "dispatch/board.json")
+            self.assertEqual(board.state_path("test-board"), self.root / "dispatch/boards/test-board.json")
 
     def test_xdg_board_and_runs_share_directory(self):
         env = dict(os.environ, XDG_STATE_HOME=str(self.root))
-        for name in ("DISPATCH_BOARD_STATE", "DISPATCH_ROOT", "DISPATCH_RUNS"):
+        for name in ("DISPATCH_BOARD_STATE", "DISPATCH_BOARD_DIR", "DISPATCH_ROOT", "DISPATCH_RUNS"):
             env.pop(name, None)
         code = ("import json,board,dispatch; "
-                "print(json.dumps([str(board.state_path()),str(dispatch.RUNS_FILE)]))")
+                "print(json.dumps([str(board.state_path('test-board')),str(dispatch.RUNS_FILE)]))")
         result = subprocess.run([sys.executable, "-c", code], cwd=Path(dispatch.__file__).parent,
                                 env=env, capture_output=True, text=True, check=True)
         self.assertEqual(json.loads(result.stdout),
-                         [str(self.root / "dispatch/board.json"), str(self.root / "dispatch/runs.jsonl")])
+                         [str(self.root / "dispatch/boards/test-board.json"), str(self.root / "dispatch/runs.jsonl")])
 
     def test_last_update_visible_on_every_card_and_limit_from_constant(self):
         self.start()
@@ -525,7 +659,7 @@ class BoardTests(unittest.TestCase):
         try:
             origin = f"http://127.0.0.1:{server.server_port}"
             before = self.path.read_bytes()
-            with urlopen(origin + "/") as response:
+            with urlopen(origin + "/b/test-board") as response:
                 page = response.read().decode()
                 self.assertIn("\\u003cscript\\u003ealert", page)
                 self.assertNotIn('<script>alert', page)

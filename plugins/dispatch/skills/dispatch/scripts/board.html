@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>编排看板</title>
+<title>{{BOARD}} · 编排看板</title>
 <style>
 :root{color-scheme:light;
   --page:#f2f4f6;--surface:#fff;--ink:#161a1f;--ink-2:#4b535d;--muted:#78818b;--grid:#e8ebee;--axis:#c4cad1;--hair:rgba(22,26,31,.09);--hover:#f6f8fa;
@@ -15,7 +15,7 @@
 body{margin:0;background:var(--page);color:var(--ink);-webkit-text-size-adjust:100%}
 main{max-width:1200px;margin:0 auto;padding:28px 32px 40px}
 .top{display:flex;align-items:baseline;justify-content:space-between;gap:6px 16px;flex-wrap:wrap}
-h1{margin:0;font-size:22px;font-weight:650;letter-spacing:-.01em}
+h1{overflow-wrap:anywhere;min-width:0;max-width:100%;margin:0;font-size:22px;font-weight:650;letter-spacing:-.01em}
 .sync{margin:0;min-height:20px;color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
 .sync.late{color:var(--warn);font-weight:600}
 
@@ -144,7 +144,7 @@ body.late .summary,body.late .lanes{opacity:.5}
 </head>
 <body>
 <main>
-<header class="top"><h1>编排看板</h1><p class="sync" id="sync" role="status"></p></header>
+<header class="top"><h1>{{BOARD}} <small style="font-size:13px;font-weight:400"><a href="/">所有看板</a></small></h1><p class="sync" id="sync" role="status"></p></header>
 <section class="summary" id="summary" aria-label="概览"></section>
 <section class="board" id="board" aria-label="车道时间线"></section>
 <p class="foot" id="foot"></p>
