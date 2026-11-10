@@ -1,6 +1,6 @@
 {
   "name": "dispatch",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "description": "Cross-agent dispatch with explicit model and reasoning effort selection, task handoff, result verification, and a zero-dependency orchestration board",
   "author": {
     "name": "Kan"

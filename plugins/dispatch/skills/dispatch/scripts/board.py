@@ -1,9 +1,10 @@
 """Small, local dispatch board. Standard library only; no agent CLI imports."""
 from __future__ import annotations
 
+import base64
 from contextlib import contextmanager
 import datetime as dt
-import html
+import hashlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import ipaddress
 import json
@@ -198,41 +199,27 @@ def snapshot():
     return running, ended
 
 
-def duration(seconds):
-    seconds = int(seconds)
-    if seconds < 60:
-        return f"{seconds} 秒"
-    if seconds < 3600:
-        return f"{seconds // 60} 分 {seconds % 60:02d} 秒"
-    return f"{seconds // 3600} 小时 {seconds % 3600 // 60:02d} 分"
+def template():
+    return Path(__file__).with_name("board.html").read_text(encoding="utf-8")
 
 
 def render():
+    """Embed the snapshot as JSON the page script draws from; `<`, `>` and `&` are escaped
+    so no user string can close the data block or open markup."""
     running, ended = snapshot()
-    labels = {"running": "运行中", "ok": "正常结束", "failed": "失败", "aborted": "已中止"}
+    data = json.dumps({"now": time.time(), "history_limit": HISTORY_LIMIT,
+                       "running": running, "ended": ended}, ensure_ascii=False)
+    for raw, safe in (("&", "\\u0026"), ("<", "\\u003c"), (">", "\\u003e")):
+        data = data.replace(raw, safe)
+    return template().replace("{{DATA}}", data)
 
-    def card(lane):
-        esc = lambda key: html.escape(str(lane[key]), quote=True)
-        cwd = lane["cwd"]
-        short = "…/" + "/".join(Path(cwd).parts[-2:]) if len(Path(cwd).parts) > 3 else cwd
-        return f'''<article class="lane {esc('status')}">
-<div class="lane-top"><h3>{esc('name')}</h3><span class="status">{labels[lane['status']]}</span></div>
-<p class="doing">{esc('doing')}</p>
-<dl><div><dt>工具</dt><dd>{esc('tool')}</dd></div><div><dt>模型</dt><dd>{esc('model')}</dd></div>
-<div><dt>推理强度</dt><dd><strong class="effort">{esc('effort')}</strong></dd></div></dl>
-<div class="lane-bottom"><span class="cwd" title="{esc('cwd')}">{html.escape(short)}</span>
-<span class="duration">{'已运行' if lane['status'] == 'running' else '工作时长'} {duration(lane['elapsed_seconds'])}</span></div>
-<p class="updated">最后更新于 {int(lane['updated_ago_seconds'] // 60)} 分钟前</p></article>'''
 
-    template = Path(__file__).with_name("board.html").read_text(encoding="utf-8")
-    values = {
-        "TIME": dt.datetime.now().astimezone().strftime("%H:%M:%S"),
-        "RUNNING_COUNT": str(len(running)), "ENDED_COUNT": str(len(ended)),
-        "HISTORY_LIMIT": str(HISTORY_LIMIT),
-        "RUNNING": "".join(map(card, running)) or '<p class="empty">暂无运行中的车道</p>',
-        "ENDED": "".join(map(card, ended)) or '<p class="empty">暂无结束记录</p>',
-    }
-    return re.sub(r"\{\{([A-Z_]+)\}\}", lambda match: values[match[1]], template)
+def policy():
+    """CSP allowing only the template's own inline script, by hash."""
+    hashes = " ".join("'sha256-%s'" % base64.b64encode(hashlib.sha256(code.encode("utf-8")).digest()).decode()
+                      for code in re.findall(r"<script>(.*?)</script>", template(), re.S))
+    return (f"default-src 'none'; style-src 'unsafe-inline'; script-src {hashes}; "
+            "connect-src 'self'; frame-ancestors 'none'")
 
 
 class Server(ThreadingHTTPServer):
@@ -257,6 +244,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         try:
             body = render().encode("utf-8")
+            csp = policy()
         except (OSError, ValueError, KeyError, TypeError):
             self.send_error(503, "Cannot read board state")
             return
@@ -264,7 +252,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
-        self.send_header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'")
+        self.send_header("Content-Security-Policy", csp)
         self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
         self.wfile.write(body)

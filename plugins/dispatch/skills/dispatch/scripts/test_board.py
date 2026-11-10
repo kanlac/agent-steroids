@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """Board contract tests. All state is isolated; no model CLI is launched."""
+import base64
 import contextlib
+import hashlib
 import io
 import http.client
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -35,6 +38,11 @@ class BoardTests(unittest.TestCase):
                       effort="high", cwd=self.root, task_dir=self.root, pid=os.getpid())
         values.update(kwargs)
         return board.start(**values)
+
+    @staticmethod
+    def payload(page):
+        match = re.search(r'<script type="application/json" id="board-data">(.*?)</script>', page, re.S)
+        return json.loads(match[1])
 
     def test_required_fields_even_on_resume(self):
         parser = dispatch.build_parser()
@@ -147,10 +155,14 @@ class BoardTests(unittest.TestCase):
                 board.update(lane, status="ok")
         self.assertEqual({r["name"] for r in board.snapshot()[1]}, set(map(str, range(3, 23))))
 
-    def test_user_template_markers_remain_literal(self):
-        self.start(doing="{{ENDED}} <b>检查</b>")
+    def test_user_strings_cannot_break_out_of_embedded_data(self):
+        doing = "{{DATA}} </script><b>检查</b> & <!--"
+        self.start(doing=doing)
         page = board.render()
-        self.assertIn("{{ENDED}} &lt;b&gt;检查&lt;/b&gt;", page)
+        self.assertNotIn("</script><b>", page)
+        self.assertNotIn("<!--", page)
+        self.assertIn("{{DATA}} \\u003c/script\\u003e\\u003cb\\u003e检查", page)
+        self.assertEqual(self.payload(page)["running"][0]["doing"], doing)
 
     def test_bad_json_is_not_overwritten(self):
         self.path.write_text("broken")
@@ -181,12 +193,14 @@ class BoardTests(unittest.TestCase):
             for lane in lanes:
                 lane["updated_at"] = "2026-01-01T00:00:00+00:00"
         board.mutate(older)
-        with patch.object(board.time, "time", return_value=board.epoch("2026-01-01T00:07:30+00:00")), \
-                patch.object(board, "HISTORY_LIMIT", 7):
-            page = board.render()
-        self.assertEqual(page.count("最后更新于 7 分钟前"), 2)
-        self.assertIn("保留最近 7 条", page)
-        self.assertNotIn("保留最近 20 条", page)
+        now = board.epoch("2026-01-01T00:07:30+00:00")
+        with patch.object(board.time, "time", return_value=now), patch.object(board, "HISTORY_LIMIT", 7):
+            data = self.payload(board.render())
+        self.assertEqual(data["now"], now)
+        self.assertEqual(data["history_limit"], 7)
+        lanes = data["running"] + data["ended"]
+        self.assertEqual([lane["updated_ago_seconds"] for lane in lanes], [450, 450])
+        self.assertTrue(all(lane["updated_at"] == "2026-01-01T00:00:00+00:00" for lane in lanes))
 
     def test_tailscale_default_and_failure_has_explicit_host_hint(self):
         with patch.object(board.subprocess, "run") as run:
@@ -210,11 +224,19 @@ class BoardTests(unittest.TestCase):
             before = self.path.read_bytes()
             with urlopen(origin + "/") as response:
                 page = response.read().decode()
-                self.assertIn("&lt;script&gt;", page)
+                self.assertIn("\\u003cscript\\u003ealert", page)
                 self.assertNotIn('<script>alert', page)
-                self.assertIn('class="effort">high', page)
-                self.assertIn('http-equiv="refresh" content="5"', page)
+                self.assertEqual(self.payload(page)["running"][0]["effort"], "high")
                 self.assertEqual(response.headers["Cache-Control"], "no-store")
+                policy = response.headers["Content-Security-Policy"]
+                code = re.findall(r"<script>(.*?)</script>", page, re.S)
+                self.assertEqual(len(code), 1)
+                digest = base64.b64encode(hashlib.sha256(code[0].encode()).digest()).decode()
+                self.assertIn(f"script-src 'sha256-{digest}';", policy)
+                self.assertIn("connect-src 'self'", policy)
+                self.assertNotIn("unsafe", policy.split("script-src ")[1].split(";")[0])
+                for sink in ("innerHTML", "outerHTML", "insertAdjacentHTML", "document.write"):
+                    self.assertNotIn(sink, code[0])
             for request, code in ((origin + "/board.json", 404), (Request(origin + "/", data=b"write"), 501)):
                 with self.assertRaises(HTTPError) as exc:
                     urlopen(request)
