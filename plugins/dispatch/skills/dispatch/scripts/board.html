@@ -62,6 +62,7 @@ body.late .summary,body.late .lanes{opacity:.5}
 .empty{margin:0;padding:14px 0 18px;color:var(--muted);border-top:1px solid var(--grid)}
 
 .issues{display:flex;flex-wrap:wrap;gap:4px 12px;margin:0 0 8px 20px;min-width:0}.issues a{font-size:12px;color:var(--run);text-underline-offset:3px;overflow-wrap:anywhere;max-width:100%}
+.session-copy{font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;color:var(--ink-2);background:var(--hover);border:1px solid var(--hair);border-radius:4px;padding:0 6px;cursor:pointer}.session-copy:hover{color:var(--run);border-color:var(--run)}.copy-dialog{max-width:calc(100vw - 32px);width:480px;border:1px solid var(--axis);border-radius:10px;padding:20px;color:var(--ink);background:var(--surface)}.copy-dialog::backdrop{background:#161a1f55}.copy-dialog textarea{width:100%;font:14px/1.5 ui-monospace,Menlo,Consolas,monospace;margin:12px 0;resize:vertical}.copy-dialog p{margin:0}
 .lane{border-top:1px solid var(--grid)}
 .row{appearance:none;border:0;background:none;font:inherit;color:inherit;text-align:left;width:calc(100% + 40px);margin:0 -20px;padding:0 20px;cursor:pointer;align-items:center}
 .row:hover,.lane.open .row{background:var(--hover)}
@@ -268,14 +269,49 @@ function details(l, t) {
     item("工作目录", l.cwd, "wide mono"), item("任务目录", l.task_dir, "wide mono"), item("车道 ID", l.id, "wide mono"));
 }
 
+function selectSession(id) {
+  const field = h("textarea", {readonly: "", rows: "3", "aria-label": "完整会话 ID"});
+  field.value = id;
+  const close = h("button", {type: "button"}, "关闭");
+  const dialog = h("dialog", {cls: "copy-dialog"}, h("p", null, "复制未成功，请手动复制会话 ID"), field, close);
+  close.addEventListener("click", () => dialog.close());
+  dialog.addEventListener("close", () => dialog.remove());
+  document.body.append(dialog);
+  dialog.showModal();
+  field.focus();
+  field.select();
+}
+
+async function copySession(button, id, command) {
+  let copied = false;
+  try { await navigator.clipboard.writeText(command); copied = true; } catch (_) {}
+  if (!copied) {
+    const field = h("textarea", {readonly: "", style: {position: "fixed", left: "-9999px", top: "0"}});
+    field.value = command;
+    document.body.append(field);
+    try { field.focus(); field.select(); copied = document.execCommand("copy"); } catch (_) {}
+    finally { field.remove(); button.focus({preventScroll: true}); }
+  }
+  if (!copied) return selectSession(id);
+  button.textContent = "已复制";
+  setTimeout(() => { button.textContent = id.slice(0, 8); }, 1500);
+}
+
+function sessionButton(lane) {
+  const button = h("button", {cls: "session-copy", type: "button", title: lane.resume_command,
+    "aria-label": "复制会话续接命令 " + lane.session_id}, lane.session_id.slice(0, 8));
+  button.addEventListener("click", () => copySession(button, lane.session_id, lane.resume_command));
+  return button;
+}
+
 function issueLinks(links) {
-  return h("div", {cls: "issues"}, (links || []).map(link => {
+  return (links || []).map(link => {
     try {
       const url = new URL(link.url);
       if (!["http:", "https:"].includes(url.protocol)) return null;
       return h("a", {href: link.url, target: "_blank", rel: "noopener noreferrer", title: link.url}, link.label);
     } catch (_) { return null; }
-  }));
+  });
 }
 
 function laneRow(l, x, list, t, t0) {
@@ -300,7 +336,8 @@ function laneRow(l, x, list, t, t0) {
       h("span", {cls: "track", "data-id": l.id}, list.map(v => h("span", {cls: "gl", style: {left: x(v) + "%"}})),
         h("span", {cls: "nowline", style: {left: x(t) + "%"}}), marks),
       h("span", {cls: "time"}, dur(l.elapsed))),
-    l.issue_links?.length > 0 && issueLinks(l.issue_links),
+    (l.session_id || l.issue_links?.length > 0) && h("div", {cls: "issues"},
+      l.session_id && sessionButton(l), issueLinks(l.issue_links)),
     open && h("div", {cls: "detail"}, details(l, t)));
 }
 

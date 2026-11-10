@@ -1115,14 +1115,32 @@ def command_run(args):
         "started_at": started,
         "resume_of": resume_session,
     }
+    session = resume_session
+    events_files = []
+    session_cache = {}
+    session_start = time.time()
+
+    def discover_session():
+        nonlocal session
+        try:
+            if events_files:
+                acc, _ = read_event_file(Path(events_files[-1]), adapter, mode="full", cache=session_cache)
+                session = acc.get("session") or session
+            path = adapter.session_path(task_dir)
+            if not session and path.stat().st_mtime >= session_start:
+                session = read_session_file(adapter, task_dir)
+        except Exception:
+            pass  # session metadata is optional and must never prevent dispatch
+        return session
+
     registered = board_write(board.start, name=args.name, doing=args.doing, tool=adapter.key, model=model,
-                effort=effort, cwd=cwd, task_dir=task_dir, pid=os.getpid(), lane_id=run_id, issues=args.issue)
+                effort=effort, cwd=cwd, task_dir=task_dir, pid=os.getpid(), lane_id=run_id, issues=args.issue, session_id=session or "")
     append_json(RUNS_FILE, start_record)
     stopped = threading.Event()
 
     def heartbeat():
         while not stopped.wait(board.HEARTBEAT_SECONDS):
-            if not board_write(board.update, lane_id=run_id):
+            if not board_write(board.update, lane_id=run_id, session_id=discover_session()):
                 return
 
     pulse = None
@@ -1136,12 +1154,10 @@ def command_run(args):
     if resume_session:
         print(f"[dispatch] resume={resume_session}", flush=True)
 
-    events_files = []
     retries = 0
     rc = None
     last_acc = adapter.new_acc()
     status = None
-    session = resume_session
     current_prompt = prompt
 
     def finish(final_status):
@@ -1150,7 +1166,7 @@ def command_run(args):
             pulse.join()
         board_status = "ok" if final_status == "ok" else "aborted" if final_status == "killed" else "failed"
         if registered:
-            board_write(board.update, lane_id=run_id, status=board_status)
+            board_write(board.update, lane_id=run_id, status=board_status, session_id=discover_session())
         end_record = {
             "run_id": run_id,
             "ended_at": now_iso(),
@@ -1339,13 +1355,13 @@ def issue_argument(value):
 
 def command_start(args):
     print(board.start(name=args.name, doing=args.doing, tool=args.tool, model=args.model,
-                      effort=args.effort, cwd=args.cwd, task_dir=args.task_dir, pid=args.pid, issues=args.issue))
+                      effort=args.effort, cwd=args.cwd, task_dir=args.task_dir, pid=args.pid, issues=args.issue, session_id=args.session or ""))
 
 
 def command_update(args):
-    if args.doing is None and args.issue is None and not args.clear_issues:
-        raise ValueError("update requires --doing, --issue or --clear-issues")
-    board.update(args.lane, doing=args.doing, issues=[] if args.clear_issues else args.issue)
+    if args.doing is None and args.issue is None and not args.clear_issues and args.session is None:
+        raise ValueError("update requires --doing, --issue, --clear-issues or --session")
+    board.update(args.lane, doing=args.doing, issues=[] if args.clear_issues else args.issue, session_id=args.session)
 
 
 def command_end(args):
@@ -1383,6 +1399,7 @@ def build_parser():
     a.add_argument("--task-dir", type=nonblank, default=None, help="可选任务目录")
     a.add_argument("--pid", type=int, default=None, help="默认调用进程 PID；Claude Code shell 工具显式传 $PPID")
     a.add_argument("--issue", action="append", type=issue_argument, metavar="URL", help="关联 http(s) 网址，可重复")
+    a.add_argument("--session", type=nonblank, metavar="ID", help="可选 agent 会话 ID，用于复制续会话命令")
     a.set_defaults(func=command_start)
 
     u = sub.add_parser("update", help="更新车道当前在做什么")
@@ -1392,6 +1409,7 @@ def build_parser():
     issue_group.add_argument("--issue", action="append", type=issue_argument, metavar="URL",
                              help="完整 http(s) 网址，可重复；整体替换 issue 列表")
     issue_group.add_argument("--clear-issues", action="store_true", help="清空 issue 列表")
+    u.add_argument("--session", type=nonblank, metavar="ID", help="设置 agent 会话 ID，可单独更新")
     u.set_defaults(func=command_update)
 
     e = sub.add_parser("end", help="标记车道结束（只记状态，不终止进程）")

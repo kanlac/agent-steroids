@@ -43,6 +43,26 @@ python3 scripts/dispatch.py update --lane "$LANE_ID" --clear-issues
 
 车道行内的链接在新标签打开；GitHub / GitLab issue 或 PR 显示 `#163`，同一车道关联多个仓库时显示 `repo#163`，其他网址显示主机名。
 
+## 会话续接
+
+`run` 自动记录 `session_id`：续做时立即使用解析后的会话号；运行中随心跳增量读取本轮事件流，并可读取本轮新写入的会话号文件，收尾再保存一次。拿不到留空，不报错，也不沿用任务目录中无关旧轮次的会话号。`start` / `update` 可用 `--session ID` 手动填写，`update` 可只改会话号：
+
+```bash
+python3 scripts/dispatch.py update --lane "$LANE_ID" --session "$SESSION_ID"
+```
+
+行内显示前 8 位，悬停显示将复制的完整命令。已知工具的命令前加 `cd <cwd> && `，工作目录与 ID 按 POSIX shell 规则引用；未知工具只复制完整 ID。复制先尝试 Clipboard API，失败（如 HTTP 机器名页面）后用隐藏 textarea + execCommand；成功短暂提示「已复制」，仍失败则选中显示完整 ID，供手动复制。Windows 用户需在支持 POSIX shell 的终端中粘贴这些命令。
+
+下表于 2026-11-10 逐项查本机 CLI 帮助核实，代码映射固定复用；工具升级后以实际 `--help` 为准。仅生成续接命令，不会自动执行。
+
+| 工具字段 | 复制的续会话命令（不含 cd 前缀） | 核实入口 / 版本 |
+|---|---|---|
+| `claude` / `claude-agent` / `claude-code` | `claude --resume <id>` | `claude --help` / 2.1.321 |
+| `codex` | `codex resume <id>` | `codex resume --help` / 0.163.0-alpha.10.2 |
+| `opencode` | `opencode --session <id>` | `opencode --help` / 1.19.4 |
+| `cmd` | `cmd --resume <id>` | `cmd --help` / 1.88.2 |
+| `agy` | `agy --conversation <id>` | `agy --help` / 1.4.7 |
+
 ## 网页服务
 
 ```bash
@@ -59,7 +79,7 @@ HTTP `Host` 必须匹配绑定地址或白名单中的名称，且带同一个�
 
 默认状态文件为 `$XDG_STATE_HOME/dispatch/board.json`；未设置 XDG 时为 `~/.local/state/dispatch/board.json`。可用 `DISPATCH_BOARD_STATE` 指定完整文件路径，所有登记进程和网页服务必须使用同一路径。默认 `runs.jsonl` 也在同一个 XDG `dispatch/` 目录；显式 `DISPATCH_ROOT` / `DISPATCH_RUNS` 仍可覆盖任务根目录与账本路径。两份数据各司其职：原有 `status` 仍是运行账本巡检表，并非看板的手动车道清单。
 
-JSON 顶层为 `{"version": 1, "lanes": [...]}`。每条车道包含 `id`、`name`、`doing`、`tool`、`model`、`effort`、`cwd`、`task_dir`、`pid`、`started_at`、`updated_at`、`ended_at`、`status`、`issues`（网址列表）。旧数据缺少 `issues` 时视为空列表，状态格式仍为 v1。时间用带时区的 ISO 8601；状态为 `running` / `ok` / `failed` / `aborted`。进程锁侧文件加同目录临时文件原子替换，避免并发写坏或丢更新；坏 JSON 会报错，不覆盖。每次写入保留全部运行中和最近 20 条结束记录，不把看板当历史归档。
+JSON 顶层为 `{"version": 1, "lanes": [...]}`。每条车道包含 `id`、`name`、`doing`、`tool`、`model`、`effort`、`cwd`、`task_dir`、`pid`、`started_at`、`updated_at`、`ended_at`、`status`、`issues`（网址列表）、`session_id`（会话号，未知为空字符串）。旧数据缺少 `issues` / `session_id` 时分别视为空列表 / 空字符串，状态格式仍为 v1。时间用带时区的 ISO 8601；状态为 `running` / `ok` / `failed` / `aborted`。进程锁侧文件加同目录临时文件原子替换，避免并发写坏或丢更新；坏 JSON 会报错，不覆盖。每次写入保留全部运行中和最近 20 条结束记录，不把看板当历史归档。
 
 `run` 每 5 秒更新 `updated_at`，包括等待自动重试期间；手动车道在 `update` 时更新时间。读取时检查本机 PID，消失即按 `updated_at` 显示中止并冻结时长，网页不回写文件。下次命令写入时会持久化这次判定并截断历史。自动车道异常中止的时长通常少算不超过一个心跳间隔；手动车道可能少算更多。PID 复用、僵尸进程及跨机器共享状态无法可靠辨别，状态文件应放在启动任务的本机文件系统；同一任务目录的并发 CLI 执行仍需由编排者隔离。
 

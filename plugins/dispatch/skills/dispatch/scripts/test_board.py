@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -147,6 +148,95 @@ class BoardTests(unittest.TestCase):
             lanes[0]["issues"] = ["javascript:alert(1)", "data:text/html,test", url]
         board.mutate(corrupt)
         self.assertEqual(board.snapshot()[0][0]["issue_links"], [{"url": url, "label": "tracker.example"}])
+
+    def test_manual_session_cli_and_old_data(self):
+        args = dispatch.build_parser().parse_args([
+            "start", "--name", "lane", "--tool", "claude-agent", "--model", "m", "--effort", "high",
+            "--doing", "review", "--pid", str(os.getpid()), "--session", "session-first"])
+        with contextlib.redirect_stdout(io.StringIO()):
+            dispatch.command_start(args)
+        record = board.snapshot()[0][0]
+        self.assertEqual(record["session_id"], "session-first")
+        dispatch.command_update(dispatch.build_parser().parse_args([
+            "update", "--lane", record["id"], "--session", "session-second"]))
+        self.assertEqual(board.snapshot()[0][0]["session_id"], "session-second")
+        self.assertEqual(board.snapshot()[0][0]["doing"], "review")
+        data = json.loads(self.path.read_text())
+        del data["lanes"][0]["session_id"]
+        self.path.write_text(json.dumps(data))
+        record = board.snapshot()[0][0]
+        self.assertEqual((record["session_id"], record["resume_command"]), ("", ""))
+        self.assertEqual(json.loads(self.path.read_text())["version"], 1)
+
+    def test_resume_mapping_and_shell_quoting(self):
+        cwd = "/workspace/space and 'quote $(echo unsafe)"
+        sid = "session'$(echo unsafe);next"
+        expected = {"claude": ["claude", "--resume"], "claude-agent": ["claude", "--resume"],
+                    "claude-code": ["claude", "--resume"], "codex": ["codex", "resume"],
+                    "opencode": ["opencode", "--session"], "cmd": ["cmd", "--resume"],
+                    "agy": ["agy", "--conversation"]}
+        for tool, argv in expected.items():
+            with self.subTest(tool=tool):
+                command = board.resume_command(tool, sid, cwd)
+                self.assertEqual(shlex.split(command), ["cd", cwd, "&&", *argv, sid])
+        self.assertEqual(board.resume_command("unknown", sid, cwd), sid)
+        self.assertEqual(board.resume_command("codex", "", cwd), "")
+        self.start(session_id='</script><img/src=x/onerror=alert(1)>')
+        page = board.render()
+        self.assertNotIn('</script><img', page)
+        record = self.payload(page)["running"][0]
+        self.assertIn("</script><img", record["session_id"])
+
+    def test_run_live_session_discovery_and_resume(self):
+        prompt = self.root / "prompt.txt"
+        prompt.write_text("test")
+        from test_dispatch import CODEX_OK, AGY_OK, CMD_OK
+        for agent, events in (("codex", CODEX_OK), ("agy", AGY_OK), ("cmd", CMD_OK)):
+            adapter = dispatch.ADAPTERS[agent]
+            task = self.root / agent
+            argv = ["run", "--name", "lane", "--doing", "review", "--agent", agent,
+                    "--model", "m", "--effort", "none" if agent == "agy" else "high",
+                    "--cwd", str(self.root), "--task-dir", str(task), "--prompt-file", str(prompt)]
+            for mode in ("events", "resume", "auto", "file", "missing"):
+                if mode == "auto":
+                    task.mkdir(exist_ok=True)
+                    adapter.session_path(task).write_text("resume-id")
+                args = dispatch.build_parser().parse_args(argv + (
+                    ["--resume", "auto" if mode == "auto" else "resume-id"] if mode in ("resume", "auto") else []))
+                observed = []
+                expected = (json.loads(events[0]).get("thread_id") or json.loads(events[0]).get("conversation_id")
+                            or json.loads(events[0]).get("event", {}).get("sessionId")) if mode == "events" else {
+                                "resume": "resume-id", "auto": "resume-id", "file": "file-id", "missing": ""}[mode]
+                def fake_execute(cmd, cwd, event_path, stderr_path, merge_stderr):
+                    initial = board.snapshot()[0][0]
+                    observed.append(initial["session_id"])
+                    event_path.write_text("\n".join(events) + "\n" if mode == "events" else "")
+                    if mode == "file":
+                        adapter.session_path(task).write_text("file-id")
+                        os.utime(adapter.session_path(task), (time.time()+1, time.time()+1))
+                    deadline = time.monotonic() + 2
+                    while time.monotonic() < deadline:
+                        current = board.snapshot()[0][0]["session_id"]
+                        if current == expected:
+                            break
+                        time.sleep(.01)
+                    observed.append(current)
+                    # End without a model CLI or adapter auto-resume/retry loop.
+                    raise dispatch.Terminated()
+                if task.exists():
+                    old = adapter.session_path(task)
+                    if old.exists():
+                        os.utime(old, (1, 1))  # never inherit an unrelated old run's session
+                with patch.object(dispatch, "RUNS_FILE", self.root / "runs.jsonl"), \
+                        patch.object(dispatch, "execute", side_effect=fake_execute), \
+                        patch.object(dispatch.signal, "signal"), patch.object(board, "HEARTBEAT_SECONDS", .01), \
+                        contextlib.redirect_stdout(io.StringIO()):
+                    dispatch.command_run(args)
+                self.assertEqual(observed, ["resume-id" if mode in ("resume", "auto") else "", expected])
+                recent = max(board.snapshot()[1], key=lambda r: r["ended_at"])
+                self.assertEqual(recent["session_id"], expected)
+                self.assertEqual(recent["session_id"], dispatch.read_runs(self.root / "runs.jsonl")[-1]["session"] or "")
+                self.assertFalse(board.snapshot()[0])
 
     def test_manual_lifecycle_and_invalid_ids(self):
         lane = self.start()

@@ -10,6 +10,7 @@ import ipaddress
 import json
 import os
 import re
+import shlex
 from pathlib import Path
 import subprocess
 import sys
@@ -21,6 +22,16 @@ from urllib.parse import urlsplit
 HISTORY_LIMIT = 20
 HEARTBEAT_SECONDS = 5
 DEFAULT_PORT = 18743
+# Verified against local CLI --help; keep the small public mapping in references/board.md in sync.
+RESUME_COMMANDS = {
+    "claude": ("claude", "--resume"),
+    "claude-agent": ("claude", "--resume"),
+    "claude-code": ("claude", "--resume"),
+    "codex": ("codex", "resume"),
+    "opencode": ("opencode", "--session"),
+    "cmd": ("cmd", "--resume"),
+    "agy": ("agy", "--conversation"),
+}
 
 
 def state_root():
@@ -100,6 +111,16 @@ def locked(path):
                 fcntl.flock(lock, fcntl.LOCK_UN)
 
 
+def resume_command(tool, session_id, cwd):
+    if not session_id:
+        return ""
+    command = RESUME_COMMANDS.get(str(tool).strip().lower())
+    if not command:
+        return session_id
+    resume = shlex.join([*command, session_id])
+    return f"cd {shlex.quote(cwd)} && {resume}" if cwd else resume
+
+
 def issue_url(value):
     """Validate CLI input before any best-effort board writes take place."""
     try:
@@ -152,6 +173,7 @@ def load(path):
         raise ValueError("unsupported board state format")
     for lane in data["lanes"]:
         lane.setdefault("issues", [])
+        lane.setdefault("session_id", "")
     return data
 
 
@@ -192,7 +214,7 @@ def mutate(change):
         return result
 
 
-def start(*, name, doing, tool, model, effort, cwd=None, task_dir=None, pid=None, lane_id=None, issues=None):
+def start(*, name, doing, tool, model, effort, cwd=None, task_dir=None, pid=None, lane_id=None, issues=None, session_id=""):
     if not all(str(v).strip() for v in (name, doing, tool, model, effort)):
         raise ValueError("name, doing, tool, model and effort must not be blank")
     issues = [issue_url(value) for value in (issues or [])]
@@ -204,7 +226,7 @@ def start(*, name, doing, tool, model, effort, cwd=None, task_dir=None, pid=None
     record = dict(id=lane_id, name=name, doing=doing, tool=tool, model=model, effort=effort,
                   cwd=str(Path(cwd or Path.cwd()).expanduser().resolve()),
                   task_dir=str(Path(task_dir).expanduser().resolve()) if task_dir else None, pid=pid,
-                  started_at=now, updated_at=now, ended_at=None, status="running", issues=issues)
+                  started_at=now, updated_at=now, ended_at=None, status="running", issues=issues, session_id=session_id or "")
 
     def add(lanes):
         if any(r["id"] == lane_id for r in lanes):
@@ -214,7 +236,7 @@ def start(*, name, doing, tool, model, effort, cwd=None, task_dir=None, pid=None
     return mutate(add)
 
 
-def update(lane_id, *, doing=None, status=None, issues=None):
+def update(lane_id, *, doing=None, status=None, issues=None, session_id=None):
     if issues is not None:
         issues = [issue_url(value) for value in issues]
     def change(lanes):
@@ -230,6 +252,8 @@ def update(lane_id, *, doing=None, status=None, issues=None):
                 lane["doing"] = doing
             if issues is not None:
                 lane["issues"] = issues
+            if session_id is not None:
+                lane["session_id"] = session_id
             lane["updated_at"] = now
             if status is not None:
                 if status not in ("ok", "failed", "aborted"):
@@ -249,6 +273,7 @@ def snapshot():
         lane["elapsed_seconds"] = max(0, end - epoch(lane["started_at"]))
         lane["updated_ago_seconds"] = max(0, now - epoch(lane["updated_at"]))
         lane["issue_links"] = issue_links(lane["issues"])
+        lane["resume_command"] = resume_command(lane["tool"], lane["session_id"], lane["cwd"])
     return running, ended
 
 
