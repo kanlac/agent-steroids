@@ -2,6 +2,7 @@
 """Board contract tests. All state is isolated; no model CLI is launched."""
 import contextlib
 import io
+import http.client
 import json
 import os
 from pathlib import Path
@@ -45,7 +46,7 @@ class BoardTests(unittest.TestCase):
                   "--cwd", str(self.root), "--pid", str(os.getpid())]
         for command, fields in ((run, ("--agent", "--model", "--effort", "--doing")),
                                 (run + ["--resume", "sid"], ("--model", "--effort", "--doing")),
-                                (manual, ("--tool", "--model", "--effort", "--doing", "--pid"))):
+                                (manual, ("--name", "--tool", "--model", "--effort", "--doing"))):
             for flag in fields:
                 i = command.index(flag)
                 with self.subTest(command=command[0], flag=flag), contextlib.redirect_stderr(io.StringIO()):
@@ -59,6 +60,19 @@ class BoardTests(unittest.TestCase):
             with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
                 parser.parse_args(invalid)
         self.assertFalse(self.path.exists())
+
+    def test_start_only_requires_five_business_fields(self):
+        args = dispatch.build_parser().parse_args([
+            "start", "--name", "lane", "--tool", "claude-agent", "--model", "chosen",
+            "--effort", "high", "--doing", "review"])
+        out = io.StringIO()
+        with patch.object(board.os, "getppid", return_value=os.getpid()), contextlib.redirect_stdout(out):
+            dispatch.command_start(args)
+        record = board.snapshot()[0][0]
+        self.assertEqual(record["id"], out.getvalue().strip())
+        self.assertEqual(record["cwd"], str(Path.cwd()))
+        self.assertIsNone(record["task_dir"])
+        self.assertEqual(record["pid"], os.getpid())
 
     def test_manual_lifecycle_and_invalid_ids(self):
         lane = self.start()
@@ -148,6 +162,32 @@ class BoardTests(unittest.TestCase):
         with patch.dict(os.environ, {"XDG_STATE_HOME": str(self.root)}, clear=True):
             self.assertEqual(board.state_path(), self.root / "dispatch/board.json")
 
+    def test_xdg_board_and_runs_share_directory(self):
+        env = dict(os.environ, XDG_STATE_HOME=str(self.root))
+        for name in ("DISPATCH_BOARD_STATE", "DISPATCH_ROOT", "DISPATCH_RUNS"):
+            env.pop(name, None)
+        code = ("import json,board,dispatch; "
+                "print(json.dumps([str(board.state_path()),str(dispatch.RUNS_FILE)]))")
+        result = subprocess.run([sys.executable, "-c", code], cwd=Path(dispatch.__file__).parent,
+                                env=env, capture_output=True, text=True, check=True)
+        self.assertEqual(json.loads(result.stdout),
+                         [str(self.root / "dispatch/board.json"), str(self.root / "dispatch/runs.jsonl")])
+
+    def test_last_update_visible_on_every_card_and_limit_from_constant(self):
+        self.start()
+        ended = self.start()
+        board.update(ended, status="ok")
+        def older(lanes):
+            for lane in lanes:
+                lane["updated_at"] = "2026-01-01T00:00:00+00:00"
+        board.mutate(older)
+        with patch.object(board.time, "time", return_value=board.epoch("2026-01-01T00:07:30+00:00")), \
+                patch.object(board, "HISTORY_LIMIT", 7):
+            page = board.render()
+        self.assertEqual(page.count("最后更新于 7 分钟前"), 2)
+        self.assertIn("保留最近 7 条", page)
+        self.assertNotIn("保留最近 20 条", page)
+
     def test_tailscale_default_and_failure_has_explicit_host_hint(self):
         with patch.object(board.subprocess, "run") as run:
             run.return_value.stdout = "100.101.102.103\n"
@@ -162,7 +202,7 @@ class BoardTests(unittest.TestCase):
 
     def test_http_read_only_and_escapes_fields(self):
         self.start(name='<script>alert("x")</script>', doing="审查 & 复核", effort="high")
-        server = board.ThreadingHTTPServer(("127.0.0.1", 0), board.Handler)
+        server = board.Server(("127.0.0.1", 0), board.Handler)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         try:
@@ -184,6 +224,89 @@ class BoardTests(unittest.TestCase):
             server.shutdown()
             server.server_close()
             thread.join()
+
+    def test_http_host_must_match_including_port_for_all_methods(self):
+        server = board.Server(("127.0.0.1", 0), board.Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            expected = server.expected_host
+            for method, hosts in (("GET", []), ("GET", ["untrusted.invalid"]),
+                                  ("GET", ["127.0.0.1:1"]), ("GET", [expected, expected]),
+                                  ("POST", ["untrusted.invalid"]), ("HEAD", ["untrusted.invalid"])):
+                with self.subTest(method=method, hosts=hosts):
+                    connection = http.client.HTTPConnection("127.0.0.1", server.server_port, timeout=5)
+                    try:
+                        connection.putrequest(method, "/", skip_host=True)
+                        for host in hosts:
+                            connection.putheader("Host", host)
+                        connection.endheaders()
+                        response = connection.getresponse()
+                        self.assertEqual(response.status, 400)
+                        response.read()
+                    finally:
+                        connection.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join()
+
+    def test_board_failures_warn_and_do_not_block_run(self):
+        prompt = self.root / "prompt.txt"
+        prompt.write_text("test")
+        args = dispatch.build_parser().parse_args([
+            "run", "--name", "lane", "--doing", "检查", "--agent", "codex", "--model", "chosen",
+            "--effort", "high", "--task-dir", str(self.root / "task"), "--cwd", str(self.root),
+            "--prompt-file", str(prompt)])
+        future_state = '{"version": 2, "lanes": []}'
+        self.path.write_text(future_state)
+        def fake_execute(cmd, cwd, event_path, stderr_path, merge_stderr):
+            event_path.write_text('{"type":"turn.completed"}\n')
+            return 0
+        errors = io.StringIO()
+        with patch.object(dispatch, "RUNS_FILE", self.root / "runs.jsonl"), \
+                patch.object(dispatch, "execute", side_effect=fake_execute) as execute, \
+                patch.object(dispatch.signal, "signal"), contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(errors):
+            self.assertEqual(dispatch.command_run(args), 0)
+            for error in (PermissionError("read-only"), KeyError("bad lane")):
+                with patch.object(board, "start", side_effect=error):
+                    self.assertEqual(dispatch.command_run(args), 0)
+            self.assertEqual(execute.call_count, 3)
+        self.assertEqual(self.path.read_text(), future_state)
+        self.assertIn("unsupported board state format", errors.getvalue())
+        self.assertIn("warning:", errors.getvalue())
+        records = dispatch.read_runs(self.root / "runs.jsonl")
+        self.assertEqual(len(records), 3)
+        self.assertTrue(all(record["status"] == "ok" for record in records))
+
+    def test_board_update_failure_does_not_change_run_result(self):
+        prompt = self.root / "prompt.txt"
+        prompt.write_text("test")
+        args = dispatch.build_parser().parse_args([
+            "run", "--name", "lane", "--doing", "检查", "--agent", "codex", "--model", "chosen",
+            "--effort", "high", "--task-dir", str(self.root / "task"), "--cwd", str(self.root),
+            "--prompt-file", str(prompt)])
+        attempted = threading.Event()
+        def broken_update(**kwargs):
+            attempted.set()
+            raise KeyError("broken state")
+        def fake_execute(cmd, cwd, event_path, stderr_path, merge_stderr):
+            self.assertTrue(attempted.wait(2), "heartbeat did not attempt an update")
+            event_path.write_text('{"type":"turn.completed"}\n')
+            return 0
+        errors = io.StringIO()
+        with patch.object(dispatch, "RUNS_FILE", self.root / "runs.jsonl"), \
+                patch.object(dispatch, "execute", side_effect=fake_execute), \
+                patch.object(dispatch.signal, "signal"), patch.object(board, "HEARTBEAT_SECONDS", .01), \
+                patch.object(board, "update", side_effect=broken_update) as update, \
+                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(errors):
+            self.assertEqual(dispatch.command_run(args), 0)
+            self.assertEqual(update.call_count, 2)  # heartbeat and finish both warn
+        self.assertEqual(errors.getvalue().count("warning:"), 2)
+        self.assertEqual(dispatch.read_runs(self.root / "runs.jsonl")[0]["status"], "ok")
+        with self.assertRaises(dispatch.Terminated):
+            dispatch.board_write(lambda: (_ for _ in ()).throw(dispatch.Terminated()))
 
     def test_run_auto_registers_heartbeats_and_finishes(self):
         prompt = self.root / "prompt.txt"

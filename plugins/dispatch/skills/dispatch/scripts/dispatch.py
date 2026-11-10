@@ -27,7 +27,7 @@ from pathlib import Path
 import board
 
 APP_DIR = Path(__file__).resolve().parent
-DEFAULT_ROOT = Path(os.environ.get("DISPATCH_ROOT", str(Path.home() / ".local/state/dispatch")))
+DEFAULT_ROOT = Path(os.environ.get("DISPATCH_ROOT", str(board.state_root() / "dispatch")))
 RUNS_FILE = Path(os.environ.get("DISPATCH_RUNS", str(DEFAULT_ROOT / "runs.jsonl")))
 PRICES_FILE = Path(os.environ.get("DISPATCH_PRICES", str(APP_DIR / "prices.json")))
 LEGACY_STALE_SECONDS = 180
@@ -1063,6 +1063,18 @@ def resolve_resume(adapter: Adapter, task_dir: Path, resume, cwd: Path, runs_fil
     return sid, cwd, overridden
 
 
+def board_write(action, **kwargs):
+    """Board failures must never turn an otherwise valid dispatch into a failure."""
+    try:
+        action(**kwargs)
+        return True
+    except Terminated:
+        raise  # preserve user termination, rather than treating it as a board error
+    except Exception as exc:
+        print(f"[dispatch] board {getattr(action, '__name__', 'write')} warning: {exc}", file=sys.stderr, flush=True)
+        return False
+
+
 def command_run(args):
     signal.signal(signal.SIGTERM, _on_signal)
     signal.signal(signal.SIGINT, _on_signal)
@@ -1102,21 +1114,20 @@ def command_run(args):
         "started_at": started,
         "resume_of": resume_session,
     }
-    board.start(name=args.name, doing=args.doing, tool=adapter.key, model=model,
+    registered = board_write(board.start, name=args.name, doing=args.doing, tool=adapter.key, model=model,
                 effort=effort, cwd=cwd, task_dir=task_dir, pid=os.getpid(), lane_id=run_id)
     append_json(RUNS_FILE, start_record)
     stopped = threading.Event()
 
     def heartbeat():
         while not stopped.wait(board.HEARTBEAT_SECONDS):
-            try:
-                board.update(run_id)
-            except (OSError, ValueError) as exc:
-                print(f"[dispatch] board heartbeat stopped: {exc}", file=sys.stderr, flush=True)
+            if not board_write(board.update, lane_id=run_id):
                 return
 
-    pulse = threading.Thread(target=heartbeat, daemon=True)
-    pulse.start()
+    pulse = None
+    if registered:
+        pulse = threading.Thread(target=heartbeat, daemon=True)
+        pulse.start()
 
     print(f"[dispatch] {run_id}  {alias}  {adapter.key}  {args.name}", flush=True)
     print(f"[dispatch] task-dir={task_dir}", flush=True)
@@ -1134,12 +1145,11 @@ def command_run(args):
 
     def finish(final_status):
         stopped.set()
-        pulse.join()
+        if pulse is not None:
+            pulse.join()
         board_status = "ok" if final_status == "ok" else "aborted" if final_status == "killed" else "failed"
-        try:
-            board.update(run_id, status=board_status)
-        except (OSError, ValueError) as exc:
-            print(f"[dispatch] cannot finish board lane: {exc}", file=sys.stderr, flush=True)
+        if registered:
+            board_write(board.update, lane_id=run_id, status=board_status)
         end_record = {
             "run_id": run_id,
             "ended_at": now_iso(),
@@ -1356,9 +1366,11 @@ def build_parser():
     s.set_defaults(func=command_status)
 
     a = sub.add_parser("start", help="登记外部车道，输出车道 ID；PID 必须为本机存活的长期进程")
-    for key in ("name", "doing", "tool", "model", "effort", "cwd", "task-dir"):
+    for key in ("name", "doing", "tool", "model", "effort"):
         a.add_argument("--" + key, required=True, type=nonblank)
-    a.add_argument("--pid", required=True, type=int, help="worker PID；无独立 PID 的子代理填编排宿主 PID")
+    a.add_argument("--cwd", type=nonblank, default=None, help="默认当前目录")
+    a.add_argument("--task-dir", type=nonblank, default=None, help="可选任务目录")
+    a.add_argument("--pid", type=int, default=None, help="默认调用进程 PID；Claude Code shell 工具显式传 $PPID")
     a.set_defaults(func=command_start)
 
     u = sub.add_parser("update", help="更新车道当前在做什么")

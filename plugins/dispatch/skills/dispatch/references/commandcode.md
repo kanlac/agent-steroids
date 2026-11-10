@@ -26,5 +26,3 @@ cmd -p "读 task.md 并完成其中任务" --model "$MODEL" --effort "$EFFORT" \
 ## 收结果
 
 同 `SKILL.md`「收结果」：事件流落盘，产物写文件，退出后先看退出码和事件流里的 `error`。
-
-编排看板：使用 `dispatch.py run` 时每轮显式传 `--model`、`--effort`、`--doing`（包括 `--resume`）；直接调用 CLI 或原生子代理时用 `start` / `end` 登记，阶段变化用 `update`。没有强度旋钮时登记 `none`；命令与 PID 约束见 [编排看板](20261110-board.md)。

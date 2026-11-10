@@ -20,9 +20,12 @@ HEARTBEAT_SECONDS = 5
 DEFAULT_PORT = 18743
 
 
+def state_root():
+    return Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))).expanduser()
+
+
 def state_path():
-    root = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state")))
-    return Path(os.environ.get("DISPATCH_BOARD_STATE", str(root / "dispatch/board.json"))).expanduser()
+    return Path(os.environ.get("DISPATCH_BOARD_STATE", str(state_root() / "dispatch/board.json"))).expanduser()
 
 
 def stamp():
@@ -37,6 +40,7 @@ def alive(pid):
     if not isinstance(pid, int) or pid <= 0:
         return False
     if os.name == "nt":
+        # Windows os.kill(pid, 0) can terminate the target; query its handle instead.
         import ctypes
         from ctypes import wintypes
         kernel = ctypes.WinDLL("kernel32", use_last_error=True)
@@ -140,16 +144,17 @@ def mutate(change):
         return result
 
 
-def start(*, name, doing, tool, model, effort, cwd, task_dir, pid, lane_id=None):
+def start(*, name, doing, tool, model, effort, cwd=None, task_dir=None, pid=None, lane_id=None):
     if not all(str(v).strip() for v in (name, doing, tool, model, effort)):
         raise ValueError("name, doing, tool, model and effort must not be blank")
+    pid = os.getppid() if pid is None else pid
     if not alive(pid):
         raise ValueError("--pid must identify a live local process")
     lane_id = lane_id or uuid.uuid4().hex
     now = stamp()
     record = dict(id=lane_id, name=name, doing=doing, tool=tool, model=model, effort=effort,
-                  cwd=str(Path(cwd).expanduser().resolve()),
-                  task_dir=str(Path(task_dir).expanduser().resolve()), pid=pid,
+                  cwd=str(Path(cwd or Path.cwd()).expanduser().resolve()),
+                  task_dir=str(Path(task_dir).expanduser().resolve()) if task_dir else None, pid=pid,
                   started_at=now, updated_at=now, ended_at=None, status="running")
 
     def add(lanes):
@@ -189,6 +194,7 @@ def snapshot():
     for lane in running + ended:
         end = epoch(lane["ended_at"]) if lane["ended_at"] else now
         lane["elapsed_seconds"] = max(0, end - epoch(lane["started_at"]))
+        lane["updated_ago_seconds"] = max(0, now - epoch(lane["updated_at"]))
     return running, ended
 
 
@@ -215,19 +221,36 @@ def render():
 <dl><div><dt>工具</dt><dd>{esc('tool')}</dd></div><div><dt>模型</dt><dd>{esc('model')}</dd></div>
 <div><dt>推理强度</dt><dd><strong class="effort">{esc('effort')}</strong></dd></div></dl>
 <div class="lane-bottom"><span class="cwd" title="{esc('cwd')}">{html.escape(short)}</span>
-<span class="duration">{'已运行' if lane['status'] == 'running' else '工作时长'} {duration(lane['elapsed_seconds'])}</span></div></article>'''
+<span class="duration">{'已运行' if lane['status'] == 'running' else '工作时长'} {duration(lane['elapsed_seconds'])}</span></div>
+<p class="updated">最后更新于 {int(lane['updated_ago_seconds'] // 60)} 分钟前</p></article>'''
 
     template = Path(__file__).with_name("board.html").read_text(encoding="utf-8")
     values = {
         "TIME": dt.datetime.now().astimezone().strftime("%H:%M:%S"),
         "RUNNING_COUNT": str(len(running)), "ENDED_COUNT": str(len(ended)),
+        "HISTORY_LIMIT": str(HISTORY_LIMIT),
         "RUNNING": "".join(map(card, running)) or '<p class="empty">暂无运行中的车道</p>',
         "ENDED": "".join(map(card, ended)) or '<p class="empty">暂无结束记录</p>',
     }
     return re.sub(r"\{\{([A-Z_]+)\}\}", lambda match: values[match[1]], template)
 
 
+class Server(ThreadingHTTPServer):
+    def __init__(self, address, handler):
+        super().__init__(address, handler)
+        self.expected_host = f"{address[0]}:{self.server_port}".lower()
+
+
 class Handler(BaseHTTPRequestHandler):
+    def parse_request(self):
+        if not super().parse_request():
+            return False
+        hosts = self.headers.get_all("Host", [])
+        if len(hosts) != 1 or hosts[0].lower() != self.server.expected_host:
+            self.send_error(400, "Host does not match board address")
+            return False
+        return True
+
     def do_GET(self):
         if self.path != "/":
             self.send_error(404)
@@ -264,7 +287,7 @@ def tailscale_host():
 
 def serve(host, port):
     host = host or tailscale_host()
-    with ThreadingHTTPServer((host, port), Handler) as server:
+    with Server((host, port), Handler) as server:
         print(f"Dispatch board: http://{host}:{server.server_port}/", flush=True)
         try:
             server.serve_forever()

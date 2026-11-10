@@ -1,6 +1,6 @@
 ---
 name: dispatch
-description: Send work to subagents or another model's CLI (Codex, OpenCode) and get a usable answer back. Use for multi-agent orchestration, second-opinion review, independent design, bulk generation, or maintaining a live orchestration board of automatic and manual lanes.
+description: Send work to subagents or another model's CLI (Codex, OpenCode) and get a usable answer back. Use for multi-agent orchestration, second-opinion review, independent design, bulk generation, or anything worth a different model's eyes. Also use for maintaining a live orchestration board of automatic and manual lanes.
 ---
 
 ## 像派给同事，不像调函数
@@ -50,7 +50,7 @@ description: Send work to subagents or another model's CLI (Codex, OpenCode) and
 
 `run` 的 `--agent`、`--model`、`--effort`、`--doing` 必填，续跑也重新显式指定；开跑和结束自动登记编排看板。其他工具用 `start` / `end` 登记车道并绑定本机存活 PID，阶段变化用 `update` 改「在做什么」。
 
-`board` 提供亮色只读网页，默认仅绑定 Tailscale 地址；显示运行中与最近结束的 20 条。看板独立于原巡检账本；状态文件位置、无强度旋钮的 `none` 语义、PID 判活限制与调用示例见 `references/20261110-board.md`。
+`board` 提供亮色只读网页，默认仅绑定 Tailscale 地址；显示运行中与最近结束的 20 条。看板独立于原巡检账本；状态文件位置、无强度旋钮的 `none` 语义、PID 判活限制与调用示例见 `references/board.md`。
 
 ## 各 CLI 的细节
 
