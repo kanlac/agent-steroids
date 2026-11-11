@@ -12,7 +12,7 @@
     {
       "name": "dispatch",
       "source": "./plugins/dispatch",
-      "description": "Cross-agent dispatch with explicit model and reasoning effort selection, task handoff, result verification, and a zero-dependency orchestration board"
+      "description": "Cross-agent dispatch with explicit model and reasoning effort selection, task handoff, result verification and a zero-dependency lane board, plus a lane-orchestrator skill for running many lanes at once"
     },
     {
       "name": "telegram",

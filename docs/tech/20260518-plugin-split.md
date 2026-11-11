@@ -23,10 +23,10 @@
 | Plugin | Runtime | Contents | Hard Dependencies | Soft / Capability Dependencies |
 |---|---|---|---|---|
 | `steroids` | Claude + Codex + Hermes | `extract-to-md`, `read-book`, `html-to-pdf`, `clipping`, `paper-download`, `/song` | None | `paper-download` / `clipping` may need `headed-browser` |
-| `dispatch` | Claude + Codex + Hermes | `dispatch`: task-aware model recommendations, unified effort scale, handoff and verification | None | Maps to available subagents or agent CLIs |
+| `dispatch` | Claude + Codex + Hermes | `dispatch`: task-aware model recommendations, unified effort scale, handoff and verification, `dispatch.py` lane board; `lane-orchestrator`: multi-lane orchestrator conduct and batch scheduling | None | Maps to available subagents or agent CLIs |
 | `telegram` | Claude Code only | `telegram-agents`, `/tg-*`, `/check-release`, `telegram-notify` MCP, Telegram time hook, `guard-payload-size` hook | Claude Code + official Telegram plugin for channel sessions; Telethon/tmux/launchd for heartbeat workflows | None |
 | `chrome` | Claude + Codex + Hermes | `cdp-chrome` per-OS-user headed Chrome provider; bundled MCP wrapper for Claude Code/Codex reads current-user config; Hermes uses config-driven MCP registration | Chrome, `npx`; `mcp_servers` registration for Hermes | Provides `headed-browser`; optional replacement for Codex Chrome plugin/native browser-use |
-| `taskdag` | Claude + Codex | `orchestrator` ADR + Task DAG control plane | Python 3 standard library | Maps dispatch to available agent CLIs |
+| `taskdag` | Claude + Codex | `taskdag` ADR + Task DAG data plane | Python 3 standard library | Maps dispatch to available agent CLIs |
 
 ## Capability Map
 

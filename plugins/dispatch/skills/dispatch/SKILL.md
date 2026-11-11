@@ -1,13 +1,12 @@
 ---
 name: dispatch
-description: Send work to subagents or another model's CLI (Codex, OpenCode) and get a usable answer back. Use for multi-agent orchestration, second-opinion review, independent design, bulk generation, or anything worth a different model's eyes. Also use for maintaining a live orchestration board of automatic and manual lanes.
+description: Send a piece of work to a subagent or another model's CLI (Codex, OpenCode, Command Code) and get a usable answer back - brief it like a colleague, pick and verify model and reasoning effort, stay within each CLI's hard limits, grant permissions up front, keep the event stream, and diagnose empty or silent results. Use for a single delegation, a second-opinion review, an independent design, or bulk generation, in any project. Also documents its dispatch.py tool (run, status, lane board commands). Deciding how to run several lanes at once or a long-running orchestration session belongs to lane-orchestrator.
 ---
 
 ## 像派给同事，不像调函数
 
-- **每次委派都主动选择并显式指定模型和推理强度**，包括原生子 agent、外部 CLI、续跑和评审；不要留空，否则会继承主会话、全局配置或 CLI 默认值。用户已指定的选择优先，否则按任务与验收难度选。没有推理强度旋钮时显式记 `none`，不能省略或虚填档位。
+- **每次委派都主动选择并显式指定模型和推理强度**，包括原生子 agent、外部 CLI、续跑和评审；不要留空，否则会继承主会话、全局配置或 CLI 默认值。用户已指定的选择优先，否则按任务与验收难度选（模型推荐表与统一强度标尺见 `references/model-effort.md`）。没有推理强度旋钮时显式记 `none`，不能省略或虚填档位。
 - **最贵的模型只留给真正难的任务**：长链路调查、反复修不好的根因、高代价设计决策。简单和中等难度的活（明确的小改动、按清单执行、常规评审、调研整理）用常规模型，不因为「保险」就升级到最贵的一档。
-- **已知会派出 4 个及以上 agent，或几条线要跨多轮并行时，必读 `references/batch-orchestration.md`**。
 - **cwd 就是仓库，给入口和关注点，让它自己读**。不贴源码、不预划只读范围。
 - **你知道而它推不出的，写进任务正文**：已修过什么、哪些不能动、怎样算完成、用什么命令验。
   长脚本让它先写进文件再执行，别在工具参数里塞多行 heredoc。
@@ -15,13 +14,7 @@ description: Send work to subagents or another model's CLI (Codex, OpenCode) and
 - **发现要具体到文件、函数和触发输入**。「建议加异常处理」没法验真假。
 - **并行几份给几种侧重**，否则拿回雷同的东西；大审查分批送，一批一个关注面。
 - **循环评审优先 resume 同一会话**，它记得哪些已被驳回，不必每轮重读全仓。
-
-## 编排者自己做什么
-
-- **只调度、裁定、向用户汇报，不亲自核查**：读车道报告和评审结论，不自己读代码、跑复现、核对行号。编排者同时管着很多件事，亲自核查看不过来，上下文被细节占满还会拉低裁定和汇报的质量。
-- **要核实的交给别人**：评审报的缺陷、顾问的结论、车道的声称，派独立的子代理或车道去核，拿回结论和证据位置；据此建 issue 的，也让核实者起草正文。
-- **该用户拍板的不交给子代理判断**：花钱（充值、换付费服务、额度取舍）、产品方向、对外承诺和文案口径，直接问用户。子代理只负责查清事实和列出选项，不替用户下结论；任务书里也不要写「顺便判断要不要花这笔钱」。
-- **自己动手的只限事务**：几次调用就能完成的 issue 字段与评论、派活与续做、进程和资源调度、看板登记。
+- **要同时管多条车道、跨多轮并行，或派出 4 个及以上 agent**，转用 lane-orchestrator skill：编排者准则、编排表和看板怎么用在那里；写每一份任务书仍按本 skill。
 
 ## CLI 的硬限制，调用时就要绕开
 
@@ -58,15 +51,14 @@ description: Send work to subagents or another model's CLI (Codex, OpenCode) and
 
 `run` 的 `--agent`、`--model`、`--effort`、`--doing` 必填，续跑也重新显式指定。续跑一律走 `dispatch.py run --resume ...`，每轮自动登记新车道，内部重试保留同一车道；不手动补登。首次登记失败就拒绝派活。其他工具用 `start` / `end` 登记车道，`start --pid` 必填且必须是该工作实际存活的本机进程号，不能借用宿主或编排者 PID。没有独立真实 PID 的工作（如宿主内的 Claude 子代理）不登记看板；阶段变化用 `update` 改「在做什么」。
 
-每个编排会话先用 `new-board` 领取独立 ID；`run` / `start` / `update` / `end` 必须显式传 `--board ID` 或设 `DISPATCH_BOARD`，不要仅按项目共用 ID。
-
-`board` 提供根页列表和各 ID 独立的亮色只读网页，默认仅绑定 Tailscale 地址；显示运行中与最近结束的 20 条。看板独立于原巡检账本；状态文件位置、无强度旋钮的 `none` 语义、PID 判活限制与调用示例见 `references/board.md`。
+`run` / `start` / `update` / `end` 必须显式传 `--board ID` 或设 `DISPATCH_BOARD`，不要仅按项目共用 ID；单次委派也先用 `new-board` 领一个。`board` 提供根页列表和各 ID 独立的亮色只读网页，默认仅绑定 Tailscale 地址；显示运行中与最近结束的 20 条。看板独立于原巡检账本；状态文件位置、无强度旋钮的 `none` 语义、PID 判活限制与调用示例见 `references/board.md`。何时开新看板、车道怎么排、怎么收尾，属于 lane-orchestrator skill。
 
 ## 各 CLI 的细节
 
 参数和数值都带日期，以当下 `--help` 为准。
 
+- `references/model-effort.md` —— 模型推荐表、统一推理强度标尺，以及怎样核对选择真的生效
+- `references/board.md` —— `dispatch.py` 的派活与看板命令：自动 / 手动车道、会话续接、网页服务、状态文件
 - `references/codex.md` —— 环境发现、通用调用形状、权限与结果诊断
-- `references/batch-orchestration.md` —— 多 agent 批次调度：模型推荐表、统一推理强度标准与编排表
 - `references/opencode.md` —— provider / variant 发现、权限、会话、输出截断与配额诊断
 - `references/commandcode.md` —— Command Code（`cmd -p`）的调用形状、`--yolo` 与自动模式的关系

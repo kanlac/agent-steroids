@@ -1,7 +1,7 @@
 {
   "name": "dispatch",
-  "version": "1.6.4",
-  "description": "Cross-agent dispatch with explicit model and reasoning effort selection, task handoff, result verification, and a zero-dependency orchestration board",
+  "version": "1.7.0",
+  "description": "Cross-agent dispatch with explicit model and reasoning effort selection, task handoff, result verification and a zero-dependency lane board, plus a lane-orchestrator skill for running many lanes at once",
   "author": {
     "name": "Kan"
   },
@@ -10,6 +10,7 @@
     "agents",
     "dispatch",
     "orchestration",
+    "orchestrator",
     "models",
     "reasoning"
   ],
@@ -17,7 +18,7 @@
   "interface": {
     "displayName": "Agent Steroids Dispatch",
     "shortDescription": "Choose and brief subagents, then verify their work.",
-    "longDescription": "Select a worker model and reasoning effort, hand off work to subagents or model CLIs, verify artifacts, and track automatic or manual lanes on a read-only orchestration board.",
+    "longDescription": "Select a worker model and reasoning effort, hand off work to subagents or model CLIs, verify artifacts, and track automatic or manual lanes on a read-only board. The lane-orchestrator skill covers running many lanes at once: keeping lanes full, cross-model review, what to ask the user, and closing lanes cleanly.",
     "developerName": "Kan",
     "category": "Developer Tools",
     "capabilities": [
@@ -25,7 +26,8 @@
     ],
     "defaultPrompt": [
       "Use $dispatch to plan and delegate this work to subagents.",
-      "Use $dispatch to get an independent review from another model."
+      "Use $dispatch to get an independent review from another model.",
+      "Use $lane-orchestrator to keep several agent lanes moving and track them on a board."
     ],
     "brandColor": "#2563EB"
   }

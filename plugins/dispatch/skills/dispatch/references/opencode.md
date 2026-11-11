@@ -10,7 +10,7 @@ DISPATCH_PROVIDER_ID="replace-with-provider-id"
 opencode models "$DISPATCH_PROVIDER_ID" --verbose
 ```
 
-从输出读取模型 ID、输入输出上限和 `variants`。如用户未指定模型，选型参考 `batch-orchestration.md`；
+从输出读取模型 ID、输入输出上限和 `variants`。如用户未指定模型，选型参考 `model-effort.md`；
 清单里有不代表能调用，选中后用下文的探活确认。
 
 ## 推理档位（variant）
