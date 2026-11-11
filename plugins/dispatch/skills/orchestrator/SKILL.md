@@ -1,5 +1,5 @@
 ---
-name: lane-orchestrator
+name: orchestrator
 description: Act as the orchestrator of a long-running, multi-lane agent session - keep several agent lanes running in parallel across rounds, track them on a lane board, schedule batches of 4+ agents with an orchestration table, keep lanes full while one item waits on the user, route verification and cross-model review to other lanes, decide what needs the user, and close lanes cleanly. Use when you coordinate several independent lanes in parallel (implementation, verification, review across worktrees or rounds), or a batch of 4+ agents. A single worker resumed over several rounds, or a backlog worked through one task at a time without parallel lanes, stays with dispatch, which also covers how to brief and call each worker.
 ---
 

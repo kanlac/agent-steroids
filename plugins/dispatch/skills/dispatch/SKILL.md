@@ -1,6 +1,6 @@
 ---
 name: dispatch
-description: Send a piece of work to a subagent or another model's CLI (Codex, OpenCode, Command Code) and get a usable answer back - brief it like a colleague, pick and verify model and reasoning effort, stay within each CLI's hard limits, grant permissions up front, keep the event stream, and diagnose empty or silent results. Use for a single delegation, a second-opinion review, an independent design, or bulk generation, in any project - including resuming the same worker over several rounds, or working through a backlog one task at a time without coordinating parallel lanes. Also documents its dispatch.py tool (run, status, lane board commands). Coordinating several independent lanes in parallel, or a batch of 4+ agents, belongs to lane-orchestrator.
+description: Send a piece of work to a subagent or another model's CLI (Codex, OpenCode, Command Code) and get a usable answer back - brief it like a colleague, pick and verify model and reasoning effort, stay within each CLI's hard limits, grant permissions up front, keep the event stream, and diagnose empty or silent results. Use for a single delegation, a second-opinion review, an independent design, or bulk generation, in any project - including resuming the same worker over several rounds, or working through a backlog one task at a time without coordinating parallel lanes. Also documents its dispatch.py tool (run, status, lane board commands). Coordinating several independent lanes in parallel, or a batch of 4+ agents, belongs to orchestrator.
 ---
 
 ## 像派给同事，不像调函数
@@ -14,7 +14,7 @@ description: Send a piece of work to a subagent or another model's CLI (Codex, O
 - **发现要具体到文件、函数和触发输入**。「建议加异常处理」没法验真假。
 - **并行几份给几种侧重**，否则拿回雷同的东西；大审查分批送，一批一个关注面。
 - **循环评审优先 resume 同一会话**，它记得哪些已被驳回，不必每轮重读全仓。
-- **要同时管多条车道、跨多轮并行，或派出 4 个及以上 agent**，转用 lane-orchestrator skill：编排者准则、编排表和看板怎么用在那里；写每一份任务书仍按本 skill。
+- **要同时管多条车道、跨多轮并行，或派出 4 个及以上 agent**，转用 orchestrator skill：编排者准则、编排表和看板怎么用在那里；写每一份任务书仍按本 skill。
 
 ## CLI 的硬限制，调用时就要绕开
 
@@ -51,7 +51,7 @@ description: Send a piece of work to a subagent or another model's CLI (Codex, O
 
 `run` 的 `--agent`、`--model`、`--effort`、`--doing` 必填，续跑也重新显式指定。续跑一律走 `dispatch.py run --resume ...`，每轮自动登记新车道，内部重试保留同一车道；不手动补登。首次登记失败就拒绝派活。其他工具用 `start` / `end` 登记车道，`start --pid` 必填且必须是该工作实际存活的本机进程号，不能借用宿主或编排者 PID。没有独立真实 PID 的工作（如宿主内的 Claude 子代理）不登记看板；阶段变化用 `update` 改「在做什么」。
 
-`run` / `start` / `update` / `end` 必须显式传 `--board ID` 或设 `DISPATCH_BOARD`，不要仅按项目共用 ID；单次委派也先用 `new-board` 领一个。`board` 提供根页列表和各 ID 独立的亮色只读网页，默认仅绑定 Tailscale 地址；显示运行中与最近结束的 20 条。看板独立于原巡检账本；状态文件位置、无强度旋钮的 `none` 语义、PID 判活限制与调用示例见 `references/board.md`。何时开新看板、车道怎么排、怎么收尾，属于 lane-orchestrator skill。
+`run` / `start` / `update` / `end` 必须显式传 `--board ID` 或设 `DISPATCH_BOARD`，不要仅按项目共用 ID；单次委派也先用 `new-board` 领一个。`board` 提供根页列表和各 ID 独立的亮色只读网页，默认仅绑定 Tailscale 地址；显示运行中与最近结束的 20 条。看板独立于原巡检账本；状态文件位置、无强度旋钮的 `none` 语义、PID 判活限制与调用示例见 `references/board.md`。何时开新看板、车道怎么排、怎么收尾，属于 orchestrator skill。
 
 ## 各 CLI 的细节
 

@@ -1,7 +1,7 @@
 {
   "name": "dispatch",
   "version": "1.7.0",
-  "description": "Cross-agent dispatch with explicit model and reasoning effort selection, task handoff, result verification and a zero-dependency lane board, plus a lane-orchestrator skill for running many lanes at once",
+  "description": "Cross-agent dispatch with explicit model and reasoning effort selection, task handoff, result verification and a zero-dependency lane board, plus an orchestrator skill for running many lanes at once",
   "author": {
     "name": "Kan"
   },
