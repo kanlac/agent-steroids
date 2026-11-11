@@ -15,8 +15,8 @@
 
 | Runtime | 默认安装 | 可选安装 | 不安装 |
 |---|---|---|---|
-| Claude Code | `steroids` | `dispatch`, `chrome`, `telegram`, `taskdag` | 无 |
-| Codex | `steroids` | `dispatch`, `chrome`, `taskdag` | `telegram` |
+| Claude Code | `steroids` | `dispatch`, `chrome`, `telegram` | 无 |
+| Codex | `steroids` | `dispatch`, `chrome` | `telegram` |
 
 ## Claude Code
 
@@ -33,7 +33,6 @@ claude plugin install steroids@agent-steroids
 claude plugin install chrome@agent-steroids      # 可选：共享有头 Chrome/CDP provider
 claude plugin install dispatch@agent-steroids    # 可选：跨 agent 派发与模型/effort 选择
 claude plugin install telegram@agent-steroids    # Claude Code 专用：Telegram agent 运维
-claude plugin install taskdag@agent-steroids     # 可选：ADR + Task DAG 控制面
 ```
 
 验证：
@@ -44,7 +43,7 @@ claude plugin list
 
 ## Codex
 
-适用场景：Codex 使用跨运行时稳定的 skill 插件。Codex marketplace 暴露 `steroids`、`dispatch`、`chrome` 和 `taskdag`。
+适用场景：Codex 使用跨运行时稳定的 skill 插件。Codex marketplace 暴露 `steroids`、`dispatch` 和 `chrome`。
 
 ```bash
 codex plugin marketplace add kanlac/agent-steroids
@@ -56,7 +55,6 @@ codex plugin add steroids@agent-steroids
 ```bash
 codex plugin add chrome@agent-steroids           # 可选：共享有头 Chrome/CDP provider
 codex plugin add dispatch@agent-steroids         # 可选：跨 agent 派发与模型/effort 选择
-codex plugin add taskdag@agent-steroids          # 可选：ADR + Task DAG 控制面
 ```
 
 验证：

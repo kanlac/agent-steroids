@@ -23,11 +23,6 @@
       "name": "chrome",
       "source": "./plugins/chrome",
       "description": "Optional shared headed Chrome/CDP browser provider"
-    },
-    {
-      "name": "taskdag",
-      "source": "./plugins/taskdag",
-      "description": "Repo-native ADR + Task DAG control plane: structured task/decision docs, vendored lifecycle CLI, generated DAG board, cross-agent dispatch"
     }
   ]
 }

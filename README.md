@@ -6,9 +6,8 @@ Claude Code / Codex 通用增强插件集合。这个仓库同时兼容两种 ag
 - `dispatch`：跨 agent 派发，统一模型 / effort 选择、任务交接、结果验收与实时车道看板（`dispatch` skill）；多车道长期编排的编排者准则与批次调度（`lane-orchestrator` skill）。
 - `telegram`：Claude Code 专用的 Telegram agent 运维、通知 MCP、Telegram hook。
 - `chrome`：可选的每 OS 用户一个进程的共享有头 Chrome provider；Claude Code / Codex 安装后随插件提供 `cdp-chrome` MCP 启动器。
-- `taskdag`：仓库原生的 ADR + Task DAG 数据面——结构化任务/决策文档、vendor 进项目的零依赖生命周期 CLI、生成式 DAG 看板；派发本身交给 `dispatch`。
 
-`steroids`、`dispatch`、`chrome` 和 `taskdag` 的 canonical skills 位于 `plugins/<plugin>/skills/` 并可跨 runtime 复用；Claude Code / Codex 通过各自 marketplace 安装；`telegram` 保持 Claude Code 专用。
+`steroids`、`dispatch` 和 `chrome` 的 canonical skills 位于 `plugins/<plugin>/skills/` 并可跨 runtime 复用；Claude Code / Codex 通过各自 marketplace 安装；`telegram` 保持 Claude Code 专用。
 
 ## 安装
 
@@ -24,7 +23,6 @@ Claude Code / Codex 通用增强插件集合。这个仓库同时兼容两种 ag
 | [`dispatch`](plugins/dispatch/) | Claude + Codex | `dispatch` skill：按任务特长、复杂度和成本选择模型，统一 effort 标尺，sub-agent / 外部模型 CLI 交接与结果验收，以及按编排者隔离、共用服务的零依赖只读车道看板；`lane-orchestrator` skill：多车道编排者准则与批次调度 | Python 3（仅标准库） | 映射到当前 runtime 或本机可用的 agent CLI |
 | [`telegram`](plugins/telegram/) | Claude Code only | `telegram-agents`、`/tg-*`、`/check-release`、`telegram-notify` MCP、Telegram time hook | Claude Code + official Telegram plugin；心跳 workflow 需 Telethon/tmux/launchd | 无 |
 | [`chrome`](plugins/chrome/) | Claude + Codex | `cdp-chrome` 每 OS 用户一个进程的共享有头 Chrome provider；Claude/Codex 内置 `cdp-chrome` MCP 启动器，会读取当前用户 steroids 配置 | Chrome、`npx`、Node ≥ 22（`page.mjs` 用内置 WebSocket） | 提供 `headed-browser`，可被 Codex Chrome plugin / 原生 browser-use 替代 |
-| [`taskdag`](plugins/taskdag/) | Claude + Codex | `taskdag` skill：ADR + Task DAG 数据面，含 vendor 进项目的 `taskdag.py`（validate/query/transition/board）与 lane 隔离参考 | Python 3（仅标准库） | 派发能力（`dispatch` skill 或等价物），非硬依赖 |
 
 ## Skills
 
@@ -43,7 +41,6 @@ Claude Code / Codex 通用增强插件集合。这个仓库同时兼容两种 ag
 | [`hippocampus`](plugins/steroids/skills/hippocampus/SKILL.md) | `steroids` | 管理 Agent 记忆与上下文：①诊断与治疗——扫描全局/项目指令、auto-memory、当前工具定义、skills 与文档，按体量/可用性/新鲜度/矛盾四维打分，生成「记忆精神科确诊书」和逐项确认的 ReviewTable；②吸收新知识——把教训路由到唯一归属并重构，而非追加笔记。内置最短充分表达、渐进披露、工具描述去噪和 auto-memory 中性原则。 |
 | [`telegram-agents`](plugins/telegram/skills/telegram-agents/SKILL.md) | `telegram` | Telegram agent 配置与管理。包括 tmux 会话、Telethon 调度器、launchd 心跳定时任务。 |
 | [`cdp-chrome`](plugins/chrome/skills/cdp-chrome/SKILL.md) | `chrome` | 可选的共享有头 Chrome provider。适合需要持久登录态、用户手动 CAPTCHA、反 bot 页面或 live site inspection 的环境；自带 `page.mjs` 按编号操作页面（编号元素表 + 真实输入事件 + 批量动作 + 执行日志），可选用 TypeSafe Jev 做多步子任务的快速决策；可选的远程 MCP 入口（`remote-mcp.mjs`）供 Claude / ChatGPT 网页端连接器经 Cloudflare Access + Tunnel 使用；明确独立 CDP profile 与日常 Chrome 的验证边界。 |
-| [`taskdag`](plugins/taskdag/skills/taskdag/SKILL.md) | `taskdag` | 仓库原生的 ADR + Task DAG 数据面：任务标 priority/depends_on/lane，零依赖 `taskdag.py` 管 schema 校验、runnable 推导、状态机与单文件 DAG 看板（可发布到仓库外路径）；含初始化/迁移、lane 到 worktree 隔离两份参考。选模型与派发不在本 skill，交给 `dispatch`。 |
 
 ## Commands（Claude Code）
 
@@ -88,7 +85,6 @@ agent-steroids/
     dispatch/           # 跨 agent 派发与多车道编排 skills（Claude + Codex）
     telegram/           # Telegram skill/commands/MCP/hooks
     chrome/             # cdp-chrome provider（含 Claude/Codex MCP launcher 配置）
-    taskdag/            # ADR + Task DAG 数据面（Claude + Codex）
   docs/
     tech/               # 技术方案和架构设计
     research/           # 调研、对比分析
