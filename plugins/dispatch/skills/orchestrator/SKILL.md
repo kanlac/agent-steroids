@@ -1,6 +1,6 @@
 ---
 name: orchestrator
-description: Conduct for an orchestrator coordinating several independent agent lanes in parallel, or a batch of 4+ agents: keep lanes full, route verification and cross-model review, decide what needs the user, close lanes cleanly. One worker over several rounds, or a sequential backlog, stays with dispatch.
+description: "Conduct for an orchestrator coordinating several independent agent lanes in parallel, or a batch of 4+ agents: keep lanes full, route verification and cross-model review, decide what needs the user, close lanes cleanly. One worker over several rounds, or a sequential backlog, stays with dispatch."
 ---
 
 本 skill 管「同时开着很多条车道时编排者怎么做」。每一份任务书怎么写、各 CLI 怎么调用、模型和推理强度怎么选、结果怎么收，按 dispatch skill 来；看板和派活命令也是 dispatch skill 的 `dispatch.py`，本 skill 不带副本。
