@@ -1,6 +1,6 @@
 ---
 name: orchestrator
-description: Act as the orchestrator of a long-running, multi-lane agent session - keep several agent lanes running in parallel across rounds, track them on a lane board, schedule batches of 4+ agents with an orchestration table, keep lanes full while one item waits on the user, route verification and cross-model review to other lanes, decide what needs the user, and close lanes cleanly. Use when you coordinate several independent lanes in parallel (implementation, verification, review across worktrees or rounds), or a batch of 4+ agents. A single worker resumed over several rounds, or a backlog worked through one task at a time without parallel lanes, stays with dispatch, which also covers how to brief and call each worker.
+description: Conduct for an orchestrator coordinating several independent agent lanes in parallel, or a batch of 4+ agents: keep lanes full, route verification and cross-model review, decide what needs the user, close lanes cleanly. One worker over several rounds, or a sequential backlog, stays with dispatch.
 ---
 
 本 skill 管「同时开着很多条车道时编排者怎么做」。每一份任务书怎么写、各 CLI 怎么调用、模型和推理强度怎么选、结果怎么收，按 dispatch skill 来；看板和派活命令也是 dispatch skill 的 `dispatch.py`，本 skill 不带副本。

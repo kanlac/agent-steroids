@@ -1,6 +1,6 @@
 ---
 name: dispatch
-description: Send a piece of work to a subagent or another model's CLI (Codex, OpenCode, Command Code) and get a usable answer back - brief it like a colleague, pick and verify model and reasoning effort, stay within each CLI's hard limits, grant permissions up front, keep the event stream, and diagnose empty or silent results. Use for a single delegation, a second-opinion review, an independent design, or bulk generation, in any project - including resuming the same worker over several rounds, or working through a backlog one task at a time without coordinating parallel lanes. Also documents its dispatch.py tool (run, status, lane board commands). Coordinating several independent lanes in parallel, or a batch of 4+ agents, belongs to orchestrator.
+description: Send a piece of work to a subagent or another model's CLI (Codex, OpenCode, Command Code) and get a usable answer back, including its dispatch.py run and board commands. Use for a single delegation, second-opinion review, independent design, bulk generation, resuming one worker over several rounds, or working a backlog one task at a time. Coordinating several parallel lanes or a batch of 4+ agents belongs to orchestrator.
 ---
 
 ## 像派给同事，不像调函数
