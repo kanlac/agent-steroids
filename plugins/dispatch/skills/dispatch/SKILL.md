@@ -62,3 +62,4 @@ description: Send a piece of work to a subagent or another model's CLI (Codex, O
 - `references/codex.md` —— 环境发现、通用调用形状、权限与结果诊断
 - `references/opencode.md` —— provider / variant 发现、权限、会话、输出截断与配额诊断
 - `references/commandcode.md` —— Command Code（`cmd -p`）的调用形状、`--yolo` 与自动模式的关系
+- `references/agy.md` —— agy（Antigravity CLI）：何时用、按 `agy models` 选 Carbon / Argon、档位在模型名里、接手中断车道
